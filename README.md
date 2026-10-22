@@ -33,10 +33,10 @@
 ```
 .claude-plugin/marketplace.json   マーケットプレイスの定義
 plugins/monozukuri/               プラグイン本体
-dist/monozukuri.plugin            Claude アプリ用のパッケージ
   skills/setup/                   環境セットアップ
   skills/new-project/             雛形・試し片・技術要件の参照資料
   skills/review-page/             描画・比較・確認ページ・フィードバック
+dist/monozukuri.plugin            Claude アプリ用のパッケージ
 ```
 
 ## 注意
