@@ -2,6 +2,9 @@
 out/**/parts/
 out/**/step/
 out/**/*.glb
+# 部分試作の立体（寸法ファイルから作り直せる。加工データ fab/ と画像は残す）
+out/**/partial/*/*.stl
+out/**/partial/*/*.step
 # 公開用に縮小した画像は残す（ページの履歴になる）
 # スライサーの出力
 *.gcode

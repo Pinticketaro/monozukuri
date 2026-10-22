@@ -17,6 +17,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "templates", "project")
 SHARED = os.path.join(HERE, "..", "..", "review-page", "scripts")
 SHARED_FILES = ["render_model.py", "slices.py", "compare.py", "params_diff.py"]
+FAB = os.path.join(HERE, "..", "..", "fab-prep", "scripts")
+FAB_FILES = ["fabkit.py", "fab_check.py", "export_fab.py", "cut_region.py"]
 
 
 def main():
@@ -36,6 +38,8 @@ def main():
     shutil.copytree(TEMPLATE, dest, dirs_exist_ok=True)
     for f in SHARED_FILES:
         shutil.copy(os.path.join(SHARED, f), os.path.join(dest, "tools", f))
+    for f in FAB_FILES:
+        shutil.copy(os.path.join(FAB, f), os.path.join(dest, "tools", f))
 
     rep = {"{{NAME}}": a.name, "{{SUMMARY}}": a.summary or a.name, "{{ORIGIN}}": a.origin,
            "{{METHODS}}": a.methods or "（未定）", "{{DATE}}": datetime.date.today().isoformat()}

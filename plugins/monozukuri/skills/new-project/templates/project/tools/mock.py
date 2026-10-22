@@ -15,6 +15,8 @@
   （STEP の部品名を英数字にしておくと、Fusion などで文字化けしない）。
   輪郭：RRect（角丸の長方形）・Circle（円）・Poly（多角形）。立体：slab（押し出し＋穴）・cyl（円柱）・box（直方体）。
   組み合わせ：+ 足す、- 引く、& 重なり、.translate(x, y, z)。細部（フィレット・ネジ山など）は作らない。
+  部品ごとの作り方（laser／fdm／none）・材料・板厚のキーは寸法ファイルの meta.parts に書く（キーで対応）。
+  scene.json に写り、製作前チェック・加工データ・部分試作（tools/fab_check.py ほか）が使う。
 """
 import json
 import os
@@ -55,8 +57,12 @@ def build(prm):
         notes.append("中身が枠の内側より大きい")
     if 1.0 + P.content_h > P.frame_h:
         notes.append("中身が枠より高い（上板に当たる）")
-    if P.hole_inset < 1.5 * P.screw_clear:
-        notes.append(f"ネジ穴が外周に近い（{P.hole_inset:g}mm）。アクリルは穴径の1.5倍＝{1.5 * P.screw_clear:.1f}mm以上（ACRYLITE）")
+    # 穴の中心から縁まで：角Rの中に穴があると、直線部より縁が近くなる
+    edge = P.hole_inset
+    if P.hole_inset < P.corner_r:
+        edge = min(edge, P.corner_r - (P.corner_r - P.hole_inset) * 2 ** 0.5)
+    if edge < 1.5 * P.screw_clear:
+        notes.append(f"ネジ穴が外周に近い（中心から縁まで {edge:.1f}mm）。アクリルは穴径の1.5倍＝{1.5 * P.screw_clear:.1f}mm以上（ACRYLITE）")
     if P.wall < P.boss_d:
         notes.append(f"壁の厚さ {P.wall:g}mm がインサートのボス外径 {P.boss_d:g}mm より薄い")
     z += P.frame_h
@@ -81,11 +87,16 @@ def main():
 
     pdir = common.out_dir(ver, "parts")
     scene = {"title": f"{prm.meta.get('title', '')} {ver}", "up": "z", "views": ["iso", "back", "side"], "parts": []}
+    how = prm.meta.get("parts", {})          # 部品ごとの作り方（laser／fdm／none）・材料・板厚のキー
     for i, (name, solid, color, opacity, key) in enumerate(parts):
         fn = f"{i + 1:02d}_{key}.stl"
         geom.export_stl(solid, os.path.join(pdir, fn))
-        scene["parts"].append({"file": f"parts/{fn}", "name": name, "key": key, "color": color, "opacity": opacity,
-                               "roughness": 0.3 if opacity < 1 else 0.8})
+        sp_ = {"file": f"parts/{fn}", "name": name, "key": key, "color": color, "opacity": opacity,
+               "roughness": 0.3 if opacity < 1 else 0.8}
+        sp_.update({k: v for k, v in how.get(key, {}).items() if k in ("process", "material", "t", "print")})
+        if key not in how:
+            notes.append(f"「{name}」（{key}）の作り方が寸法ファイルの meta.parts に無い（加工データ・製作前チェックでは形から推定する）")
+        scene["parts"].append(sp_)
     scene["notes"] = notes
     sp = os.path.join(common.out_dir(ver), "scene.json")
     json.dump(scene, open(sp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)

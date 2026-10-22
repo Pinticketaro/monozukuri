@@ -32,6 +32,7 @@ def main():
                                  ("PIL", "Pillow（画像の比較）", True),
                                  ("playwright", "playwright（外観の描画）", True),
                                  ("cascadio", "cascadio（STEPの読み込み）", False),
+                                 ("ezdxf", "ezdxf（レーザー用 DXF の書き出し。無いと SVG だけ）", False),
                                  ("cadquery", "cadquery（モックの STEP 書き出し。無いと STL だけ）", False)]:
         try:
             m = importlib.import_module(mod)

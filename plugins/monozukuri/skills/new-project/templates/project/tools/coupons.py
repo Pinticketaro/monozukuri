@@ -164,8 +164,12 @@ def main():
               "- こては印刷温度＋10〜20℃から始め、約90%まで沈めてから平らな物で面一に押さえ、15〜30秒冷ます（CNC Kitchen・UW）",
               "- まっすぐ入り、周りが盛り上がらず、ネジを締めても回らない番号 → `insert_hole`",
               "", "| 番号 | 下穴径 |", "|---:|---:|"] + [f"| {i + 1} | {d:.1f} |" for i, d in enumerate(holes)]
-    lines += ["", "## 部分試作（本番の前に）", "",
-              "ケースの一角（USBの切り欠き・ネジボス1つ・中身の角）だけを切り出して刷り、実物を合わせる。"
+    lines += ["", "## 測ったら", "",
+              "機材プロファイルにも記録しておくと、次のプロジェクトでは初期値ではなくこの値から始められる"
+              "（monozukuri の machines スキル：`machines.py import-csv <機材ID> --csv measurements/試し片記録.csv`）。",
+              "", "## 部分試作（本番の前に）", "",
+              "ケースの一角（USBの切り欠き・ネジボス1つ・中身の角）だけを切り出して刷り、実物を合わせる"
+              "（`python3 tools/cut_region.py vNN --name usb --around X,Y --size W,D`）。"
               "USB-C はいちばん太いケーブルで試す（切り欠きはケーブル側の太さで決まる）。"]
     open(os.path.join(out, "coupons.md"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
     print(out)

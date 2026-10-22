@@ -7,7 +7,7 @@ description: >
   3D printing) shared for review. Renders mocks or human-made models (STL/OBJ/STEP), compares versions,
   and publishes one review page per project where viewers leave feedback that Claude reads back.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 確認ページ（確認ボード）
@@ -91,6 +91,8 @@ Artifact ツールで公開する。`root` はプロジェクトのフォルダ�
 
 ## 決まり
 - 段階（stage）は4つの関所に合わせる：モック／試し片／部分試作／モデル（Fusion）／試作品。試し片や部分試作の写真も版として載せてよい（images に写真を入れる）。
+- 製作前チェック（fab-prep スキルの `fab_check.py`）を回した版は、`out/vNN/check/check_*.png` を `images` に group「製作前チェック」で入れ、NG・注意を `notes` に短く書く。部分試作は `out/vNN/partial/<名前>/preview.png`・`pieces.png` を載せられる。
+- 人が作ったモデルの `scene.json` には、部品ごとに `process`（laser／fdm／none）と `material` も書いておくと、そのまま製作前チェックと加工データの書き出しに使える。
 - 1つの版で変える条件はなるべく1つ。複数変えるなら、変えたことを全部 `changes` に書く。
 - 画像は版番号付きのパス（`out/vNN/…`）で作る。前の版の画像を上書きしない。
 - モックは見た目と比率の確認用。寸法表と画像を渡して、最終形は人がモデル化する（引き継ぎは new-project スキルの雛形の `docs/引き継ぎ.md`）。

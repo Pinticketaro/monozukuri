@@ -4,10 +4,10 @@ description: >
   This skill should be used when the user asks to "モックの環境を整えて", "プレビューの環境を作って",
   "monozukuri のセットアップ", "描画できるようにして", or when a monozukuri script fails because a library,
   Chromium, three.js or a Japanese font is missing. Installs and checks everything the monozukuri mock and
-  review-page scripts need (shapely, manifold3d, trimesh, cascadio, cadquery for STEP output, playwright +
-  Chromium, three.js, CJK font) and runs a test render.
+  review-page and fab-prep scripts need (shapely, manifold3d, trimesh, cascadio, cadquery for STEP output,
+  ezdxf for DXF, playwright + Chromium, three.js, CJK font) and runs a test render.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 環境セットアップ
@@ -30,7 +30,7 @@ metadata:
 
 3. **結果の表を読む**
    - 最後に `check_env.py` が表を出す。`NG` が残ったら下の「つまずいたとき」で直し、`python3 scripts/check_env.py` だけを再実行する。
-   - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery はモックを STEP で書き出すときだけ必要。無ければモックは STL だけになる）。
+   - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery はモックを STEP で書き出すときと部分試作を STEP で切るとき、ezdxf はレーザー用 DXF を書き出すときだけ必要。無ければ STL・SVG だけになる）。
    - テスト描画の PNG のパスが出るので、Read で開いて箱が影付きで描けているか一度だけ確かめる。
 
 4. **ユーザーへの報告は1〜2文**：準備できたこと、入らなかったものがあればその影響（例：「STEP は読めないので STL で書き出してください」）。

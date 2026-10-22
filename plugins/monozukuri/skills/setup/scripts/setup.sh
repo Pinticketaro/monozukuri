@@ -29,7 +29,7 @@ pip_install() {
 }
 
 say "Python パッケージ"
-PKGS="numpy shapely matplotlib manifold3d trimesh pillow playwright cascadio"
+PKGS="numpy shapely matplotlib manifold3d trimesh pillow playwright cascadio ezdxf"
 MISSING=""
 for p in $PKGS; do
   mod="$p"; [ "$p" = "pillow" ] && mod="PIL"

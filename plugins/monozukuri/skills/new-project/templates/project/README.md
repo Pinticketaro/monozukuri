@@ -12,8 +12,9 @@
 2. **モックと図を作る**：下の「生成コマンド」
 3. **確認ページに載せて見る・書く**：`review/`（monozukuri プラグインの確認ページ）
 4. **フィードバックを次の版に反映**し、`LOG.md` に記録してコミット
-5. **試し片で加工の値を決める**：`tools/coupons.py` で作って切る・刷る → `measurements/試し片記録.csv` → 寸法ファイルの `fab` を「実測」に
-6. **形が固まったら引き継ぐ**：`docs/寸法表_vNN.md`・`docs/fusion_params_vNN.csv` と画像を渡してモデル化（`docs/引き継ぎ.md`）。モデル化した結果（STL / STEP）も同じ確認ページで見られる
+5. **試し片で加工の値を決める**：`tools/coupons.py` で作って切る・刷る → `measurements/試し片記録.csv` → 寸法ファイルの `fab` を「実測」に（機材プロファイルにも記録しておくと、次のプロジェクトで使える）
+6. **製作前チェック → 部分試作 → 本番**：`tools/fab_check.py` で形を技術要件と機材に照らし、`tools/cut_region.py` で一部分だけ先に作って実物と合わせ、`tools/export_fab.py` で加工データを書き出す
+7. **形が固まったら引き継ぐ**：`docs/寸法表_vNN.md`・`docs/fusion_params_vNN.csv` と画像を渡してモデル化（`docs/引き継ぎ.md`）。モデル化した結果（STL / STEP）も同じ確認ページで見られる
 
 ## 生成コマンド
 
@@ -25,7 +26,13 @@ python3 tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/c
 python3 tools/params_diff.py params/params_vPP.json params/params_vNN.json --json out/vNN/params_diff.json
 python3 tools/dims_sheet.py vNN               # 引き継ぎ用の寸法表 → docs/寸法表_vNN.md と docs/fusion_params_vNN.csv
 python3 tools/coupons.py vNN                  # 試し片 → out/coupons/（レーザーのSVG、3DプリントのSTL、説明 coupons.md）
+python3 tools/fab_check.py vNN --render       # 製作前チェック → out/vNN/check/（NG・注意・確認と、番号の付いた図）
+python3 tools/cut_region.py vNN --name usb --around X,Y --size W,D   # 部分試作の切り出し → out/vNN/partial/usb/
+python3 tools/export_fab.py vNN               # 加工データ → out/vNN/fab/（レーザー SVG/DXF をカーフ補正つきで、3Dプリント 3MF）
 ```
+
+部品ごとの作り方（レーザー／3Dプリント／加工しない）・材料・板厚のキーは、寸法ファイルの `meta.parts` に書く。
+使う機材は `meta.machines`（monozukuri の machines スキルで登録・適用。写しは `measurements/machines/`）。
 
 モックの STEP（`out/vNN/step/assembly_vNN.step`）は Fusion で開くと部品ごとのコンポーネントになり、モデル化の出発点に使える。確認ページの「書き出す」からも STL / STEP を ZIP で保存できる。
 
@@ -38,11 +45,11 @@ Fusion などで作ったモデルを見るとき：`python3 tools/render_model.
 | フォルダ | 中身 |
 |---|---|
 | `params/` | 版ごとの寸法（`params`＝形の寸法、`fab`＝試し片で決める加工の値。数値はここだけに書く） |
-| `tools/` | モック・描画・断面・比較・寸法表のスクリプト |
+| `tools/` | モック・描画・断面・比較・寸法表・製作前チェック・加工データ・部分試作のスクリプト |
 | `out/` | 版ごとの出力（画像は残す、STL・STEP・GLB は作り直せるので Git に入れない） |
 | `review/` | 確認ページ（公開用） |
 | `docs/` | 決定事項、引き継ぎ、寸法表 |
-| `measurements/` | 実物の実測値、試し片の記録 |
+| `measurements/` | 実物の実測値、試し片の記録、使った機材の写し（`machines/`） |
 | `photos/` | 試作・試し刷り・切断の写真（定規を一緒に写す） |
 | `LOG.md` | 製作ログ |
 

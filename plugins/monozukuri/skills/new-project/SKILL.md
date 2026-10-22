@@ -6,11 +6,12 @@ description: >
   project (laser cutting, 3D printing, small enclosures, furniture, gadgets) that should move fast through
   3D mock images and feedback before a human models the final form. Also used for "試し片を作って",
   "カーフを測りたい", "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーで切っていい？".
-  Creates a project with a parameter file (shape + fabrication values with confidence), a mock generator (STL + STEP from one shape definition),
-  test-coupon generator, preview/section/compare scripts, stage checklist, handoff docs and git settings,
+  Creates a project with a parameter file (shape + fabrication values with confidence + how each part is made),
+  a mock generator (STL + STEP from one shape definition), test-coupon generator, preview/section/compare scripts,
+  pre-fabrication check / fab export / partial-prototype scripts, stage checklist, handoff docs and git settings,
   and carries digital-fabrication requirements (laser, FDM, data/units, assembly, material safety).
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 新規プロジェクトの雛形
@@ -34,6 +35,7 @@ metadata:
 - 中に入れる物・組み合わせる既製品の大きさ（実物があれば実測をお願いする）
 - 使う材料（板の種類と厚み、フィラメント）。レーザーで切る材料は `references/fab-safety.md` に照らし、「全面禁止」なら別の材料を提案、「ラボ次第」なら所属ラボのリストで確かめるよう伝える
 - 置き場所：GitHub のリポジトリにするか、ユーザーのPCのフォルダか、この作業環境だけか
+- 使う機材：machines スキルで登録済みの機材があれば、それを使うか（`machines.py list`）。あれば手順5のあとで適用する
 
 ### 2. 雛形を作る
 ```bash
@@ -41,13 +43,14 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
   --methods "<作り方>" --bed 220x220 [--origin "<原点と向き>"] [--git]
 ```
 - 既存のフォルダに中身があると止まる（上書きしない）。
-- 描画・断面・比較・差分のスクリプトは `tools/` にコピーされるので、プロジェクト単体で動く。
+- 描画・断面・比較・差分と、製作前チェック・加工データ・部分試作（fab-prep スキル）のスクリプトは `tools/` にコピーされるので、プロジェクト単体で動く。
 - 環境が足りなければ setup スキルを先に実行する。
 
 ### 3. 最初のモックを、ユーザーの形に書き換える
 雛形の `params/params_v01.json` と `tools/mock.py` の `build()` は「アクリル板2枚でPLAの枠を挟む箱」の例。依頼の形に書き換える。
 - 寸法は寸法ファイルだけに書き、項目ごとに `label` を付ける。
 - 寸法ファイルは `params`（形の寸法）と `fab`（加工の値：実板厚 `t_*`・`kerf`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
+- 部品ごとの作り方を `meta.parts` に書く：キー（mock.py の英字のキー）ごとに `process`（laser／fdm／none）・`material`・レーザーの板なら `t`（板厚のキー）、刷る向きを変えるなら `print`（`{"flip": true}` など）。製作前チェックと加工データの書き出しがこれを使う。
 - 細部は作らない。形・大きさ・比率・配置がわかる粗さにとどめる（`references/conventions.md`）。
 - 寸法から機械的にわかる問題（造形範囲を超える、中身が入らない）は notes に出す。
 - わからない寸法は仮の値で進め、寸法ファイルの label に「仮」と書き、ユーザーに実測をお願いする項目として報告に入れる。
@@ -69,12 +72,16 @@ python3 tools/coupons.py v01
 ```
 - `out/coupons/` にレーザー用 SVG（カーフ四角・スロットのコーム・差し込む細板）、3Dプリント用 STL（はめあい片・インサート穴片）、手順と番号表 `coupons.md` ができる。
 - ユーザーが切って・刷って測った値を `measurements/試し片記録.csv` に書き、寸法ファイルの `fab` を書き換えて status を「実測」にする（版を上げる）。
-- 次は部分試作（ケースの一角：USB切り欠き・ネジボス1つ・中身の角）。mock.py で該当部分を切り出すか、モデル化後に Fusion で切り出す。
+- 測った値は machines スキルで機材プロファイルにも記録する（`import-csv`）。次のプロジェクトでは `apply` で最初から実測値を使える。登録済みの機材に値があれば、試し片を省けることもある（条件が同じときだけ）。
+- 次は部分試作（ケースの一角：USB切り欠き・ネジボス1つ・中身の角）。fab-prep スキルの `tools/cut_region.py` で切り出す。その前に `tools/fab_check.py` で製作前チェックを回しておく。
 - 段階ごとの確認は雛形の `docs/チェックリスト.md`。
 
 ### 6. 確認ページへつなぐ
 外観画像をユーザーに見せ（SendUserFile）、review-page スキルで確認ページを作って公開する。以後は review-page の手順で版を回す。
 `--git` で作った場合は最初のコミットまでできている。GitHub に上げるのはユーザーが望んだときだけ。
+
+### 7. 本番の前に
+fab-prep スキル：製作前チェック（`tools/fab_check.py`）→ 部分試作（`tools/cut_region.py`）→ 加工データ（`tools/export_fab.py`、レーザーは SVG/DXF をカーフ補正つきで、3Dプリントは 3MF）。
 
 ## 報告
 2〜3文：何を作ったか、最初のモックで見てほしい所、実測をお願いしたい値。フォルダの中身の列挙はしない。

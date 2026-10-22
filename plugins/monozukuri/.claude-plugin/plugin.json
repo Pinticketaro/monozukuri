@@ -1,7 +1,7 @@
 {
   "name": "monozukuri",
-  "version": "0.3.0",
-  "description": "レーザー加工・3Dプリントのものづくりで、立体のモック→確認ページ→フィードバック→次の版を速く回すためのプラグイン。最終形は人がモデル化する前提。",
+  "version": "0.4.0",
+  "description": "レーザー加工・3Dプリントのものづくりで、立体のモック→確認ページ→フィードバック→次の版を速く回し、製作前チェック・部分試作・加工データの書き出しと機材の実測値までつなぐプラグイン。最終形は人がモデル化する前提。",
   "author": {
     "name": "Pinticketaro"
   },
@@ -13,7 +13,12 @@
     "3d-printing",
     "review",
     "step",
-    "cad"
+    "cad",
+    "dfm",
+    "kerf",
+    "svg",
+    "dxf",
+    "3mf"
   ],
   "repository": "https://github.com/Pinticketaro/monozukuri",
   "homepage": "https://github.com/Pinticketaro/monozukuri",
