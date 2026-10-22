@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # monozukuri: モック・プレビュー環境のセットアップ
-# 使い方: bash setup.sh [--with-cad]
-#   --with-cad  … cadquery（STEPを"書き出す"ときだけ必要。重いので既定では入れない）
+# 使い方: bash setup.sh [--no-cad]
+#   既定で cadquery（モックの STEP 書き出し用）も入れる。数分かかる。
+#   --no-cad  … cadquery を入れない（STL だけでよいとき。--with-cad は旧い書き方で、無視される）
 # 何度実行しても安全（入っているものは飛ばす）。
 set -u
 
-WITH_CAD=0
-for a in "$@"; do [ "$a" = "--with-cad" ] && WITH_CAD=1; done
+WITH_CAD=1
+for a in "$@"; do [ "$a" = "--no-cad" ] && WITH_CAD=0; done
 
 CACHE="${MONOZUKURI_CACHE:-$HOME/.cache/monozukuri}"
 THREE_VER="0.160.0"
@@ -41,7 +42,7 @@ else
   echo "すべて入っています"
 fi
 if [ "$WITH_CAD" = 1 ]; then
-  "$PY" -c "import cadquery" 2>/dev/null || { echo "cadquery を入れる（数分かかります）"; pip_install cadquery; }
+  "$PY" -c "import cadquery" 2>/dev/null || { echo "cadquery を入れる（数分かかります）"; pip_install cadquery || echo "!! cadquery を入れられませんでした（モックは STL だけになります）"; }
 fi
 
 say "ブラウザ（外観画像の描画用 Chromium）"

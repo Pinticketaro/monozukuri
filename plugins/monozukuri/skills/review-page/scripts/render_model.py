@@ -54,11 +54,20 @@ def parse_part(spec):
     return p
 
 
+def load_mm(path):
+    """メッシュとして読み、mm にそろえる。STEP は cascadio 経由でメートルになるので換算する
+    （組み立て STEP はシーンとして読まれるので、シーンの単位で換算してから1つにまとめる）。"""
+    obj = trimesh.load(path)
+    units = getattr(obj, "units", None)
+    if units and units not in ("millimeters", "mm"):
+        obj = obj.convert_units("millimeters")
+    if isinstance(obj, trimesh.Scene):
+        obj = obj.to_mesh() if hasattr(obj, "to_mesh") else obj.dump(concatenate=True)
+    return obj
+
+
 def load_mesh(path):
-    m = trimesh.load(path, force="mesh")
-    # STEP は cascadio 経由でメートルになる。STL など単位の無いものは mm とみなし、すべて mm にそろえる
-    if getattr(m, "units", None) and m.units not in ("millimeters", "mm"):
-        m.convert_units("millimeters")
+    m = load_mm(path)
     if m.is_empty:
         raise SystemExit(f"中身が空です: {path}")
     return m
@@ -91,7 +100,9 @@ def build_scene(parts, base, up):
             baseColorFactor=rgba, roughnessFactor=p.get("roughness", 0.7), metallicFactor=p.get("metalness", 0.0),
             alphaMode="BLEND" if rgba[3] < 1 else "OPAQUE", doubleSided=True)
         m.visual = trimesh.visual.TextureVisuals(material=mat)
-        scene.add_geometry(m, node_name=f"p{i}_{p.get('name', os.path.basename(f))}")
+        # 確認ページの「書き出す」が部品を見分けられるよう、ノード名は p<番号>_<キー>（英数字）にする
+        key = p.get("key") or os.path.splitext(os.path.basename(f))[0]
+        scene.add_geometry(m, node_name=f"p{i}_{key}")
     return scene
 
 

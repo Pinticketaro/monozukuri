@@ -11,14 +11,23 @@
     "stage": "モック",                      ← モック／モデル（Fusion）／試作品 など
     "summary": "この版で見てほしいことを1〜2文で",
     "changes": ["変えたこと", ...],
-    "questions": ["決めてほしいこと", ...],
+    "questions": [                          ← 決めてほしいこと。3つの書き方
+      "自由に書いてほしいこと",                                   … 文字だけ：フィードバック欄に書いてもらう
+      {"q": "USBの穴を左に寄せてよい？", "type": "yesno"},          … はい／いいえ をボタンで選ぶ
+      {"q": "分割線はどれ？", "options": ["A案：中央で直線",       … 案の中から1つをボタンで選ぶ
+          {"label": "B案：キーの間でジグザグ", "note": "補足", "img": "out/v03/split_b.png"}]}
+    ],                                        ← 選んだ答えは db の answers に1人1件で入る（選び直せる）
     "images": [{"src": "out/v03/preview.png", "caption": "外観", "group": "外観"}, ...],   ← 1枚目が大きく出る
     "compare": [{"before": "out/v02/preview.png", "after": "out/v03/preview.png", "caption": "外観"},
                 {"src": "out/v03/compare_side.png", "caption": "横から"}],
     "params_diff": "out/v03/params_diff.json",   ← params_diff.py --json の出力（または一覧そのもの）
     "model": "out/v03/model.glb",                ← render_model.py --glb の出力（任意、11MBまで。base64 のテキストにして載せる）
-    "notes": "任意のメモ"
+    "notes": "任意のメモ",
+    "parts": "out/v03/scene.json",               ← 書き出し（STL）で部品名を出すため。scene.json か [{"name","key"}]
+    "step": "out/v03/step/index.json"            ← 書き出し（STEP）用。mock.py の index.json か [{"src","name","file"}]
   }
+  ページの「書き出す」では、STL は 3Dモデル（GLB）から部品ごとにその場で作り、STEP は載せたファイルを使う。
+  どちらも ZIP にまとめて保存する（アーティファクトの保存は .stl / .step を直接扱えないため）。
 
 出力（<プロジェクト>/review/）
   board.json             … 全部の版の記録（ページの元データ）
@@ -81,7 +90,28 @@ def add_version(root, man):
             raise SystemExit(f"ファイルがありません: {p}")
         return q
 
-    entry = {k: man.get(k) for k in ("version", "prev", "date", "stage", "summary", "changes", "questions", "notes")}
+    entry = {k: man.get(k) for k in ("version", "prev", "date", "stage", "summary", "changes", "notes")}
+    entry["questions"] = []
+    for i, q in enumerate(man.get("questions") or []):
+        if isinstance(q, str):
+            entry["questions"].append({"q": q, "type": "text"})
+            continue
+        item = {"q": q.get("q") or q.get("question", ""), "type": "text"}
+        if q.get("type") == "yesno":
+            item["type"] = "yesno"
+            item["options"] = [{"id": "yes", "label": "はい"}, {"id": "no", "label": "いいえ"}]
+        elif q.get("options"):
+            item["type"] = "choice"
+            item["options"] = []
+            for j, o in enumerate(q["options"]):
+                o = {"label": o} if isinstance(o, str) else dict(o)
+                opt = {"id": o.get("id") or chr(ord("a") + j), "label": o.get("label", ""), "note": o.get("note", "")}
+                if o.get("img"):
+                    out = put_image(src_path(o["img"]), vdir, f"q{i + 1:02d}{opt['id']}")
+                    new_files.append(out)
+                    opt["img"] = rel(out)
+                item["options"].append(opt)
+        entry["questions"].append(item)
     entry["images"] = []
     for i, im in enumerate(man.get("images", [])):
         out = put_image(src_path(im["src"]), vdir, f"img{i + 1:02d}")
@@ -116,6 +146,33 @@ def add_version(root, man):
             open(dst, "w").write(base64.b64encode(open(g, "rb").read()).decode("ascii"))
             new_files.append(dst)
             entry["model"] = rel(dst)
+
+    # 書き出し用の部品一覧（GLB のノード p<番号>_<キー> と対応）。scene.json か一覧そのもの
+    parts = man.get("parts")
+    if isinstance(parts, str):
+        parts = json.load(open(src_path(parts), encoding="utf-8")).get("parts", [])
+    entry["parts"] = [{"name": p.get("name", ""), "key": p.get("key") or os.path.splitext(os.path.basename(p.get("file", "")))[0]}
+                      for p in (parts or [])]
+
+    # STEP（書き出し用）。アーティファクトは .step を配信しないので base64 のテキストにして載せる
+    steps = man.get("step")
+    if isinstance(steps, str):
+        steps = json.load(open(src_path(steps), encoding="utf-8"))
+    entry["step"] = []
+    if steps:
+        import base64
+        sdir = os.path.join(vdir, "step")
+        os.makedirs(sdir, exist_ok=True)
+        for i, st in enumerate(steps):
+            g = src_path(st["src"])
+            if os.path.getsize(g) > MAX_GLB:
+                print(f"!! STEP {st['src']} が {os.path.getsize(g) / 1e6:.1f}MB あるので載せません（11MBまで）")
+                continue
+            fname = st.get("file") or os.path.basename(g)
+            dst = os.path.join(sdir, f"{i + 1:02d}.step.txt")
+            open(dst, "w").write(base64.b64encode(open(g, "rb").read()).decode("ascii"))
+            new_files.append(dst)
+            entry["step"].append({"src": rel(dst), "name": st.get("name", fname), "file": fname})
 
     board["versions"] = [v for v in board["versions"] if v["version"] != ver] + [entry]
     board["versions"].sort(key=lambda v: vkey(v["version"]))

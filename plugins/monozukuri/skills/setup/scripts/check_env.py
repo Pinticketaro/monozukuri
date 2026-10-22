@@ -32,7 +32,7 @@ def main():
                                  ("PIL", "Pillow（画像の比較）", True),
                                  ("playwright", "playwright（外観の描画）", True),
                                  ("cascadio", "cascadio（STEPの読み込み）", False),
-                                 ("cadquery", "cadquery（STEPの書き出し）", False)]:
+                                 ("cadquery", "cadquery（モックの STEP 書き出し。無いと STL だけ）", False)]:
         try:
             m = importlib.import_module(mod)
             row(label, True, getattr(m, "__version__", ""))

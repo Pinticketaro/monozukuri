@@ -31,15 +31,25 @@ def setup_font():
         pass
 
 
+def load_mm(path):
+    """メッシュとして読み、mm にそろえる。STEP は cascadio 経由でメートルになるので換算する
+    （組み立て STEP はシーンとして読まれるので、シーンの単位で換算してから1つにまとめる）。"""
+    obj = trimesh.load(path)
+    units = getattr(obj, "units", None)
+    if units and units not in ("millimeters", "mm"):
+        obj = obj.convert_units("millimeters")
+    if isinstance(obj, trimesh.Scene):
+        obj = obj.to_mesh() if hasattr(obj, "to_mesh") else obj.dump(concatenate=True)
+    return obj
+
+
 def load(scene_path):
     sc = json.load(open(scene_path, encoding="utf-8"))
     base = os.path.dirname(os.path.abspath(scene_path))
     parts = []
     for p in sc["parts"]:
         f = p["file"] if os.path.isabs(p["file"]) else os.path.join(base, p["file"])
-        m = trimesh.load(f, force="mesh")
-        if getattr(m, "units", None) and m.units not in ("millimeters", "mm"):
-            m.convert_units("millimeters")      # STEP（メートル）を mm にそろえる
+        m = load_mm(f)                          # STEP（メートル）も mm にそろえる
         if sc.get("up", "z") == "y":
             m.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0]))
         parts.append((p.get("name", os.path.basename(f)), p.get("color", "#888888"), m))

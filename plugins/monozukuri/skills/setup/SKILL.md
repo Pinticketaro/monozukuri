@@ -4,10 +4,10 @@ description: >
   This skill should be used when the user asks to "モックの環境を整えて", "プレビューの環境を作って",
   "monozukuri のセットアップ", "描画できるようにして", or when a monozukuri script fails because a library,
   Chromium, three.js or a Japanese font is missing. Installs and checks everything the monozukuri mock and
-  review-page scripts need (shapely, manifold3d, trimesh, cascadio, playwright + Chromium, three.js, CJK font)
-  and runs a test render.
+  review-page scripts need (shapely, manifold3d, trimesh, cascadio, cadquery for STEP output, playwright +
+  Chromium, three.js, CJK font) and runs a test render.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # 環境セットアップ
@@ -22,15 +22,15 @@ metadata:
 
 2. **セットアップを実行する**（このスキルの基準ディレクトリからの相対パス）
    ```bash
-   bash scripts/setup.sh            # 通常
-   bash scripts/setup.sh --with-cad # STEP を書き出す必要があるときだけ（cadquery は重い）
+   bash scripts/setup.sh           # 通常（cadquery も入れる。モックを STEP でも書き出せる）
+   bash scripts/setup.sh --no-cad  # STL だけでよいとき（cadquery は数百MBあり、入れるのに数分かかる）
    ```
-   - タイムアウトは長め（10分）にする。cascadio・Chromium・three.js のダウンロードに時間がかかる。
+   - タイムアウトは長め（10分）にする。cadquery・cascadio・Chromium・three.js のダウンロードに時間がかかる。
    - 何度実行しても安全。入っているものは飛ばす。
 
 3. **結果の表を読む**
    - 最後に `check_env.py` が表を出す。`NG` が残ったら下の「つまずいたとき」で直し、`python3 scripts/check_env.py` だけを再実行する。
-   - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery は STEP を書き出すときだけ必要）。
+   - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery はモックを STEP で書き出すときだけ必要。無ければモックは STL だけになる）。
    - テスト描画の PNG のパスが出るので、Read で開いて箱が影付きで描けているか一度だけ確かめる。
 
 4. **ユーザーへの報告は1〜2文**：準備できたこと、入らなかったものがあればその影響（例：「STEP は読めないので STL で書き出してください」）。
@@ -43,6 +43,7 @@ metadata:
 | Chromium が起動しない | `python3 -m playwright install chromium`。クラウドの作業環境では入っているはずなので、`PLAYWRIGHT_BROWSERS_PATH` を確認 |
 | three.js が入らない（npm がない） | mac は `brew install node`。入れられない環境では、作業環境（クラウド）側で描画する |
 | 日本語フォントが見つからない | mac はヒラギノ、Linux は `fonts-noto-cjk` を入れる。入れられない場合、図の日本語が□になるだけで描画自体はできる |
+| cadquery が入らない | Python のバージョンに合う版が無いことがある（3.10〜3.12 が確実）。入らなくても STL のモックと確認ページは使える。STEP が要るときは conda（`conda install -c conda-forge cadquery`）を試す |
 | テスト描画がタイムアウト | WebGL がソフトウェア描画（SwiftShader）で遅い環境。もう一度だけ実行し、それでもだめなら幅を小さく（`--width 1200`） |
 
 ## 置き場所

@@ -18,7 +18,7 @@
 ## 生成コマンド
 
 ```
-python3 tools/mock.py vNN                     # モック → out/vNN/parts/*.stl, out/vNN/scene.json
+python3 tools/mock.py vNN                     # モック → out/vNN/parts/*.stl, out/vNN/scene.json, out/vNN/step/*.step（CadQuery があるとき）
 python3 tools/render_model.py --scene out/vNN/scene.json --out out/vNN/preview.png --glb out/vNN/model.glb
 python3 tools/slices.py --scene out/vNN/scene.json --plan out/vNN/plan.png --section out/vNN/section.png
 python3 tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/compare.png --labels vPP vNN
@@ -26,6 +26,8 @@ python3 tools/params_diff.py params/params_vPP.json params/params_vNN.json --jso
 python3 tools/dims_sheet.py vNN               # 引き継ぎ用の寸法表 → docs/寸法表_vNN.md と docs/fusion_params_vNN.csv
 python3 tools/coupons.py vNN                  # 試し片 → out/coupons/（レーザーのSVG、3DプリントのSTL、説明 coupons.md）
 ```
+
+モックの STEP（`out/vNN/step/assembly_vNN.step`）は Fusion で開くと部品ごとのコンポーネントになり、モデル化の出発点に使える。確認ページの「書き出す」からも STL / STEP を ZIP で保存できる。
 
 Fusion などで作ったモデルを見るとき：`python3 tools/render_model.py frame.step:#d9d4cb top.stl:#bcd6e4:0.6 --out out/vNN/model_preview.png`
 
@@ -37,7 +39,7 @@ Fusion などで作ったモデルを見るとき：`python3 tools/render_model.
 |---|---|
 | `params/` | 版ごとの寸法（`params`＝形の寸法、`fab`＝試し片で決める加工の値。数値はここだけに書く） |
 | `tools/` | モック・描画・断面・比較・寸法表のスクリプト |
-| `out/` | 版ごとの出力（画像は残す、STL・GLB は作り直せるので Git に入れない） |
+| `out/` | 版ごとの出力（画像は残す、STL・STEP・GLB は作り直せるので Git に入れない） |
 | `review/` | 確認ページ（公開用） |
 | `docs/` | 決定事項、引き継ぎ、寸法表 |
 | `measurements/` | 実物の実測値、試し片の記録 |

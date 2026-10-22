@@ -3,6 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <style>
 /* 作業台のカッティングマット：緑がかった無彩色の地に10mm方眼。版ごとの「見る→書く」を1画面で回す縦長レイアウト（広い画面では右にフィードバック欄） */
@@ -53,7 +54,6 @@ main{display:grid;grid-template-columns:minmax(0,1fr);gap:30px;min-width:0}
 .box h3{font-size:13px;color:var(--muted);font-weight:500;letter-spacing:.06em;margin-bottom:6px}
 .box ul{margin:0;padding-left:1.2em}
 .box li{margin:2px 0}
-.q{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
 .linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:13px;padding:0;white-space:nowrap;text-decoration:underline;text-underline-offset:3px}
 .hero{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 .hero img{display:block;width:100%;height:auto;cursor:zoom-in}
@@ -82,6 +82,49 @@ td.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-num
 tr:last-child td{border-bottom:0}
 .up{color:var(--fix)} .down{color:var(--ask)}
 .empty{color:var(--muted);font-size:14px;padding:10px 0}
+.exp{display:grid;gap:12px}
+.exp .fmt{display:flex;flex-wrap:wrap;gap:8px}
+.exp .fmt label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;background:var(--bg)}
+.exp .fmt label:has(input:checked){border-color:var(--accent)}
+.exp .fmt label:has(input:disabled){opacity:.45;cursor:default}
+.exp .fmt small{color:var(--muted);font-size:12px}
+.exp .checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:4px 16px}
+.exp .checks label{display:flex;gap:6px;align-items:center;font-size:14px;min-width:0}
+.exp .checks label span{overflow-wrap:anywhere}
+.exp .checks .file{color:var(--muted);font-family:var(--f-mono);font-size:12px}
+.exp input{accent-color:var(--accent)}
+.exp .go{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+/* 決めてほしいこと：はい／いいえ は切り替え、案はカードのラジオ。選んだ答えは1人1件で db に入る */
+.qs{display:grid;gap:12px}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;min-width:0}
+.qcard.decided{border-color:var(--accent)}
+.qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.qhead .qn{font:500 12px var(--f-mono);color:var(--muted)}
+.qhead .qt{font-weight:500;flex:1 1 16em;min-width:0;overflow-wrap:anywhere}
+.chip.dec{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.vis{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.seg{justify-self:start;display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg);max-width:100%}
+.seg label{position:relative;display:inline-flex;gap:8px;align-items:center;padding:6px 18px;cursor:pointer;font-size:14px;white-space:nowrap}
+.seg label+label{border-left:1px solid var(--line)}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
+.seg label:has(input:disabled){cursor:default}
+.seg .cnt{font:500 12px var(--f-mono);opacity:.8}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:10px}
+.opt{display:grid;gap:6px;align-content:start;border:1px solid var(--line);border-radius:6px;padding:10px 12px;cursor:pointer;background:var(--bg);min-width:0}
+.opt:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt:has(input:disabled){cursor:default}
+.opt.win{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg))}
+.opt img{display:block;width:100%;height:auto;max-height:240px;object-fit:contain;border-radius:4px;background:var(--sunken)}
+.opt .top{display:flex;gap:8px;align-items:flex-start}
+.opt .top input{accent-color:var(--accent);margin-top:5px;flex:none}
+.opt .lbl{font-size:14px;overflow-wrap:anywhere}
+.opt .on{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.tally{display:flex;gap:8px;align-items:center;font:500 12px var(--f-mono);color:var(--muted)}
+.tally .bar{flex:1;height:4px;border-radius:2px;background:var(--sunken);overflow:hidden}
+.tally .bar i{display:block;height:100%;background:var(--accent)}
+.qfoot{display:flex;gap:6px 14px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.qfoot .who{flex:1 1 14em;min-width:0;overflow-wrap:anywhere}
 /* フィードバック */
 .side{min-width:0}
 .side .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
@@ -160,6 +203,14 @@ let cur = vers[vers.length - 1];
 let feedback = [];         // db から
 let names = {};            // 投稿者の表示名
 let canWrite = false;
+let answers = [];          // db の answers（1人1問1件）
+let decisions = {};        // db の decisions（Claude が書く決定）。キー "<版>~q<番号>"
+let myId = null;
+let answerDb = null;       // 書き込める db（読み取りだけのときは null）
+let dbState = "loading";   // loading → rw（選べる）／ro（集計だけ）／none（db が使えない画面）
+const qOf = q => typeof q === "string" ? {q, type: "text"} : q;   // 0.2 までの版は文字列
+const safeSeg = s => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, "_");
+const ansId = (ver, i, uid) => `${safeSeg(ver)}~q${i}~${safeSeg(uid)}`;
 
 function pickFromHash(){
   const h = decodeURIComponent(location.hash.slice(1));
@@ -195,9 +246,10 @@ function mainHTML(){
   const lists = [];
   if (cur.summary) out.push(`<p class="summary">${esc(cur.summary)}</p>`);
   if (cur.changes?.length) lists.push(`<div class="box"><h3>この版で変えたこと</h3><ul>${cur.changes.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`);
-  if (cur.questions?.length) lists.push(`<div class="box"><h3>決めてほしいこと</h3><ul>${cur.questions.map((q, i) =>
-      `<li><div class="q"><span>${esc(q)}</span><button type="button" class="linkbtn" data-q="${i}">書く</button></div></li>`).join("")}</ul></div>`);
   if (lists.length) out.push(`<section class="cols">${lists.join("")}</section>`);
+  if (cur.questions?.length) out.push(`<section aria-label="決めてほしいこと"><h2>決めてほしいこと</h2>
+    <p class="note" id="qnote" style="margin:0">ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。</p>
+    <div class="qs" id="qs"></div></section>`);
 
   if (cur.compare?.length){
     out.push(`<section aria-label="前の版との比較"><h2>前の版との比較</h2><div class="gallery">${cur.compare.map((c, i) => c.before ? `
@@ -228,6 +280,18 @@ function mainHTML(){
         <td class="n ${r.delta > 0 ? "up" : r.delta < 0 ? "down" : ""}">${r.delta !== undefined ? (r.delta > 0 ? "+" : "") + esc(r.delta) : (r.kind === "added" ? "追加" : r.kind === "removed" ? "削除" : "")}</td></tr>`).join("")}
       </tbody></table></div></section>`);
   }
+  if (cur.model || cur.step?.length){
+    const hasStl = !!cur.model, hasStep = !!cur.step?.length;
+    out.push(`<section aria-label="書き出す"><h2>書き出す</h2><div class="box exp">
+      <div class="fmt" role="radiogroup" aria-label="形式">
+        <label><input type="radio" name="fmt" id="fmt-stl" value="stl" ${hasStl ? "checked" : "disabled"}> STL <small>メッシュ。スライサー・確認用</small></label>
+        <label><input type="radio" name="fmt" id="fmt-step" value="step" ${!hasStl && hasStep ? "checked" : ""} ${hasStep ? "" : "disabled"}> STEP <small>ソリッド。Fusion などで編集</small></label>
+      </div>
+      <div class="checks" id="explist"></div>
+      <div class="go"><button class="btn" type="button" id="expgo">ZIPで保存</button><span class="status" id="expstatus" role="status"></span></div>
+      <p class="note" style="margin:0">単位は mm、Z が上。部品ごとのファイルを ZIP にまとめて保存します。${hasStep ? "" : "この版には STEP がありません。"}</p>
+    </div></section>`);
+  }
   if (cur.notes) out.push(`<section><div class="box"><h3>メモ</h3><p style="margin:0;white-space:pre-wrap">${esc(cur.notes)}</p></div></section>`);
   return out.join("");
 }
@@ -240,11 +304,91 @@ function wireMain(){
     const r = sl.querySelector("input");
     r.oninput = () => sl.style.setProperty("--pos", r.value + "%");
   });
-  document.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
-    const t = $("#fbtarget"); t.value = "q:" + b.dataset.q; $("#fbtext").focus();
-  });
   const spin = $("#spin");
   if (spin) spin.onclick = () => openViewer(spin);
+  if ($("#expgo")){
+    document.querySelectorAll('input[name="fmt"]').forEach(r => r.onchange = renderExpList);
+    renderExpList();
+    $("#expgo").onclick = exportZip;
+  }
+}
+
+// ---- 書き出し（STL は 3Dモデルからその場で作る。STEP は載せてあるファイル）
+const glbCache = {};
+function loadGLB(v){
+  if (!glbCache[v.model]) glbCache[v.model] = (async () => {
+    const {GLTFLoader} = await import("three/addons/loaders/GLTFLoader.js");
+    // 3Dモデルは base64 のテキストで載せている（アーティファクトが .glb を配信しないため）
+    const b64 = (await (await fetch(v.model)).text()).trim();
+    const bin = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+    return new GLTFLoader().parseAsync(bin.buffer, "");
+  })();
+  return glbCache[v.model];
+}
+function expFormat(){ return document.querySelector('input[name="fmt"]:checked')?.value || "stl"; }
+function expItems(){
+  if (expFormat() === "step") return (cur.step || []).map((st, i) => ({id: "s" + i, name: st.name, file: st.file}));
+  const parts = cur.parts?.length ? cur.parts : [];
+  const items = parts.map((p, i) => ({id: "p" + i, name: p.name || p.key, file: `${String(i + 1).padStart(2, "0")}_${p.key || "part"}.stl`}));
+  items.push({id: "all", name: "全部品を1つにまとめたもの", file: `all_${cur.version}.stl`});
+  return items;
+}
+function renderExpList(){
+  $("#explist").innerHTML = expItems().map(it => `<label><input type="checkbox" id="exp-${esc(cur.version)}-${esc(it.id)}" data-id="${esc(it.id)}" checked>
+    <span>${esc(it.name)} <span class="file">${esc(it.file)}</span></span></label>`).join("");
+}
+let downloadsApi;
+async function exportZip(){
+  const st = $("#expstatus"), go = $("#expgo");
+  if (downloadsApi === undefined) downloadsApi = window.claude ? await window.claude.use("downloads") : null;
+  if (!downloadsApi){ st.textContent = "この画面では保存できません。claude.ai でページを開いてください"; return; }
+  const ids = new Set([...document.querySelectorAll("#explist input:checked")].map(c => c.dataset.id));
+  const items = expItems().filter(it => ids.has(it.id));
+  if (!items.length){ st.textContent = "書き出す部品を選んでください"; return; }
+  if (typeof JSZip === "undefined"){ st.textContent = "ZIP の部品を読み込めませんでした。ページを開き直してください"; return; }
+  go.disabled = true; st.textContent = "作っています…";
+  try {
+    const zip = new JSZip(), fmt = expFormat();
+    if (fmt === "step"){
+      for (const it of items){
+        const stp = cur.step[Number(it.id.slice(1))];
+        const b64 = (await (await fetch(stp.src)).text()).trim();
+        zip.file(it.file, Uint8Array.from(atob(b64), ch => ch.charCodeAt(0)));
+      }
+    } else {
+      const THREE = await import("three");
+      const {STLExporter} = await import("three/addons/exporters/STLExporter.js");
+      const gl = await loadGLB(cur);
+      gl.scene.updateMatrixWorld(true);
+      const back = new THREE.Matrix4().makeRotationX(Math.PI / 2);   // 表示用の Y上 → 元の Z上
+      const byIndex = {};
+      gl.scene.traverse(o => {
+        if (!o.isMesh) return;
+        let n = o, m = null;
+        while (n && !(m = /^p(\d+)_/.exec(n.name || ""))) n = n.parent;
+        const g = o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(back);
+        (byIndex[m ? m[1] : "x"] ??= []).push(new THREE.Mesh(g));
+      });
+      const exp = new STLExporter();
+      const groupOf = list => { const g = new THREE.Group(); list.forEach(x => g.add(x.clone())); return g; };
+      for (const it of items){
+        const list = it.id === "all" ? Object.values(byIndex).flat() : (byIndex[it.id.slice(1)] || []);
+        if (!list.length) continue;
+        zip.file(it.file, exp.parse(groupOf(list), {binary: true}).buffer);
+      }
+    }
+    const blob = await zip.generateAsync({type: "blob", compression: "DEFLATE"});
+    const name = `${BOARD.project}_${cur.version}_${fmt.toUpperCase()}.zip`;
+    const res = await downloadsApi.save({filename: name, data: blob});
+    st.textContent = res.status === "delivered" ? "渡しました" : "保存しました";
+  } catch (e) {
+    const code = e && e.code;
+    st.textContent = code === "declined" ? "保存をやめました"
+      : code === "rate_limited" ? "確認の画面が開いています。閉じてからもう一度押してください"
+      : code === "too_large" ? "大きすぎて保存できません。部品を減らしてください"
+      : "保存できませんでした" + (code ? `（${code}）` : "");
+    if (!code) console.error(e);
+  } finally { go.disabled = false; }
 }
 
 async function openViewer(btn){
@@ -264,10 +408,8 @@ async function openViewer(btn){
     const d = new THREE.DirectionalLight(0xffffff, 1.8); s.add(d);
     const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 1e5);
     const ctl = new OrbitControls(cam, canvas); ctl.enableDamping = true;
-    // 3Dモデルは base64 のテキストで載せている（アーティファクトが .glb を配信しないため）
-    const b64 = (await (await fetch(cur.model)).text()).trim();
-    const bin = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
-    const gl = await new GLTFLoader().parseAsync(bin.buffer, "");
+    const gl0 = await loadGLB(cur);
+    const gl = {scene: gl0.scene.clone(true)};
     gl.scene.traverse(o => { if (o.isMesh && o.material.transparent) o.material.depthWrite = false; });
     s.add(gl.scene);
     const box = new THREE.Box3().setFromObject(gl.scene), c = box.getCenter(new THREE.Vector3()), R = box.getSize(new THREE.Vector3()).length();
@@ -282,11 +424,93 @@ async function openViewer(btn){
   }
 }
 
+// ---- 決めてほしいこと
+function renderQuestions(){
+  const box = $("#qs");
+  if (!box) return;
+  const ver = cur.version;
+  box.innerHTML = cur.questions.map((raw, i) => {
+    const q = qOf(raw), dec = decisions[`${ver}~q${i}`];
+    const mine = answers.find(a => a.version === ver && a.q === i && a.author === myId && myId);
+    const list = answers.filter(a => a.version === ver && a.q === i);
+    const total = list.length;
+    const dis = !answerDb || dec ? "disabled" : "";
+    const count = id => list.filter(a => a.choice === id).length;
+    const decLabel = dec ? (q.options || []).find(o => o.id === dec.choice)?.label || dec.choice : "";
+    let body = "";
+    if (q.type === "yesno"){
+      body = `<div class="seg" role="radiogroup" aria-label="${esc(q.q)}">${q.options.map(o => `
+        <label><input class="vis" type="radio" name="ans-${esc(ver)}-${i}" id="ans-${esc(ver)}-${i}-${esc(o.id)}" value="${esc(o.id)}" data-qi="${i}"
+          ${mine?.choice === o.id ? "checked" : ""} ${dis}>${esc(o.label)}<span class="cnt">${count(o.id)}</span></label>`).join("")}</div>`;
+    } else if (q.type === "choice"){
+      body = `<div class="opts" role="radiogroup" aria-label="${esc(q.q)}">${q.options.map(o => {
+        const n = count(o.id), pct = total ? Math.round(100 * n / total) : 0;
+        return `<label class="opt ${dec?.choice === o.id ? "win" : ""}">
+          ${o.img ? `<img src="${esc(o.img)}" alt="${esc(o.label)}" loading="lazy">` : ""}
+          <span class="top"><input type="radio" name="ans-${esc(ver)}-${i}" id="ans-${esc(ver)}-${i}-${esc(o.id)}" value="${esc(o.id)}" data-qi="${i}"
+            ${mine?.choice === o.id ? "checked" : ""} ${dis}><span class="lbl">${esc(o.label)}</span></span>
+          ${o.note ? `<span class="on">${esc(o.note)}</span>` : ""}
+          <span class="tally"><span class="bar"><i style="width:${pct}%"></i></span><span>${n}人</span></span></label>`;
+      }).join("")}</div>`;
+    }
+    const who = list.length && q.type !== "text"
+      ? "選んだ人：" + list.map(a => `${esc(a.author === myId ? "あなた" : names[a.author] || "だれか")}（${esc((q.options || []).find(o => o.id === a.choice)?.label || a.choice)}）`).join("、")
+      : (q.type === "text" ? "フィードバック欄に書いてください" : "まだ誰も選んでいません");
+    return `<div class="qcard ${dec ? "decided" : ""}">
+      <div class="qhead"><span class="qn">Q${i + 1}</span><span class="qt">${esc(q.q)}</span>
+        ${dec ? `<span class="chip dec">決定：${esc(decLabel)}${dec.version ? " " + esc(dec.version) : ""}</span>` : ""}</div>
+      ${body}
+      ${dec?.note ? `<div class="reply" style="font-size:13px;border-left:2px solid var(--accent);padding-left:8px">${esc(dec.note)}</div>` : ""}
+      <div class="qfoot"><span class="who">${who}</span>
+        ${mine && !dec && answerDb ? `<button type="button" class="linkbtn" data-clear="${i}">選択を取り消す</button>` : ""}
+        <button type="button" class="linkbtn" data-q="${i}">${q.type === "text" ? "書く" : "理由・別の案を書く"}</button>
+        <span class="status" id="qst-${i}" role="status"></span></div></div>`;
+  }).join("");
+  box.querySelectorAll("input[data-qi]").forEach(r => r.onchange = () => saveAnswer(Number(r.dataset.qi), r.value));
+  box.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => saveAnswer(Number(b.dataset.clear), null));
+  box.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
+    const t = $("#fbtarget"); t.value = "q:" + b.dataset.q;
+    const k = document.getElementById("kind-ask"); if (k && qOf(cur.questions[b.dataset.q]).type === "text") k.checked = true;
+    $("#fbtext").focus();
+  });
+  const st = answerDb ? "rw" : dbState === "rw" ? "ro" : dbState;
+  if ($("#qnote")) $("#qnote").textContent = !cur.questions.some(q => qOf(q).type !== "text") || st === "rw" || st === "loading"
+    ? "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。"
+    : st === "none" ? "この画面では答えを保存できません。claude.ai でページを開くと選べます。"
+    : "この権限では選べません。集計だけ表示しています。";
+}
+
+// 1つの問いへの書き込みは1度に1回。続けて押されたら最後の選択だけを書く
+const ansQueue = {};
+async function saveAnswer(i, choice){
+  if (!answerDb || !myId) return;
+  const ver = cur.version, id = ansId(ver, i, myId), q = qOf(cur.questions[i]);
+  const st = () => document.getElementById("qst-" + i);
+  const job = ansQueue[id] ??= {busy: false, next: undefined};
+  job.next = choice;
+  if (job.busy) return;
+  job.busy = true;
+  try {
+    while (job.next !== undefined){
+      const c = job.next; job.next = undefined;
+      if (st()) st().textContent = "保存しています…";
+      const ref = answerDb.collection("answers").doc(id);
+      if (c === null) await ref.delete();
+      else await ref.set({version: ver, q: i, question: q.q, choice: c,
+        label: (q.options || []).find(o => o.id === c)?.label || c, author: myId, updatedAt: new Date().toISOString()});
+      if (st()) st().textContent = c === null ? "取り消しました" : "保存しました";
+    }
+  } catch (err) {
+    if (st()) st().textContent = err.code === "invalid_argument" ? "この権限では選べません" : "保存できませんでした。少し待ってからもう一度選んでください";
+    if (err.code === "invalid_argument"){ answerDb = null; renderQuestions(); }
+  } finally { job.busy = false; }
+}
+
 function targets(){
   const t = [["all", "全体"]];
   cur.images.forEach((im, i) => t.push(["img:" + i, im.caption]));
   (cur.compare || []).forEach((c, i) => t.push(["cmp:" + i, "比較：" + c.caption]));
-  (cur.questions || []).forEach((q, i) => t.push(["q:" + i, "決めてほしいこと：" + q]));
+  (cur.questions || []).forEach((q, i) => t.push(["q:" + i, "決めてほしいこと：" + qOf(q).q]));
   return t;
 }
 function targetLabel(f){
@@ -294,7 +518,7 @@ function targetLabel(f){
   const [k, i] = String(f.target || "all").split(":");
   if (k === "img") return v.images[i]?.caption || "図";
   if (k === "cmp") return "比較：" + (v.compare?.[i]?.caption || "");
-  if (k === "q") return v.questions?.[i] || "決めてほしいこと";
+  if (k === "q") return v.questions?.[i] ? qOf(v.questions[i]).q : "決めてほしいこと";
   return "全体";
 }
 
@@ -327,6 +551,7 @@ function renderAll(){
   renderHeader();
   $("#main").innerHTML = mainHTML();
   wireMain();
+  renderQuestions();
   renderFeedback();
 }
 
@@ -339,13 +564,31 @@ renderAll();
   const db = c ? await c.use("db") : null;
   const user = c ? await c.use("user") : null;
   if (!db){
+    dbState = "none"; renderQuestions();
     $("#fbnote").textContent = "この画面ではフィードバックを読み書きできません。コメント機能で書き込んでください。";
     $("#fblist").innerHTML = "";
     return;
   }
   const may = user ? await user.can("data.write") : null;
   canWrite = may !== false;
-  const myId = user ? await user.id() : null;
+  myId = user ? await user.id() : null;
+  answerDb = canWrite && myId ? db : null;
+  dbState = answerDb ? "rw" : "ro";
+  renderQuestions();
+  const resolveNames = async ids => {
+    ids = ids.filter(id => id && !(id in names));
+    if (!user || !ids.length) return;
+    try { const ps = await user.profiles(ids); ids.forEach(id => names[id] = ps[id]?.name || ""); } catch (e) {}
+  };
+  db.collection("answers").onSnapshot(async snap => {
+    answers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    await resolveNames([...new Set(answers.map(a => a.author))]);
+    renderQuestions();
+  }, () => {});
+  db.collection("decisions").onSnapshot(snap => {
+    decisions = {}; snap.docs.forEach(d => decisions[d.id] = d.data());
+    renderQuestions();
+  }, () => {});
   $("#fbform").hidden = !canWrite;
   if (!canWrite) $("#fbnote").textContent = "閲覧のみの権限です。書き込むには編集できる権限が必要です。";
   db.collection("feedback").onSnapshot(async snap => {

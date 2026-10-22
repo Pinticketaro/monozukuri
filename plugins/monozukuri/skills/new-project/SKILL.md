@@ -6,11 +6,11 @@ description: >
   project (laser cutting, 3D printing, small enclosures, furniture, gadgets) that should move fast through
   3D mock images and feedback before a human models the final form. Also used for "試し片を作って",
   "カーフを測りたい", "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーで切っていい？".
-  Creates a project with a parameter file (shape + fabrication values with confidence), a mock generator,
+  Creates a project with a parameter file (shape + fabrication values with confidence), a mock generator (STL + STEP from one shape definition),
   test-coupon generator, preview/section/compare scripts, stage checklist, handoff docs and git settings,
   and carries digital-fabrication requirements (laser, FDM, data/units, assembly, material safety).
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # 新規プロジェクトの雛形
@@ -54,7 +54,7 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 
 ### 4. 1回目の画像を作って見る
 ```bash
-python3 tools/mock.py v01
+python3 tools/mock.py v01        # CadQuery があれば out/v01/step/ に STEP も出る
 python3 tools/render_model.py --scene out/v01/scene.json --out out/v01/preview.png --glb out/v01/model.glb
 python3 tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --section out/v01/section.png
 ```
