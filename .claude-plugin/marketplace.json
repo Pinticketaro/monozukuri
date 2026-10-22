@@ -1,0 +1,14 @@
+{
+  "name": "pinticketaro",
+  "description": "ものづくり（レーザー加工・3Dプリント）のための Claude プラグイン",
+  "owner": {
+    "name": "Pinticketaro"
+  },
+  "plugins": [
+    {
+      "name": "monozukuri",
+      "source": "./plugins/monozukuri",
+      "description": "立体のモック→確認ページ→フィードバック→次の版を速く回す。試し片の生成とデジタルファブリケーションの技術要件つき"
+    }
+  ]
+}

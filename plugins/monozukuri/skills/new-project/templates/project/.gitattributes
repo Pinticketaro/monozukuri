@@ -1,0 +1,15 @@
+*.json text
+*.py   text
+*.md   text
+*.svg  text
+*.dxf  text
+*.stl   binary
+*.step  binary
+*.stp   binary
+*.3mf   binary
+*.glb   binary
+*.f3d   binary
+*.blend binary
+*.png   binary
+*.jpg   binary
+*.webp  binary
