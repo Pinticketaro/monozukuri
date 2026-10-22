@@ -15,18 +15,28 @@
 
 ## 入れ方
 
-**Claude Code**
+### Claude アプリ（デスクトップ・Web）
+
+1. 左のサイドバーで **Customize** → **Plugins** を開く
+2. **Add marketplace** を選び、`Pinticketaro/monozukuri` を入力する
+3. 一覧に出た **monozukuri** を選んで **Install** を押す
+
+マーケットプレイスを使わない場合は、[monozukuri.plugin](https://github.com/Pinticketaro/monozukuri/raw/main/dist/monozukuri.plugin) をダウンロードし、チャットに添付して追加することもできます。プラグインは有料プラン（Pro・Max・Team・Enterprise）で使えます。
+
+### Claude Code（ターミナル）
+
 ```
 /plugin install monozukuri --marketplace Pinticketaro/monozukuri
 ```
-または
-```
-/plugin marketplace add Pinticketaro/monozukuri
-/plugin install monozukuri@pinticketaro
-```
 
-**Claude アプリ（デスクトップ・Web）**
-[`dist/monozukuri.plugin`](https://github.com/Pinticketaro/monozukuri/raw/main/dist/monozukuri.plugin) をダウンロードし、チャットに添付して追加する。
+`/plugin` で始まるコマンドは Claude Code 専用です。Claude アプリの入力欄では使えません。
+
+### 使い方
+
+- **新しい会話を始めてから使う**：プラグインは会話の開始時に読み込まれます。追加する前から開いていた会話では使えません。
+- **ふつうの言葉で頼む**：「モックの環境を整えて」「新しいものづくりを始めたい」「この版の確認ページを作って」のように頼むと、対応するスキルが動きます。
+- **名前で呼ぶ**：Claude Code では `/monozukuri:setup`、`/monozukuri:new-project`、`/monozukuri:review-page` でも呼べます。
+- **最初に一度だけ**「モックの環境を整えて」を実行すると、描画に必要なものがそろいます。
 
 ## 構成
 
