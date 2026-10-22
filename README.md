@@ -26,13 +26,14 @@
 ```
 
 **Claude アプリ（デスクトップ・Web）**
-[Releases](https://github.com/Pinticketaro/monozukuri/releases) の `monozukuri.plugin` をダウンロードし、チャットに添付して追加する。
+[`dist/monozukuri.plugin`](https://github.com/Pinticketaro/monozukuri/raw/main/dist/monozukuri.plugin) をダウンロードし、チャットに添付して追加する。
 
 ## 構成
 
 ```
 .claude-plugin/marketplace.json   マーケットプレイスの定義
 plugins/monozukuri/               プラグイン本体
+dist/monozukuri.plugin            Claude アプリ用のパッケージ
   skills/setup/                   環境セットアップ
   skills/new-project/             雛形・試し片・技術要件の参照資料
   skills/review-page/             描画・比較・確認ページ・フィードバック

@@ -8,7 +8,7 @@
 ```
 /plugin install monozukuri --marketplace Pinticketaro/monozukuri
 ```
-Claude アプリでは、[Releases](https://github.com/Pinticketaro/monozukuri/releases) の `monozukuri.plugin` をチャットに添付して追加する。
+Claude アプリでは、[`dist/monozukuri.plugin`](https://github.com/Pinticketaro/monozukuri/raw/main/dist/monozukuri.plugin) をダウンロードしてチャットに添付して追加する。
 
 ## スキル
 
