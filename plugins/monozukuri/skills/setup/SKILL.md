@@ -35,7 +35,7 @@ metadata:
 3. **結果の表を読む**
    - 最後に `check_env.py` が表を出す。`NG` が残ったら下の「つまずいたとき」で直し、`python3 scripts/check_env.py` だけを再実行する。
    - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery はモックを STEP で書き出すときだけ必要。無ければモックは STL だけになる）。
-   - テスト描画の PNG のパスが出るので、Read で開いて箱が影付きで描けているか一度だけ確かめる。
+   - テスト描画の PNG のパスが出るので、Read で開いて一度だけ確かめる：斜め上の図に影、右横の図に段差と面取りの明暗が見えること。
    - 表の最後に「python3 の代わりに次の Python で実行してください」と出たら（mac の仮想環境など）、以後の monozukuri のコマンドの `python3` はその Python に読み替える（例：`~/.monozukuri/venv/bin/python tools/mock.py`）。
 
 4. **ユーザーへの報告は1〜2文**：準備できたこと、入らなかったものがあればその影響（例：「STEP は読めないので STL で書き出してください」）。

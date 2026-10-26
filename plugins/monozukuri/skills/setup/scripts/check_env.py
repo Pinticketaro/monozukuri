@@ -75,10 +75,20 @@ def main():
 
     if "--no-render" not in sys.argv and env["three_dir"]:
         try:
+            import numpy as np
             import trimesh
             tmp = tempfile.mkdtemp()
-            stl = os.path.join(tmp, "cube.stl")
-            trimesh.creation.box((60, 40, 20)).export(stl)
+            stl = os.path.join(tmp, "steps.stl")
+            # 段差・斜面・面取りのある形（影と、右横の図の明暗を確かめる）
+            T = trimesh.transformations.translation_matrix
+            hull = lambda pts: trimesh.convex.convex_hull(np.array(pts, dtype=float))
+            trimesh.util.concatenate([
+                trimesh.creation.box((60, 40, 8), T((0, 0, 4))),
+                trimesh.creation.box((60, 26, 8), T((0, 7, 12))),
+                hull([[-30, 8, 16], [30, 8, 16], [-30, 20, 16], [30, 20, 16],             # いちばん上の段（右端を45°で面取り）
+                      [-30, 8, 24], [22, 8, 24], [-30, 20, 24], [22, 20, 24]]),
+                hull([[-30, -20, 8], [30, -20, 8], [-30, -6, 8], [30, -6, 8], [-30, -6, 16], [30, -6, 16]]),   # 手前の斜面
+            ]).export(stl)
             out = os.path.join(tmp, "test.png")
             r = subprocess.run([sys.executable, RENDER, f"{stl}:#7a9a88", "--out", out, "--title", "テスト描画"],
                                capture_output=True, text=True, timeout=180)

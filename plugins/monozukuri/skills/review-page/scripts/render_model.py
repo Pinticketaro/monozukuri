@@ -139,10 +139,13 @@ new GLTFLoader().load('./model.glb',(gl)=>{
   edges.visible=false; s.add(edges);
   const box=new THREE.Box3().setFromObject(gl.scene), c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
   const R=Math.max(sz.x,sz.y,sz.z);
-  const d=new THREE.DirectionalLight(0xffffff,2.2); d.position.set(c.x-0.4*R,c.y+1.1*R,c.z+0.9*R); d.target.position.copy(c);
+  // 主の光は右手前の上から。斜め上（左手前）から見たとき、影が左奥に見える（見る側と同じ向きからだと影が物の後ろに隠れる）
+  const d=new THREE.DirectionalLight(0xffffff,2.2); d.position.set(c.x+0.5*R,c.y+1.2*R,c.z+0.8*R); d.target.position.copy(c);
   d.castShadow=true; d.shadow.mapSize.set(4096,4096); const sc=d.shadow.camera;
   sc.left=-R;sc.right=R;sc.top=R;sc.bottom=-R;sc.near=1;sc.far=6*R; d.shadow.bias=-0.0005; s.add(d); s.add(d.target);
   const fill=new THREE.DirectionalLight(0xffffff,0.6); fill.position.set(c.x+0.8*R,c.y+0.4*R,c.z-0.7*R); s.add(fill);
+  // 横からの光：右横の図でも、面の向き（面取り・斜面）で明暗が付くように
+  const sideL=new THREE.DirectionalLight(0xffffff,0.7); sideL.position.set(c.x+1.0*R,c.y+0.35*R,c.z+0.25*R); s.add(sideL);
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(20*R,20*R),new THREE.ShadowMaterial({opacity:0.18}));
   ground.rotation.x=-Math.PI/2; ground.position.y=box.min.y-0.01; ground.receiveShadow=true; s.add(ground);
   const dirs={iso:[-0.55,0.62,1.0],back:[0.6,0.28,-1.0],front:[0,0,1],side:[1,0,0],top:[0,1,0.0001]};
