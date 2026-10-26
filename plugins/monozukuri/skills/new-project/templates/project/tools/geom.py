@@ -6,19 +6,31 @@
            （CadQuery が入っていないときは STEP を飛ばす。setup スキルの `setup.sh --with-cad` で入る）
 
 使い方（tools/mock.py の build() の中で）
-    from geom import RRect, Circle, Poly, slab, cyl, box
+    from geom import RRect, Circle, Poly, slab, cyl, box, tube, cone, revolve, lug_with_slot
     outer = RRect(180, 110, r=8)                      # 角丸の長方形（中心 0,0）
     plate = slab(outer, z0=0, t=3, holes=[Circle(3.4, cx=85, cy=50)])
     frame = slab(outer, 3, 16, holes=[RRect(162, 92, r=2)])
     left  = frame & box(-100, -60, 0, 100, 120, 40)    # & は重なり（共通部分）、+ は足す、- は引く
-    part  = plate.translate(0, 0, 10)
+    part  = plate.translate(0, 0, 10).rotate_z(30)     # 移動、Z軸まわりに30°回す
 
-輪郭は「角丸の長方形」「円」「多角形」の3種類。STEP では角丸は本物の円弧、円は本物の円になる
-（点の並びで近似しないので、Fusion で寸法を測ったりフィレットを掛け直したりしやすい）。
-単位は mm。Z が上。
+    # 回転体・筒の部品
+    cup   = tube(0, 0, 72, 68, 0, 90) + cyl(0, 0, 72, 0, 2)          # 筒（外径72・内径68・高さ90）＋底
+    neck  = cone(0, 0, 66, 54, 110, 12)                               # 円錐台（下φ66 → 上φ54）
+    knob  = revolve([(0, 0), (10, 0), (10, 4), (6, 8), (0, 8)], z0=90)  # (半径, 高さ) の点列を Z 軸まわりに回す
+    ear   = lug_with_slot(r=36, angle=0, w=28, out=11, h=14, z0=72, slot_w=21, slot_t=3)  # ストラップを通す耳
+
+輪郭は「角丸の長方形」「円」「多角形」の3種類。STEP では角丸は本物の円弧、円は本物の円、
+円柱・円錐・回転体は本物の曲面になる（点の並びで近似しないので、Fusion で寸法を測ったり
+フィレットを掛け直したりしやすい）。単位は mm。Z が上。
 """
 import math
 
+try:
+    # CadQuery は trimesh より先に読む。trimesh が STEP 用に読む cascadio も OpenCASCADE を持っていて、
+    # それが先に入ると macOS では CadQuery が落ちる（Segmentation fault）
+    import cadquery  # noqa: F401
+except Exception:
+    pass
 import manifold3d as m3
 import numpy as np
 import trimesh
@@ -122,6 +134,10 @@ class Solid:
     def translate(self, x=0.0, y=0.0, z=0.0):
         return Solid("move", self, (float(x), float(y), float(z)))
 
+    def rotate_z(self, deg, cx=0.0, cy=0.0):
+        """Z軸（中心 cx, cy）まわりに deg 度回す（反時計回りが正）"""
+        return Solid("rotz", self, (float(deg), float(cx), float(cy)))
+
     # メッシュ（manifold3d）
     def mf(self):
         if self._mf is None:
@@ -138,6 +154,10 @@ class Solid:
             elif self.op == "cone":
                 cx, cy, d0, d1, z0, h = a
                 self._mf = m3.Manifold.cylinder(h, d0 / 2, d1 / 2, SEG).translate([cx, cy, z0])
+            elif self.op == "revolve":
+                pts, z0, cx, cy = a
+                cs = m3.CrossSection([pts], m3.FillRule.EvenOdd)
+                self._mf = m3.Manifold.revolve(cs, SEG).translate([cx, cy, z0])
             elif self.op == "box":
                 x0, y0, z0, w, d, h = a
                 self._mf = m3.Manifold.cube([w, d, h]).translate([x0, y0, z0])
@@ -149,6 +169,9 @@ class Solid:
                 self._mf = a[0].mf() ^ a[1].mf()
             elif self.op == "move":
                 self._mf = a[0].mf().translate(list(a[1]))
+            elif self.op == "rotz":
+                deg, cx, cy = a[1]
+                self._mf = a[0].mf().translate([-cx, -cy, 0]).rotate([0, 0, deg]).translate([cx, cy, 0])
         return self._mf
 
     # ソリッド（CadQuery）
@@ -168,6 +191,11 @@ class Solid:
             elif self.op == "cone":
                 cx, cy, d0, d1, z0, h = a
                 self._cq = cq.Workplane("XY").add(cq.Solid.makeCone(d0 / 2, d1 / 2, h, cq.Vector(cx, cy, z0)))
+            elif self.op == "revolve":
+                pts, z0, cx, cy = a
+                # XZ の作業面では、点の (x, y) が (半径, 高さ) になる。その面の縦軸（＝Z軸）まわりに回す
+                s = cq.Workplane("XZ").polyline(pts).close().revolve(360, (0, 0, 0), (0, 1, 0))
+                self._cq = s.translate((cx, cy, z0))
             elif self.op == "box":
                 x0, y0, z0, w, d, h = a
                 self._cq = cq.Workplane("XY").box(w, d, h, centered=False).translate((x0, y0, z0))
@@ -179,6 +207,9 @@ class Solid:
                 self._cq = a[0].cq().intersect(a[1].cq())
             elif self.op == "move":
                 self._cq = a[0].cq().translate(a[1])
+            elif self.op == "rotz":
+                deg, cx, cy = a[1]
+                self._cq = a[0].cq().rotate((cx, cy, 0), (cx, cy, 1), deg)
         return self._cq
 
 
@@ -200,6 +231,35 @@ def cone(cx, cy, d0, d1, z0, h):
 def box(x0, y0, z0, w, d, h):
     """直方体：角 (x0, y0, z0) から w×d×h"""
     return Solid("box", float(x0), float(y0), float(z0), float(w), float(d), float(h))
+
+
+def tube(cx, cy, d_out, d_in, z0, h):
+    """筒（中空の円柱）：中心 (cx, cy)、外径 d_out・内径 d_in、z0 から高さ h。底を付けるときは cyl を足す"""
+    return cyl(cx, cy, d_out, z0, h) - cyl(cx, cy, d_in, z0 - EPS, h + 2 * EPS)
+
+
+def revolve(profile_pts, z0=0.0, cx=0.0, cy=0.0):
+    """回転体：(半径, 高さ) の点列（閉じなくてよい。半径は 0 以上）を Z 軸まわりに1周回す。
+    缶の肩・ノブ・ボトルのような形に使う。z0 だけ持ち上げ、中心を (cx, cy) に置く"""
+    pts = [(max(0.0, float(r)), float(z)) for r, z in profile_pts]
+    return Solid("revolve", pts, float(z0), float(cx), float(cy))
+
+
+def lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t, slot_at=None, embed=2.0, cx=0.0, cy=0.0):
+    """ストラップを通す耳：筒の外面（半径 r）から外へ出る板状の出っ張りに、上下に貫通する長穴を開ける。
+      angle   … 耳の向き（度。0＝+X、90＝+Y）
+      w, out, h … 耳の幅（周方向）、筒の外面から出る量、高さ（Z）。z0 は耳の下端
+      slot_w, slot_t … 長穴の長さ（周方向＝ストラップの幅＋すきま）と幅（半径方向＝ストラップの厚み＋すきま）
+      slot_at … 長穴の中心の、筒の外面からの距離（既定は out の真ん中）
+      embed   … 筒とつながるよう、外面より内側へ食い込ませる量（筒の壁の厚さ以下にする）
+    中心 (cx, cy) の筒に付ける。筒の内側へはみ出さないよう、embed は壁の厚さ以下にする"""
+    at = out / 2 if slot_at is None else slot_at
+    blk = box(r - embed, -w / 2, z0, out + embed, w, h)
+    hole = box(r + at - slot_t / 2, -slot_w / 2, z0 - 1, slot_t, slot_w, h + 2)
+    lug = blk - hole
+    if angle:
+        lug = lug.rotate_z(angle)
+    return lug.translate(cx, cy, 0) if (cx or cy) else lug
 
 
 # ---------------------------------------------------------------- 書き出し

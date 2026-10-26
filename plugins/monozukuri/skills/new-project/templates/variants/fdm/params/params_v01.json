@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "version": "v01",
+    "title": "{{NAME}}",
+    "note": "雛形の例（全部3Dプリント）：350ml缶を入れる底つきの筒に、ストラップを通す耳を左右に付けたケース。自分の形に合わせて項目ごと書き換える。fab（加工の値）は scaffold が作り方に合わせて入れる",
+    "colors": {"body": "#d9d4cb", "content": "#b23a3a"}
+  },
+  "params": {
+    "can_d":       {"value": 66.2,  "unit": "mm", "label": "中に入れる缶の胴の直径（350ml・仮。実測する）"},
+    "can_h":       {"value": 122.2, "unit": "mm", "label": "缶の高さ（350ml・仮。実測する）"},
+    "can_top_d":   {"value": 54.0,  "unit": "mm", "label": "缶の上ぶたの直径（仮）"},
+    "can_neck_h":  {"value": 12.0,  "unit": "mm", "label": "缶の肩（すぼまる部分）の高さ（仮）"},
+    "can_gap":     {"value": 0.8,   "unit": "mm", "label": "缶と内壁のすきま（片側。着脱のクリアランス＋缶のばらつき）"},
+    "wall":        {"value": 2.0,   "unit": "mm", "label": "筒の壁の厚さ"},
+    "bottom_t":    {"value": 2.0,   "unit": "mm", "label": "底の厚さ"},
+    "sleeve_h":    {"value": 90.0,  "unit": "mm", "label": "筒の高さ（底から）"},
+    "drain_d":     {"value": 10.0,  "unit": "mm", "label": "底の水抜き穴の直径"},
+    "lug_w":       {"value": 28.0,  "unit": "mm", "label": "ストラップの耳の幅"},
+    "lug_out":     {"value": 11.0,  "unit": "mm", "label": "耳が筒から出る量"},
+    "lug_h":       {"value": 14.0,  "unit": "mm", "label": "耳の高さ"},
+    "lug_top_gap": {"value": 4.0,   "unit": "mm", "label": "耳の上端から筒の上端まで"},
+    "strap_w":     {"value": 20.0,  "unit": "mm", "label": "ストラップの幅（仮）"},
+    "strap_t":     {"value": 2.0,   "unit": "mm", "label": "ストラップの厚さ（仮）"},
+    "strap_clr":   {"value": 1.0,   "unit": "mm", "label": "ストラップ穴の余裕（片側。布は通しやすさ優先）"},
+    "bed_x":       {"value": 220,   "unit": "mm", "label": "プリンタの造形範囲 X"},
+    "bed_y":       {"value": 220,   "unit": "mm", "label": "プリンタの造形範囲 Y"},
+    "bed_z":       {"value": 250,   "unit": "mm", "label": "プリンタの造形範囲 Z"}
+  }
+}
