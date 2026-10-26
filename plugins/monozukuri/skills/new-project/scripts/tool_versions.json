@@ -242,5 +242,147 @@
     "main"
    ]
   }
+ },
+ "0.4.0": {
+  "geom.py": {
+   "sha256": [
+    "48aa5dedb0ef1ff0d1cc3c71da430531e218f9f239b47b037eae03eb4ade73f5"
+   ],
+   "defs": [
+    "Circle",
+    "Outline",
+    "Poly",
+    "RRect",
+    "Solid",
+    "box",
+    "check_step",
+    "cone",
+    "cyl",
+    "export_assembly",
+    "export_step",
+    "export_stl",
+    "has_cad",
+    "lug_with_slot",
+    "revolve",
+    "slab",
+    "to_trimesh",
+    "tube"
+   ]
+  },
+  "common.py": {
+   "sha256": [
+    "648d6bb1f6a218575b71cb347c2a9dc04f1aaf238848af628261934cea0bc7fb"
+   ],
+   "defs": [
+    "latest",
+    "load",
+    "out_dir",
+    "overhang_notes",
+    "overhangs",
+    "prev_version",
+    "run_mock",
+    "version_from_argv",
+    "versions"
+   ]
+  },
+  "coupons.py": {
+   "sha256": [
+    "8113cbe0665027f31283c1dad6b7b52f2dcd236d030dd984dd429e073c509b6e"
+   ],
+   "defs": [
+    "box",
+    "comb_path",
+    "cyl",
+    "dimples",
+    "fdm_fit",
+    "fdm_insert",
+    "finish",
+    "laser_svg",
+    "main",
+    "partial_lines",
+    "svg_dots",
+    "svg_rect",
+    "to_mesh"
+   ]
+  },
+  "dims_sheet.py": {
+   "sha256": [
+    "5614c188e0aaab3009254ccf4324362b31918424f326fd42bd484625860b674a"
+   ],
+   "defs": [
+    "main"
+   ]
+  },
+  "requirements.txt": {
+   "sha256": [
+    "32ca13000ef6d4dc60f32155744b1f2651083f85f5d8c57944830c828f35697e"
+   ],
+   "defs": []
+  },
+  "render_model.py": {
+   "sha256": [
+    "04274218f9a20b3f151685d171a0e0854063a6263de557a1c8e28653ad106d9d"
+   ],
+   "defs": [
+    "build_scene",
+    "hex2rgba",
+    "layout",
+    "load_mesh",
+    "load_mm",
+    "main",
+    "parse_part",
+    "render",
+    "report_size",
+    "three_dir",
+    "view_aspect"
+   ]
+  },
+  "slices.py": {
+   "sha256": [
+    "fac48af548059eff0f554d45beb09aaa3a0d3251efff04a522e340b4f3f67791"
+   ],
+   "defs": [
+    "darker",
+    "draw_shape",
+    "draw_silhouette",
+    "load",
+    "load_mm",
+    "loops_to_shape",
+    "main",
+    "plan",
+    "section",
+    "setup_font",
+    "silhouette"
+   ]
+  },
+  "compare.py": {
+   "sha256": [
+    "31b688dbc3fb51f36b3e19ee1ffbebfc959466287404958c450f11836b45de2c"
+   ],
+   "defs": [
+    "diff_image",
+    "fit",
+    "font",
+    "main"
+   ]
+  },
+  "params_diff.py": {
+   "sha256": [
+    "390c621446021db789b71fd9d26a8cd6eb4ab436f3f08ee48d411e6dbaf32993"
+   ],
+   "defs": [
+    "diff",
+    "flatten",
+    "main"
+   ]
+  },
+  "mock.py": {
+   "sha256": [
+    "8197c9104340acedb67f76bbbce6a73e64f2f934003cb6afbcf7af8ea09e2dda"
+   ],
+   "defs": [
+    "build"
+   ]
+  }
  }
 }

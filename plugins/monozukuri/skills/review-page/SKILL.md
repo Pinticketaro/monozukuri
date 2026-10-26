@@ -3,11 +3,12 @@ name: review-page
 description: >
   This skill should be used when the user asks to "この版の確認ページを作って", "確認ボードに載せて",
   "モックを見せて", "前の版と比べて", "Fusionで作ったモデルを見せて", "フィードバックを読んで",
-  "フィードバックを反映して", or wants a quick 3D image of a physical-making project (laser cutting,
+  "フィードバックを反映して", "ブラウザで確認ページを開いて", "外観だけ見せて", or wants a quick 3D image of a physical-making project (laser cutting,
   3D printing) shared for review. Renders mocks or human-made models (STL/OBJ/STEP), compares versions,
-  and publishes one review page per project where viewers leave feedback that Claude reads back.
+  and publishes one review page per project where viewers leave feedback that Claude reads back
+  (as an Artifact, or locally in the browser with serve_review.py where Artifacts are not available).
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 確認ページ（確認ボード）

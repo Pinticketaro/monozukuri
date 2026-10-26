@@ -2,12 +2,12 @@
 name: setup
 description: >
   This skill should be used when the user asks to "モックの環境を整えて", "プレビューの環境を作って",
-  "monozukuri のセットアップ", "描画できるようにして", or when a monozukuri script fails because a library,
+  "monozukuri のセットアップ", "描画できるようにして", "Mac で描画できるようにして", "PC で描画したい", or when a monozukuri script fails because a library,
   Chromium, three.js or a Japanese font is missing. Installs and checks everything the monozukuri mock and
-  review-page scripts need (shapely, manifold3d, trimesh, cascadio, cadquery for STEP output, playwright +
-  Chromium, three.js, CJK font) and runs a test render.
+  review-page scripts need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery for STEP output, playwright +
+  Chromium, three.js, CJK font) and runs a test render. On macOS it installs into ~/.monozukuri/venv.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 環境セットアップ

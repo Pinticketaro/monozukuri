@@ -5,12 +5,15 @@ description: >
   "プロジェクトの雛形を作って", "レーザーと3Dプリントで〇〇を作りたい", or starts a new physical-making
   project (laser cutting, 3D printing, small enclosures, furniture, gadgets) that should move fast through
   3D mock images and feedback before a human models the final form. Also used for "試し片を作って",
-  "カーフを測りたい", "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーで切っていい？".
+  "カーフを測りたい", "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーで切っていい？",
+  "道具を新しくして", "プラグインを更新したので道具を更新して", "サポートが要る所を調べて".
   Creates a project with a parameter file (shape + fabrication values with confidence), a mock generator (STL + STEP from one shape definition),
   test-coupon generator, preview/section/compare scripts, stage checklist, handoff docs and git settings,
   and carries digital-fabrication requirements (laser, FDM, data/units, assembly, material safety).
+  Narrows fabrication values to the chosen process (laser / FDM / both), flags FDM overhangs that need support,
+  and updates an existing project's tools after a plugin update (scaffold.py --update-tools).
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 新規プロジェクトの雛形
