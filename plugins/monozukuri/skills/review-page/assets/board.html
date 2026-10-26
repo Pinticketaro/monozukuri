@@ -219,6 +219,8 @@ const I18N = {
     compare: "前の版との比較", comparePos: "比較の位置",
     figures: "図", figure: "図",
     dims: "寸法の変化", thItem: "項目", thBefore: "前", thAfter: "今", thDelta: "差", added: "追加", removed: "削除",
+    dimsAll: "寸法と根拠", dimsCount: "{n}項目", noBasis: "根拠が書かれていないもの {n}", noBasisCell: "根拠なし",
+    thValue: "値", thBasis: "根拠", openRef: "資料を開く", refsH: "資料（図面・データシート・写真）",
     exportH: "書き出す", format: "形式",
     stlNote: "メッシュ。スライサー・確認用", stepNote: "ソリッド。Fusion などで編集",
     saveZip: "ZIPで保存",
@@ -274,6 +276,8 @@ const I18N = {
     compare: "Compared with the previous version", comparePos: "Comparison position",
     figures: "Figures", figure: "Figure",
     dims: "Dimension changes", thItem: "Item", thBefore: "Before", thAfter: "Now", thDelta: "Diff", added: "added", removed: "removed",
+    dimsAll: "Dimensions and basis", dimsCount: "{n} items", noBasis: "{n} without a basis", noBasisCell: "no basis",
+    thValue: "Value", thBasis: "Basis", openRef: "open reference", refsH: "References (drawings, datasheets, photos)",
     exportH: "Export", format: "Format",
     stlNote: "Mesh. For slicers and checking", stepNote: "Solid. Edit in Fusion and similar",
     saveZip: "Save as ZIP",
@@ -408,6 +412,25 @@ function mainHTML(){
       ${cur.params_diff.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${fmt(r.before, r.unit)}</td><td class="n">${fmt(r.after, r.unit)}</td>
         <td class="n ${r.delta > 0 ? "up" : r.delta < 0 ? "down" : ""}">${r.delta !== undefined ? (r.delta > 0 ? "+" : "") + esc(r.delta) : (r.kind === "added" ? esc(T.added) : r.kind === "removed" ? esc(T.removed) : "")}</td></tr>`).join("")}
       </tbody></table></div></section>`);
+  }
+  // 寸法と根拠：その値がどこから来たか（図面・データシート・実測・仮）。閉じた状態で置く
+  if (cur.dims?.length){
+    const nob = cur.dims.filter(d => !d.basis).length;
+    out.push(`<section aria-label="${esc(T.dimsAll)}"><details class="box"><summary><b>${esc(T.dimsAll)}</b>
+      <span class="note"> ${esc(T.dimsCount.replace("{n}", cur.dims.length))}${nob ? " · " + esc(T.noBasis.replace("{n}", nob)) : ""}</span></summary>
+      <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>${esc(T.thItem)}</th><th style="text-align:right">${esc(T.thValue)}</th><th>${esc(T.thBasis)}</th></tr></thead><tbody>
+      ${cur.dims.map(d => `<tr><td style="white-space:normal">${esc(d.label)} <span class="mono" style="color:var(--muted);font-size:12px">${esc(d.key)}</span></td>
+        <td class="n">${fmt(d.value, d.unit)}</td>
+        <td style="white-space:normal;min-width:16em">${d.status ? `<span class="chip">${esc(d.status)}</span> ` : ""}${d.basis ? esc(d.basis) : `<span style="color:var(--fix)">${esc(T.noBasisCell)}</span>`}${d.ref ? ` <a href="${esc(d.ref)}" target="_blank" rel="noopener">${esc(T.openRef)}</a>` : ""}</td></tr>`).join("")}
+      </tbody></table></div></details></section>`);
+  }
+  // 資料：refs/ の画像はその場で、ほかのファイル（PDF など）はリンクで
+  if (cur.refs?.length){
+    const ims = cur.refs.filter(r => r.img), docs = cur.refs.filter(r => !r.img);
+    out.push(`<section aria-label="${esc(T.refsH)}"><h2>${esc(T.refsH)}</h2>
+      ${ims.length ? `<div class="gallery">${ims.map(r => `<figure><img src="${esc(r.src)}" alt="${esc(r.caption || r.name)}" data-cap="${esc(r.caption || r.name)}" loading="lazy"><figcaption><span>${esc(r.caption || r.name)}</span></figcaption></figure>`).join("")}</div>` : ""}
+      ${docs.length ? `<div class="box"><ul>${docs.map(r => `<li><a href="${esc(r.src)}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.caption ? " — " + esc(r.caption) : ""}</li>`).join("")}</ul></div>` : ""}
+    </section>`);
   }
   if (cur.model || cur.step?.length){
     const hasStl = !!cur.model, hasStep = !!cur.step?.length;

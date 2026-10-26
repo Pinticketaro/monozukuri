@@ -242,6 +242,37 @@ def add_version(root, man, cli_lang=None):
     if isinstance(pd, str):
         pd = json.load(open(src_path(pd), encoding="utf-8"))
     entry["params_diff"] = pd or []
+
+    # 寸法と根拠：寸法ファイルの全項目（値・根拠 basis・資料 ref・状態）。manifest の "dims" か params/params_<版>.json
+    dq = man.get("dims") or os.path.join("params", f"params_{ver}.json")
+    dq = dq if os.path.isabs(dq) else os.path.join(root, dq)
+    entry["dims"] = []
+    if os.path.exists(dq):
+        pj = json.load(open(dq, encoding="utf-8"))
+        for sec in ("params", "fab"):
+            for k, it in (pj.get(sec) or {}).items():
+                if isinstance(it, dict) and "value" in it:
+                    entry["dims"].append({"key": k, "label": it.get("label", k), "value": it["value"], "unit": it.get("unit", ""),
+                                          "basis": it.get("basis", ""), "ref": it.get("ref", ""), "status": it.get("status", ""),
+                                          "fab": sec == "fab"})
+
+    # 資料（プロジェクトの refs/）：図面・データシート・写真など。review/refs/ に写してページから開けるようにする。
+    # manifest の "refs": [{"src": "refs/xx.png", "caption": "説明"}] で説明を付けられる
+    entry["refs"] = []
+    rdir = os.path.join(root, "refs")
+    if os.path.isdir(rdir):
+        caps = {r["src"]: r.get("caption", "") for r in (man.get("refs") or []) if isinstance(r, dict) and r.get("src")}
+        os.makedirs(os.path.join(rv, "refs"), exist_ok=True)
+        for f in sorted(os.listdir(rdir)):
+            src = os.path.join(rdir, f)
+            if f.startswith(".") or not os.path.isfile(src):
+                continue
+            dst = os.path.join(rv, "refs", f)
+            if not os.path.exists(dst) or open(dst, "rb").read() != open(src, "rb").read():
+                shutil.copy2(src, dst)
+                new_files.append(dst)
+            entry["refs"].append({"src": "refs/" + f, "name": f, "caption": caps.get("refs/" + f, ""),
+                                  "img": f.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"))})
     entry["model"] = None
     if man.get("model"):
         g = src_path(man["model"])
@@ -333,7 +364,7 @@ def write_publish(rv, name, files):
 
 def write_all(rv, root):
     files = {}
-    for d, _, fs in os.walk(os.path.join(rv, "img")):
+    for d, _, fs in [w for sub in ("img", "refs") for w in os.walk(os.path.join(rv, sub))]:
         for f in fs:
             p = os.path.join(d, f)
             files[os.path.relpath(p, rv).replace(os.sep, "/")] = os.path.relpath(p, root).replace(os.sep, "/")

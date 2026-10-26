@@ -22,7 +22,11 @@ TXT = {
         "intro": ["モックで決めた寸法と、加工の値です。モデル化はこの値を出発点にしてください。",
                   "単位はmm、原点と向きは README の決まりに従います。"],
         "shape_h": "## 形の寸法",
-        "shape_cols": ["| 項目 | 値 | 単位 | キー | 前の版から |", "|---|---:|---|---|---|"],
+        "shape_cols": ["| 項目 | 値 | 単位 | キー | 根拠 | 前の版から |", "|---|---:|---|---|---|---|"],
+        "no_basis": "**根拠が書かれていない寸法：** ",
+        "refs_h": "## 資料",
+        "refs_intro": "寸法の根拠にした図面・データシート・写真・実測の記録（`refs/`）。一覧は `{index}`。",
+        "ref_link": "資料",
         "fab_h": "## 加工の値（試し片で決める値を含む）",
         "fab_intro": "Fusion ではユーザーパラメータに同じ名前（キー）で入れる。状態が「初期値」のものは、"
                      "製作の前に試し片で実測して置き換える（`tools/coupons.py`、`measurements/試し片記録.csv`）。",
@@ -41,7 +45,11 @@ TXT = {
                   "Use them as the starting point for the CAD model.",
                   "Units are mm. The origin and axes follow the rules in README."],
         "shape_h": "## Shape dimensions",
-        "shape_cols": ["| Item | Value | Unit | Key | Change from previous version |", "|---|---:|---|---|---|"],
+        "shape_cols": ["| Item | Value | Unit | Key | Basis | Change from previous version |", "|---|---:|---|---|---|---|"],
+        "no_basis": "**Dimensions without a basis:** ",
+        "refs_h": "## References",
+        "refs_intro": "Drawings, datasheets, photos and measurement records used as the basis (`refs/`). Index: `{index}`.",
+        "ref_link": "ref",
         "fab_h": "## Fabrication values (including values set with coupons)",
         "fab_intro": "In Fusion, enter them as user parameters with the same names (keys). Values with the status \"initial\" "
                      "must be measured with coupons and replaced before fabrication "
@@ -79,10 +87,24 @@ def main():
     lines = [t["title"].format(title=prm.meta.get('title', ''), ver=ver), ""] + t["intro"] + [""]
     if prm.meta.get("note"):
         lines += [f"> {prm.meta['note']}", ""]
+    def basis(item):
+        """根拠（basis）と資料（ref：refs/ のファイルか URL）"""
+        if not isinstance(item, dict):
+            return ""
+        b, r = str(item.get("basis", "")), item.get("ref")
+        if r:
+            href = r if "://" in r else "../" + r                 # docs/ から見た相対パス
+            b = (b + " " if b else "") + f"[{t['ref_link']}]({href})"
+        return b.replace("|", "／")
+
     lines += [t["shape_h"], ""] + t["shape_cols"]
-    for k in prm.raw.get("params", {}):
+    params = prm.raw.get("params", {})
+    for k in params:
         v = getattr(prm.P, k)
-        lines.append(f"| {prm.labels[k]} | {v} | {prm.units[k]} | `{k}` | {changed(k, v)} |")
+        lines.append(f"| {prm.labels[k]} | {v} | {prm.units[k]} | `{k}` | {basis(params[k])} | {changed(k, v)} |")
+    nob = [k for k, it in params.items() if isinstance(it, dict) and not it.get("basis")]
+    if nob:
+        lines += ["", f"{t['no_basis']}{', '.join('`' + k + '`' for k in nob)}"]
 
     if prm.fab:
         todo = [k for k, f in prm.fab.items() if not_measured(f.get("status", ""))]
@@ -90,7 +112,7 @@ def main():
         for k, f in prm.fab.items():
             v = getattr(prm.P, k)
             lines.append(f"| {prm.labels[k]} | {v} | {prm.units[k]} | `{k}` | {f.get('status', '')} | "
-                         f"{f.get('basis', '')} | {changed(k, v)} |")
+                         f"{basis(f)} | {changed(k, v)} |")
         if todo:
             lines += ["", f"{t['todo']}{', '.join('`' + k + '`' for k in todo)}"]
 
@@ -99,6 +121,13 @@ def main():
         notes = json.load(open(sp, encoding="utf-8")).get("notes") or []
         if notes:
             lines += ["", t["notes_h"], ""] + [f"- {n}" for n in notes]
+    rdir = os.path.join(common.ROOT, "refs")
+    if os.path.isdir(rdir):
+        files = sorted(f for f in os.listdir(rdir) if not f.startswith("."))
+        index = next((f for f in ("資料.md", "index.md") if f in files), None)
+        if files:
+            lines += ["", t["refs_h"], "", t["refs_intro"].format(index="refs/" + (index or ""))]
+            lines += [""] + [f"- [{f}](../refs/{f})" for f in files if f != index]
     lines += ["", t["img_h"], "", t["img"].format(ver=ver)]
     out = os.path.join(common.ROOT, "docs", t["file"].format(ver=ver))
     open(out, "w", encoding="utf-8").write("\n".join(lines) + "\n")

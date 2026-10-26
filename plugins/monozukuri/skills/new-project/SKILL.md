@@ -105,6 +105,9 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 雛形の `params/params_v01.json` と `tools/mock.py` の `build()` は例。`laser`・`both` は「アクリル板2枚でPLAの枠を挟む箱」、`fdm` は「缶を入れる底つきの筒＋ストラップを通す耳」。依頼の形に書き換える。
 - 形の道具（`tools/geom.py`）：押し出し `slab`、円柱 `cyl`、直方体 `box`、筒 `tube`、円錐台 `cone`、回転体 `revolve`、ストラップを通す耳 `lug_with_slot`。組み合わせは `+`・`-`・`&`、`.translate()`・`.rotate_z()`。
 - 寸法は寸法ファイルだけに書き、項目ごとに `label` を付ける。
+- **寸法ごとに根拠を残す**：`params` の項目にも `basis`（どこから来た値か）を書く。図面・データシートなら名前とページ（例「公式図面 Raspberry Pi 4 mechanical drawing p.1」）、実測なら「実測（measurements/実測.md）」、決めた値なら「決定事項（v03）」。資料のファイルか URL があれば `ref` に書く（`"ref": "refs/rpi4-mechanical.pdf"`）。
+- **資料は `refs/` に置く**：調べて見つけたデータシート・図面（PDF）、ユーザーから届いた写真・寸法メモ、実測の写真を保存し、`refs/資料.md` の表に出典（URL・ページ）・取った日・使った寸法を書く。ライセンスなどで置けないものは URL だけ書く。
+- **記憶だけの値を事実のように書かない**：調べずに入れた値は `basis` に「仮（記憶・要確認）」と書き、報告で確かめる先（公式の図面・実物）を伝える。`dims_sheet.py` は根拠の無い寸法を一覧にし、確認ページの「寸法と根拠」でも「根拠なし」と出る。
 - 寸法ファイルは `params`（形の寸法）と `fab`（加工の値：実板厚 `t_*`・`kerf`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算／経験則。英語のプロジェクトは initial／measured／guideline／standard／calculated／rule of thumb）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
 - 細部は作らない。形・大きさ・比率・配置がわかる粗さにとどめる（`references/conventions.md`）。
 - 寸法から機械的にわかる問題（造形範囲を超える、中身が入らない）は notes に出す。

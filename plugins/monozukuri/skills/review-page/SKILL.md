@@ -80,6 +80,7 @@ python3 <scripts>/params_diff.py params/params_vPP.json params/params_vNN.json -
 - 平面図は、各部品の高さの中央で切った断面（濃い線）に、真上から見た外形（薄い面）を重ねる。決まった高さで切りたいときは `--plan-z 45,80`。
 - 図の文字（ビュー名・目盛・見出し）は scene.json の `"lang"`（寸法ファイルの `meta.lang`）の言語になる。プロジェクトと違う言語の図が要るときだけ `render_model.py`・`slices.py` に `--lang ja|en` を付ける（`params_diff.py` も同じ）。
 - **できた画像は Read で一度ずつ見る**。部品の抜け、色の取り違え、描画の失敗に気づいたら直してから進む（見るのは1回、直すのも1回）。
+- `build_page.py` は、その版の寸法ファイル（`params/params_vNN.json`。別のファイルなら manifest の `"dims"`）の全項目を「寸法と根拠」としてページに載せ、プロジェクトの `refs/` の資料（図面・データシート・写真）を「資料」に載せる。資料の説明は manifest の `"refs": [{"src": "refs/xx.png", "caption": "…"}]`。根拠の無い寸法は「根拠なし」と出るので、載せる前に `basis` を埋める。
 - `scene.json` の `notes`（モックが見つけたこと）は、manifest の `parts` に scene.json を渡すと `build_page.py` が読む。問いの候補（`{"q": …, "type": "yesno"|"options", …}`）は「決めてほしいこと」に、文字だけのものは「モックが見つけた注意」としてメモに載る。
 
 ### 4. 版の説明（manifest）を書いて、ページを作る
