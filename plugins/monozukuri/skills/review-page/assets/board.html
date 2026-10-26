@@ -99,6 +99,7 @@ tr:last-child td{border-bottom:0}
 .qcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;min-width:0}
 .qcard.decided{border-color:var(--accent)}
 .qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.qwhy{margin:4px 0 0;color:var(--muted);font-size:13px}
 .qhead .qn{font:500 12px var(--f-mono);color:var(--muted)}
 .qhead .qt{font-weight:500;flex:1 1 16em;min-width:0;overflow-wrap:anywhere}
 .chip.dec{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -473,6 +474,7 @@ function renderQuestions(){
     return `<div class="qcard ${dec ? "decided" : ""}">
       <div class="qhead"><span class="qn">Q${i + 1}</span><span class="qt">${esc(q.q)}</span>
         ${dec ? `<span class="chip dec">決定：${esc(decLabel)}${dec.version ? " " + esc(dec.version) : ""}</span>` : ""}</div>
+      ${q.why ? `<p class="qwhy">${esc(q.why)}</p>` : ""}
       ${body}
       ${dec?.note ? `<div class="reply" style="font-size:13px;border-left:2px solid var(--accent);padding-left:8px">${esc(dec.note)}</div>` : ""}
       <div class="qfoot"><span class="who">${who}</span>

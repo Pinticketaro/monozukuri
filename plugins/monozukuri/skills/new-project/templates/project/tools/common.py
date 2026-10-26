@@ -173,4 +173,7 @@ def run_mock(build):
         print("STEP は省きました（CadQuery がありません。setup スキルの `setup.sh` で入ります）")
 
     for n in notes:
-        print("注意:", n["q"] if isinstance(n, dict) else n)
+        if isinstance(n, dict):
+            print("問いの候補:", n.get("q", ""), f"（{n.get('type', '')}）")
+        else:
+            print("注意:", n)

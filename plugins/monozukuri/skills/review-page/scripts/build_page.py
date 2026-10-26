@@ -11,12 +11,13 @@
     "stage": "モック",                      ← モック／モデル（Fusion）／試作品 など
     "summary": "この版で見てほしいことを1〜2文で",
     "changes": ["変えたこと", ...],
-    "questions": [                          ← 決めてほしいこと。3つの書き方
+    "questions": [                          ← 決めてほしいこと。3つの書き方（why＝なぜ聞くか、は任意）
       "自由に書いてほしいこと",                                   … 文字だけ：フィードバック欄に書いてもらう
-      {"q": "USBの穴を左に寄せてよい？", "type": "yesno"},          … はい／いいえ をボタンで選ぶ
+      {"q": "USBの穴を左に寄せてよい？", "type": "yesno", "why": "ケーブルが机に当たる"},   … はい／いいえ をボタンで選ぶ
       {"q": "分割線はどれ？", "options": ["A案：中央で直線",       … 案の中から1つをボタンで選ぶ
           {"label": "B案：キーの間でジグザグ", "note": "補足", "img": "out/v03/split_b.png"}]}
     ],                                        ← 選んだ答えは db の answers に1人1件で入る（選び直せる）
+                                                モックの notes にある問いの候補（下）も、ここに足される
     "images": [{"src": "out/v03/preview.png", "caption": "外観", "group": "外観"}, ...],   ← 1枚目が大きく出る
     "compare": [{"before": "out/v02/preview.png", "after": "out/v03/preview.png", "caption": "外観"},
                 {"src": "out/v03/compare_side.png", "caption": "横から"}],
@@ -24,6 +25,9 @@
     "model": "out/v03/model.glb",                ← render_model.py --glb の出力（任意、11MBまで。base64 のテキストにして載せる）
     "notes": "任意のメモ",
     "parts": "out/v03/scene.json",               ← 書き出し（STL）で部品名を出すため。scene.json か [{"name","key"}]
+                                                    scene.json の notes（モックが見つけたこと）も読む：
+                                                    {"q": …, "type": "yesno"|"options", "options": […], "why": …} は問いに、
+                                                    文字だけのものは「モックが見つけた注意」としてメモに足す（manifest と同じ内容は重ねない）
     "step": "out/v03/step/index.json"            ← 書き出し（STEP）用。mock.py の index.json か [{"src","name","file"}]
   }
   ページの「書き出す」では、STL は 3Dモデル（GLB）から部品ごとにその場で作り、STEP は載せたファイルを使う。
@@ -91,12 +95,29 @@ def add_version(root, man):
         return q
 
     entry = {k: man.get(k) for k in ("version", "prev", "date", "stage", "summary", "changes", "notes")}
+    # scene.json の notes：問いの候補（dict）は問いに、文字だけのものはメモに
+    scene_notes = []
+    if isinstance(man.get("parts"), str):
+        scene_notes = json.load(open(src_path(man["parts"]), encoding="utf-8")).get("notes") or []
+    questions = list(man.get("questions") or [])
+    asked = {(q if isinstance(q, str) else q.get("q") or q.get("question", "")).strip() for q in questions}
+    for n in scene_notes:
+        if isinstance(n, dict) and (n.get("q") or "").strip() and n["q"].strip() not in asked:
+            questions.append(n)
+            asked.add(n["q"].strip())
+    texts = [n for n in scene_notes if isinstance(n, str) and n not in (man.get("notes") or "")]
+    if texts:
+        entry["notes"] = ((man.get("notes") or "") + "\n\n" if man.get("notes") else "") + \
+            "モックが見つけた注意：\n" + "\n".join("・" + t for t in texts)
+
     entry["questions"] = []
-    for i, q in enumerate(man.get("questions") or []):
+    for i, q in enumerate(questions):
         if isinstance(q, str):
             entry["questions"].append({"q": q, "type": "text"})
             continue
         item = {"q": q.get("q") or q.get("question", ""), "type": "text"}
+        if q.get("why"):
+            item["why"] = q["why"]
         if q.get("type") == "yesno":
             item["type"] = "yesno"
             item["options"] = [{"id": "yes", "label": "はい"}, {"id": "no", "label": "いいえ"}]

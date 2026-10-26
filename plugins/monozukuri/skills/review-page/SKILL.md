@@ -53,9 +53,10 @@ python3 <scripts>/params_diff.py params/params_vPP.json params/params_vNN.json -
 - 断面は見たい所で切る：`--at x=値` / `--at y=値`、拡大は `--zoom=a,b`。
 - 平面図は、各部品の高さの中央で切った断面（濃い線）に、真上から見た外形（薄い面）を重ねる。決まった高さで切りたいときは `--plan-z 45,80`。
 - **できた画像は Read で一度ずつ見る**。部品の抜け、色の取り違え、描画の失敗に気づいたら直してから進む（見るのは1回、直すのも1回）。
-- `scene.json` の `notes`（モックが見つけた注意点）があれば、ページの summary か questions に入れる。
+- `scene.json` の `notes`（モックが見つけたこと）は、manifest の `parts` に scene.json を渡すと `build_page.py` が読む。問いの候補（`{"q": …, "type": "yesno"|"options", …}`）は「決めてほしいこと」に、文字だけのものは「モックが見つけた注意」としてメモに載る。
 
 ### 4. 版の説明（manifest）を書いて、ページを作る
+**版を載せる前に、問いの候補を確かめる**：`scene.json` の `notes` と、ユーザーに決めてほしいことを見直す。はい／いいえで答えられるものは `"type": "yesno"`、案から選べるものは `"options"` にする（文字だけの問いのまま載せない）。プラグインを更新した後は、この SKILL.md を読み直してから載せる。
 `out/vNN/manifest.json` を書く（形は `build_page.py` の冒頭）。要点：
 - `summary`：この版で見てほしいことを1〜2文
 - `changes`：前の版から変えたこと。フィードバックで変えたものはそう書く（例「手前を2mm下げた（フィードバック：手首が反る）」）
