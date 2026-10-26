@@ -2,14 +2,14 @@
   "meta": {
     "version": "v01",
     "title": "{{NAME}}",
-    "note": "雛形の例：アクリル板2枚でPLAの枠を挟み、中に物を入れる箱。自分の形に合わせて項目ごと書き換える",
+    "note": "雛形の例：アクリル板2枚でPLAの枠を挟み、中に物を入れる箱。自分の形に合わせて項目ごと書き換える。fab の process は、その値を使う作り方（laser＝レーザー、fdm＝3Dプリント）",
     "colors": {"frame": "#d9d4cb", "plate": "#bcd6e4", "content": "#2b2f2d", "screw": "#8a8d91"}
   },
   "params": {
     "outer_w":    {"value": 180, "unit": "mm", "label": "外形の幅（X）"},
     "outer_d":    {"value": 110, "unit": "mm", "label": "外形の奥行き（Y）"},
     "corner_r":   {"value": 8,   "unit": "mm", "label": "角の丸み"},
-    "frame_h":    {"value": 16,  "unit": "mm", "label": "枠の高さ（3Dプリント）"},
+    "frame_h":    {"value": 16,  "unit": "mm", "label": "枠の高さ"},
     "wall":       {"value": 9,   "unit": "mm", "label": "枠の壁の厚さ"},
     "hole_inset": {"value": 5.5, "unit": "mm", "label": "ネジ穴の中心から外周まで（アクリルは穴径の1.5倍以上）"},
     "window_w":   {"value": 130, "unit": "mm", "label": "上板の窓の幅"},
@@ -21,16 +21,16 @@
     "bed_y":      {"value": 220, "unit": "mm", "label": "プリンタの造形範囲 Y"}
   },
   "fab": {
-    "t_top":        {"value": 3.0,  "unit": "mm", "label": "上板の板厚", "status": "初期値", "basis": "呼び寸法。アクリルは3mmで±0.7mm（ミスミ）ずれうるので、シートごとにノギスで実測して置き換える"},
-    "t_bottom":     {"value": 3.0,  "unit": "mm", "label": "底板の板厚", "status": "初期値", "basis": "同上"},
-    "kerf":         {"value": 0.15, "unit": "mm", "label": "レーザーのカーフ（切断溝の全幅 k。オフセットは k/2）", "status": "初期値", "basis": "3mmアクリル・CO2の公開値 0.125（Ponoko実測）〜0.18（CutLaserCut指針）の中間。試し片で実測する"},
-    "clr_fit":      {"value": 0.2,  "unit": "mm", "label": "3Dプリントの一般クリアランス（片側）", "status": "初期値", "basis": "大学ラボ表 Ultimaker S7 の一般値。Ender-3 の値は出典なし。±0.1の3段の試し片で決める"},
-    "clr_slide":    {"value": 0.3,  "unit": "mm", "label": "3Dプリントの着脱・すべりのクリアランス（片側）", "status": "初期値", "basis": "同上"},
-    "hole_comp":    {"value": 0.2,  "unit": "mm", "label": "垂直穴の拡大補正（CAD側。スライサーで補正するなら 0）", "status": "初期値", "basis": "Pollen AM の経験則（4mm穴を4.2mmで描く）。補正はCADかスライサーの一方だけ"},
-    "insert_hole":  {"value": 4.0,  "unit": "mm", "label": "M3ヒートインサートの下穴径", "status": "初期値", "basis": "CNC Kitchen・ruthex 4.0／UW 約4.3。4.0〜4.4の試し片で決める"},
-    "insert_depth": {"value": 4.0,  "unit": "mm", "label": "M3ショートインサートの下穴深さ（長さ3.0＋1）", "status": "指針", "basis": "CNC Kitchen：止まり穴はインサート長＋1mm"},
-    "boss_d":       {"value": 7.2,  "unit": "mm", "label": "インサートのボス外径（穴径＋2×最小壁1.6）", "status": "計算", "basis": "CNC Kitchen の最小壁"},
-    "screw_clear":  {"value": 3.4,  "unit": "mm", "label": "M3ボルト穴（JIS B 1001 2級）", "status": "規格", "basis": "1級3.2／2級3.4／3級3.6"},
-    "usb_cut_w":    {"value": 13.0, "unit": "mm", "label": "USB-C切り欠きの幅（ケーブル側の太さで決める）", "status": "経験則", "basis": "オーバーモールド幅12.35（USB-C仕様準拠のフットプリント）＋余裕。手持ちでいちばん太いケーブルで試す"}
+    "t_top":        {"value": 3.0,  "unit": "mm", "label": "上板の板厚", "status": "初期値", "basis": "呼び寸法。アクリルは3mmで±0.7mm（ミスミ）ずれうるので、シートごとにノギスで実測して置き換える", "process": ["laser"]},
+    "t_bottom":     {"value": 3.0,  "unit": "mm", "label": "底板の板厚", "status": "初期値", "basis": "同上", "process": ["laser"]},
+    "kerf":         {"value": 0.15, "unit": "mm", "label": "レーザーのカーフ（切断溝の全幅 k。オフセットは k/2）", "status": "初期値", "basis": "3mmアクリル・CO2の公開値 0.125（Ponoko実測）〜0.18（CutLaserCut指針）の中間。試し片で実測する", "process": ["laser"]},
+    "clr_fit":      {"value": 0.2,  "unit": "mm", "label": "3Dプリントの一般クリアランス（片側）", "status": "初期値", "basis": "大学ラボ表 Ultimaker S7 の一般値。Ender-3 の値は出典なし。±0.1の3段の試し片で決める", "process": ["fdm"]},
+    "clr_slide":    {"value": 0.3,  "unit": "mm", "label": "3Dプリントの着脱・すべりのクリアランス（片側）", "status": "初期値", "basis": "同上", "process": ["fdm"]},
+    "hole_comp":    {"value": 0.2,  "unit": "mm", "label": "垂直穴の拡大補正（CAD側。スライサーで補正するなら 0）", "status": "初期値", "basis": "Pollen AM の経験則（4mm穴を4.2mmで描く）。補正はCADかスライサーの一方だけ", "process": ["fdm"]},
+    "insert_hole":  {"value": 4.0,  "unit": "mm", "label": "M3ヒートインサートの下穴径", "status": "初期値", "basis": "CNC Kitchen・ruthex 4.0／UW 約4.3。4.0〜4.4の試し片で決める", "process": ["fdm"]},
+    "insert_depth": {"value": 4.0,  "unit": "mm", "label": "M3ショートインサートの下穴深さ（長さ3.0＋1）", "status": "指針", "basis": "CNC Kitchen：止まり穴はインサート長＋1mm", "process": ["fdm"]},
+    "boss_d":       {"value": 7.2,  "unit": "mm", "label": "インサートのボス外径（穴径＋2×最小壁1.6）", "status": "計算", "basis": "CNC Kitchen の最小壁", "process": ["fdm"]},
+    "screw_clear":  {"value": 3.4,  "unit": "mm", "label": "M3ボルト穴（JIS B 1001 2級）", "status": "規格", "basis": "1級3.2／2級3.4／3級3.6", "process": ["laser", "fdm"]},
+    "usb_cut_w":    {"value": 13.0, "unit": "mm", "label": "USB-C切り欠きの幅（ケーブル側の太さで決める）", "status": "経験則", "basis": "オーバーモールド幅12.35（USB-C仕様準拠のフットプリント）＋余裕。手持ちでいちばん太いケーブルで試す", "process": ["laser", "fdm"]}
   }
 }

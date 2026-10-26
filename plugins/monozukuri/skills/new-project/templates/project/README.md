@@ -24,7 +24,7 @@ python3 tools/slices.py --scene out/vNN/scene.json --plan out/vNN/plan.png --sec
 python3 tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/compare.png --labels vPP vNN
 python3 tools/params_diff.py params/params_vPP.json params/params_vNN.json --json out/vNN/params_diff.json
 python3 tools/dims_sheet.py vNN               # 引き継ぎ用の寸法表 → docs/寸法表_vNN.md と docs/fusion_params_vNN.csv
-python3 tools/coupons.py vNN                  # 試し片 → out/coupons/（レーザーのSVG、3DプリントのSTL、説明 coupons.md）
+python3 tools/coupons.py vNN                  # 試し片 → out/coupons/（作り方に応じてレーザーのSVG・3DプリントのSTLと、説明 coupons.md）
 ```
 
 モックの STEP（`out/vNN/step/assembly_vNN.step`）は Fusion で開くと部品ごとのコンポーネントになり、モデル化の出発点に使える。確認ページの「書き出す」からも STL / STEP を ZIP で保存できる。
@@ -53,5 +53,5 @@ Fusion などで作ったモデルを見るとき：`python3 tools/render_model.
 - **コミット＝製作ログ**：「何を変えた → どう見えた／どうだった → 次に何を試す」
 - **実物を作ったらタグ**：`proto-1`、`cut-test-1` など
 - **モックは見た目と比率の確認用**。製造用のデータは、モデル化した結果から作る
-- **公開されている数値は初期値**。カーフ・実板厚・クリアランス・インサート穴は試し片で測った値を使う
+- **公開されている数値は初期値**。加工の値（寸法ファイルの `fab`）は試し片で測った値を使う
 - **読み込んだら1寸法を測る**（単位の取り違え：25.4倍・1000倍）

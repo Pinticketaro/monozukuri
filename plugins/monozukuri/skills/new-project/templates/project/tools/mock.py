@@ -57,7 +57,7 @@ def build(prm):
         notes.append("中身が枠より高い（上板に当たる）")
     if P.hole_inset < 1.5 * P.screw_clear:
         notes.append(f"ネジ穴が外周に近い（{P.hole_inset:g}mm）。アクリルは穴径の1.5倍＝{1.5 * P.screw_clear:.1f}mm以上（ACRYLITE）")
-    if P.wall < P.boss_d:
+    if hasattr(P, "boss_d") and P.wall < P.boss_d:
         notes.append(f"壁の厚さ {P.wall:g}mm がインサートのボス外径 {P.boss_d:g}mm より薄い")
     z += P.frame_h
 

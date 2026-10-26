@@ -150,6 +150,9 @@ def main():
                   "補正ありで描くなら、カーフ k を `kerf` に入れて k/2 ずつずらす（外形は外へ、穴は内へ）。どちらか一方に決める",
                   "- アクリルは圧入しない（締め付けで内角から割れる）。すきまばめ＋ネジか接着にする", ""]
 
+    if not hasattr(P, "clr_fit"):                      # 3Dプリントを使わないプロジェクト（fab に clr_fit が無い）
+        lines += partial_lines()
+        return finish(out, lines)
     clrs = fdm_fit(P.clr_fit, os.path.join(out, "fdm_fit.stl"))
     lines += ["## 3Dプリント：fdm_fit.stl", "",
               "平置きで、本番と同じフィラメント・同じ設定で刷る。スライサーの穴補正は本番と同じにする。", "",
@@ -158,15 +161,24 @@ def main():
     lines += ["", "- 力を入れずに入って回る番号 → `clr_slide`、軽く押して入りガタがない番号 → `clr_fit`",
               "- このクリアランスにはプリンタの穴の縮みが含まれる。ピンと穴のはめ合いは `clr_*` だけで描き、`hole_comp` は重ねない", ""]
 
-    holes = fdm_insert(P.insert_depth, os.path.join(out, "fdm_insert.stl"))
-    lines += ["## 3Dプリント：fdm_insert.stl", "",
-              f"M3インサート用の下穴 {holes[0]}〜{holes[-1]}mm、深さ {P.insert_depth:g}mm。外周4本・インフィル25%以上で刷る（UW–Madison）。", "",
-              "- こては印刷温度＋10〜20℃から始め、約90%まで沈めてから平らな物で面一に押さえ、15〜30秒冷ます（CNC Kitchen・UW）",
-              "- まっすぐ入り、周りが盛り上がらず、ネジを締めても回らない番号 → `insert_hole`",
-              "", "| 番号 | 下穴径 |", "|---:|---:|"] + [f"| {i + 1} | {d:.1f} |" for i, d in enumerate(holes)]
-    lines += ["", "## 部分試作（本番の前に）", "",
-              "ケースの一角（USBの切り欠き・ネジボス1つ・中身の角）だけを切り出して刷り、実物を合わせる。"
-              "USB-C はいちばん太いケーブルで試す（切り欠きはケーブル側の太さで決まる）。"]
+    if hasattr(P, "insert_depth"):
+        holes = fdm_insert(P.insert_depth, os.path.join(out, "fdm_insert.stl"))
+        lines += ["## 3Dプリント：fdm_insert.stl", "",
+                  f"M3インサート用の下穴 {holes[0]}〜{holes[-1]}mm、深さ {P.insert_depth:g}mm。外周4本・インフィル25%以上で刷る（UW–Madison）。", "",
+                  "- こては印刷温度＋10〜20℃から始め、約90%まで沈めてから平らな物で面一に押さえ、15〜30秒冷ます（CNC Kitchen・UW）",
+                  "- まっすぐ入り、周りが盛り上がらず、ネジを締めても回らない番号 → `insert_hole`",
+                  "", "| 番号 | 下穴径 |", "|---:|---:|"] + [f"| {i + 1} | {d:.1f} |" for i, d in enumerate(holes)]
+    lines += partial_lines()
+    finish(out, lines)
+
+
+def partial_lines():
+    return ["", "## 部分試作（本番の前に）", "",
+            "いちばん合わせが難しい所（差し込み・ネジ・中身の角など）だけを切り出して切る・刷る。実物を合わせて確かめる。"
+            "USB-C の切り欠きがあるなら、いちばん太いケーブルで試す（切り欠きはケーブル側の太さで決まる）。"]
+
+
+def finish(out, lines):
     open(os.path.join(out, "coupons.md"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
     print(out)
     for f in sorted(os.listdir(out)):

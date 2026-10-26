@@ -2,9 +2,11 @@
 使い方
   python3 scaffold.py --dest <作るフォルダ> --name "名前" --summary "1行の説明"
                       [--origin "外形の左下、X右・Y奥・Z上"] [--methods "上下の板：CO2レーザー／枠：3Dプリント（PLA）"]
-                      [--bed 220x220] [--git]
+                      [--process laser|fdm|both] [--bed 220x220] [--git]
   python3 scaffold.py --update-tools <プロジェクトのフォルダ> [--force]
 --dest がすでにあって中身があるときは止まる（上書きしない）。
+--process は作り方（laser＝レーザー、fdm＝3Dプリント、both＝両方。既定 both）。寸法ファイルの fab を、その作り方で
+  使う項目だけにし、チェックリストなどの関係しない項目を外す。fdm のときは、例の形を3Dプリントの缶ケースにする。
 --update-tools は、プラグインが持ち主の道具（geom.py・common.py・描画のスクリプトなど）だけを新しくする。
   mock.py は上書きせず、新しい雛形を tools/mock.py.new として置く。元のファイルは tools/.backup-<日時>/ に残す。
 """
@@ -15,12 +17,15 @@ import difflib
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "templates", "project")
+VARIANTS = os.path.join(HERE, "..", "templates", "variants")   # 作り方ごとの例（params と mock.py の build() を差し替える）
+PROCESSES = {"laser": {"laser"}, "fdm": {"fdm"}, "both": {"laser", "fdm"}}
 SHARED = os.path.join(HERE, "..", "..", "review-page", "scripts")
 SHARED_FILES = ["render_model.py", "slices.py", "compare.py", "params_diff.py"]
 # プラグインが持ち主の道具（--update-tools で上書きする）。mock.py は利用者の build() があるので入れない
@@ -165,31 +170,76 @@ def update_tools(proj, force):
     print(f"\n記録しました：tools/{VERSION_FILE} = {new_ver}")
 
 
+def dump_params(d, path):
+    """寸法ファイルを、params・fab は1項目1行で書き出す（雛形と同じ読みやすい形）"""
+    out, secs = ["{"], list(d.items())
+    for si, (sec, val) in enumerate(secs):
+        comma = "," if si < len(secs) - 1 else ""
+        if sec in ("params", "fab") and isinstance(val, dict) and val:
+            out.append(f'  "{sec}": {{')
+            w = max(len(json.dumps(k, ensure_ascii=False)) for k in val) + 1
+            for i, (k, v) in enumerate(val.items()):
+                key = json.dumps(k, ensure_ascii=False) + ":"
+                out.append(f"    {key:<{w}} {json.dumps(v, ensure_ascii=False)}{',' if i < len(val) - 1 else ''}")
+            out.append("  }" + comma)
+        else:
+            body = json.dumps(val, ensure_ascii=False, indent=2).replace("\n", "\n  ")
+            out.append(f'  "{sec}": {body}{comma}')
+    open(path, "w", encoding="utf-8").write("\n".join(out + ["}"]) + "\n")
+
+
+def keep_process_blocks(text, keep):
+    """<!-- laser --> 〜 <!-- /laser -->（fdm も同じ）の区間を、作り方に入っていなければ外す。印の行は消す"""
+    out, skip = [], []
+    for ln in text.split("\n"):
+        m = re.fullmatch(r"\s*<!-- (/?)(laser|fdm) -->\s*", ln)
+        if m:
+            if m.group(1):
+                skip.pop()
+            else:
+                skip.append(m.group(2) not in keep)
+            continue
+        if not any(skip):
+            out.append(ln)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out))
+
+
 def create(a):
     dest = os.path.abspath(a.dest)
     if os.path.isdir(dest) and os.listdir(dest):
         sys.exit(f"{dest} には既にファイルがあります。空のフォルダか新しい名前を指定してください")
+    keep = PROCESSES[a.process]
     shutil.copytree(TEMPLATE, dest, dirs_exist_ok=True)
     for f in SHARED_FILES:
         shutil.copy(os.path.join(SHARED, f), os.path.join(dest, "tools", f))
     open(os.path.join(dest, "tools", VERSION_FILE), "w", encoding="utf-8").write(plugin_version() + "\n")
 
+    # 寸法ファイル：例の形（fdm は3Dプリントの例）＋作り方で使う fab だけ
+    pp = os.path.join(dest, "params", "params_v01.json")
+    base = json.load(open(pp, encoding="utf-8"))
+    var = os.path.join(VARIANTS, a.process)
+    if os.path.isdir(var):
+        shutil.copytree(var, dest, dirs_exist_ok=True)
+    d = json.load(open(pp, encoding="utf-8"))
+    d["meta"]["process"] = a.process
+    d["fab"] = {k: v for k, v in base["fab"].items() if set(v.get("process", ["laser", "fdm"])) & keep}
+    if a.bed:
+        bx, by = (float(x) for x in a.bed.lower().split("x"))
+        d["params"]["bed_x"]["value"], d["params"]["bed_y"]["value"] = bx, by
+    dump_params(d, pp)
+
     rep = {"{{NAME}}": a.name, "{{SUMMARY}}": a.summary or a.name, "{{ORIGIN}}": a.origin,
            "{{METHODS}}": a.methods or "（未定）", "{{DATE}}": datetime.date.today().isoformat()}
-    for d, _, fs in os.walk(dest):
+    for dd, _, fs in os.walk(dest):
         for f in fs:
             if f.endswith((".md", ".json")):
-                p = os.path.join(d, f)
+                p = os.path.join(dd, f)
                 s = open(p, encoding="utf-8").read()
                 for k, v in rep.items():
                     s = s.replace(k, v)
+                if f.endswith(".md"):
+                    s = keep_process_blocks(s, keep)
                 open(p, "w", encoding="utf-8").write(s)
-    if a.bed:
-        bx, by = (float(x) for x in a.bed.lower().split("x"))
-        pp = os.path.join(dest, "params", "params_v01.json")
-        d = json.load(open(pp, encoding="utf-8"))
-        d["params"]["bed_x"]["value"], d["params"]["bed_y"]["value"] = bx, by
-        json.dump(d, open(pp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
     if a.git:
         def git(*args):
@@ -225,6 +275,8 @@ def main():
     ap.add_argument("--summary", default="")
     ap.add_argument("--origin", default="外形の中心が X=0・Y=0、底面が Z=0。X右・Y奥・Z上")
     ap.add_argument("--methods", default="")
+    ap.add_argument("--process", default="both", choices=sorted(PROCESSES),
+                    help="作り方：laser（レーザー）、fdm（3Dプリント）、both（両方。既定）")
     ap.add_argument("--bed", default=None, help="プリンタの造形範囲 例 220x220")
     ap.add_argument("--git", action="store_true", help="git init と最初のコミットまで行う")
     ap.add_argument("--update-tools", metavar="プロジェクト", help="既存のプロジェクトの tools/ を新しくする")
