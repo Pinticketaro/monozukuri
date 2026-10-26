@@ -12,8 +12,9 @@ scene.json の形
               "opacity": 1, "roughness": 0.8, "metalness": 0}]}
   file は scene.json からの相対パス。up はモデルの上方向（Fusion・多くのCADは z）。
   views に使える名前: iso（斜め上）, back（斜め後ろ）, front（正面）, side（右横）, top（真上）
-  先頭のビューが大きく、残りが下に並ぶ。
-  平行投影（front・side・top）では地面の影を描かない。
+  先頭のビューが大きく、残りが下に並ぶ。平行投影（front・side・top）は地面の影を描かず、
+  ビューごとに枠いっぱいに合わせ、隅に縮尺の目安（例「目盛 20mm」）を入れる。
+  --same-scale を付けると、平行投影のビューの縮尺をそろえる（真上と正面の大きさを見比べるとき）。
 --glb を付けると、確認ページで回して見るための GLB も書き出す。
 
 前提: setup スキルで trimesh・playwright・three.js を入れておく（STEP は cascadio も）
@@ -109,7 +110,9 @@ def build_scene(parts, base, up):
 
 HTML = r"""<!doctype html><html><head><meta charset="utf-8">
 <style>html,body{margin:0;background:__BG__;font-family:'Noto Sans CJK JP','Hiragino Sans',sans-serif}
-#c{display:block}.lab{position:absolute;font-size:15px;color:#3b4540}</style></head><body>
+#c{display:block}.lab{position:absolute;font-size:15px;color:#3b4540}
+.bar{position:absolute;height:6px;border:2px solid #3b4540;border-top:0}
+.barlab{position:absolute;font-size:13px;color:#3b4540;white-space:nowrap}</style></head><body>
 <canvas id="c" width="__W__" height="__H__"></canvas>
 <div class="lab" style="left:24px;top:14px;font-size:20px">__TITLE__</div>
 __LABELS__
@@ -117,7 +120,7 @@ __LABELS__
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-const VIEWS=__VIEWS__, CELLS=__CELLS__;
+const VIEWS=__VIEWS__, CELLS=__CELLS__, SAME=__SAME__, PAD=__PAD__, H=__H__;
 const canvas=document.getElementById('c');
 const r=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
 r.setPixelRatio(1); r.shadowMap.enabled=true; r.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -144,13 +147,35 @@ new GLTFLoader().load('./model.glb',(gl)=>{
   ground.rotation.x=-Math.PI/2; ground.position.y=box.min.y-0.01; ground.receiveShadow=true; s.add(ground);
   const dirs={iso:[-0.55,0.62,1.0],back:[0.6,0.28,-1.0],front:[0,0,1],side:[1,0,0],top:[0,1,0.0001]};
   const ortho={side:1,top:1,front:1};
+  // 平行投影：見える2辺の長さで、ビューごとに枠いっぱいに合わせる（PAD＝図に対する枠の大きさ）。
+  // --same-scale のときは、いちばん小さく写るビューの縮尺にそろえる
+  const fit={};
+  VIEWS.forEach((v,i)=>{
+    if(!ortho[v]) return;
+    const [x,y,w,h]=CELLS[i], asp=w/h;
+    const span = v==='side' ? [sz.z,sz.y] : v==='top' ? [sz.x,sz.z] : [sz.x,sz.y];
+    let hw=Math.max(span[0],1e-3)*PAD/2, hh=Math.max(span[1],1e-3)*PAD/2; if(hw/hh>asp) hh=hw/asp; else hw=hh*asp;
+    fit[i]={hw,hh,ppm:h/(2*hh)};
+  });
+  if(SAME){
+    const ppm=Math.min(...Object.values(fit).map(f=>f.ppm));
+    for(const i in fit){ const [x,y,w,h]=CELLS[i]; fit[i]={hw:w/2/ppm,hh:h/2/ppm,ppm}; }
+  }
+  // 縮尺の目安：1・2・5×10^k mm のうち、枠の幅の1割前後になる長さ
+  const barLen=(w,ppm)=>{ let L=0.1; for(const c of [0.1,0.2,0.5,1,2,5,10,20,50,100,200,500,1000,2000]){ if(c*ppm<=Math.max(60,w*0.12)) L=c; } return L; };
+  const sameL=SAME&&Object.keys(fit).length ? Math.min(...Object.keys(fit).map(i=>barLen(CELLS[i][2],fit[i].ppm))) : 0;
+  for(const i in fit){
+    const [x,y,w,h]=CELLS[i], ppm=fit[i].ppm, L=sameL||barLen(w,ppm);
+    const bar=document.createElement('div'); bar.className='bar';
+    bar.style.left=(x+18)+'px'; bar.style.top=(H-y-22)+'px'; bar.style.width=Math.round(L*ppm)+'px'; document.body.appendChild(bar);
+    const lab=document.createElement('div'); lab.className='barlab'; lab.textContent=`目盛 ${L}mm`;
+    lab.style.left=(x+18)+'px'; lab.style.top=(H-y-44)+'px'; document.body.appendChild(lab);
+  }
   VIEWS.forEach((v,i)=>{
     const [x,y,w,h]=CELLS[i]; const asp=w/h; const dv=new THREE.Vector3(...dirs[v]).normalize();
     let cam;
     if(ortho[v]){
-      // 平行投影：見える2辺の長さで大きさを決める
-      const span = v==='side' ? [sz.z,sz.y] : v==='top' ? [sz.x,sz.z] : [sz.x,sz.y];
-      let hw=span[0]*0.66, hh=span[1]*0.66; if(hw/hh>asp) hh=hw/asp; else hw=hh*asp;
+      const {hw,hh}=fit[i];
       cam=new THREE.OrthographicCamera(-hw,hw,hh,-hh,0.1,10*R);
       cam.position.copy(c).addScaledVector(dv,3*R); if(v==='top') cam.up.set(0,0,-1); cam.lookAt(c);
     } else {
@@ -168,21 +193,43 @@ new GLTFLoader().load('./model.glb',(gl)=>{
 </script></body></html>"""
 
 
-def layout(views, W):
-    """先頭のビューを大きく、残りを下に並べる。three.js のビューポートは左下原点。"""
+ORTHO = ("front", "side", "top")
+PAD = 1.1           # 平行投影の枠は図の 1.1 倍（図が枠の約9割を占める）
+PERSP_ASPECT = 1.6  # 斜めの図の枠の縦横比の目安
+
+
+def view_aspect(v, ext):
+    """ビューに写る形の横÷縦（ext は three.js の座標＝Y上の大きさ）"""
+    x, y, z = (max(float(e), 1e-3) for e in ext)
+    return {"side": z / y, "top": x / z, "front": x / y}.get(v, PERSP_ASPECT)
+
+
+def layout(views, W, ext):
+    """先頭のビューを大きく、残りを下に1列に並べる。three.js のビューポートは左下原点。
+    下の列は、形の縦横比に合う高さにする（細長い枠に縦長の正面図が小さく入るのを避ける）。"""
     big_h = int(W * 0.42)
     rest = views[1:]
-    small_h = int(W * 0.24) if rest else 0
+    n, gap = len(rest), 10
+    small_h, widths = 0, []
+    if rest:
+        avail = W - gap * (n + 1)
+        asp = [min(4.0, max(0.3, view_aspect(v, ext))) for v in rest]
+        cap = big_h if all(v in ORTHO for v in rest) else int(W * 0.3)
+        small_h = int(max(W * 0.24, min(cap, avail / (sum(asp) * PAD))))
+        natural = [a * PAD * small_h for a in asp]
+        if sum(natural) <= avail:                       # 縦横比どおりの幅に、余りを等しく足す
+            extra = (avail - sum(natural)) / n
+            widths = [int(w + extra) for w in natural]
+        else:                                           # 入りきらないときは等分（従来どおり）
+            widths = [avail // n] * n
     H = 40 + big_h + (small_h + 40 if rest else 0) + 10
     cells, labels = [], []
     cells.append([0, H - 40 - big_h, W, big_h])
-    if rest:
-        n = len(rest)
-        w = (W - 10 * (n + 1)) // n
-        for i in range(n):
-            x = 10 + i * (w + 10)
-            cells.append([x, 10, w, small_h])
-            labels.append(f'<div class="lab" style="left:{x + 14}px;top:{H - 10 - small_h - 30}px">{VIEW_LABEL[rest[i]]}</div>')
+    x = gap
+    for i, w in enumerate(widths):
+        cells.append([x, 10, w, small_h])
+        labels.append(f'<div class="lab" style="left:{x + 14}px;top:{H - 10 - small_h - 30}px">{VIEW_LABEL[rest[i]]}</div>')
+        x += w + gap
     labels.insert(0, f'<div class="lab" style="left:24px;top:44px">{VIEW_LABEL[views[0]]}</div>')
     return H, cells, "\n".join(labels)
 
@@ -194,14 +241,14 @@ def three_dir():
     return d
 
 
-def render(scene, title, views, out, width=1800, bg=BG):
+def render(scene, title, views, out, width=1800, bg=BG, same_scale=False):
     work = tempfile.mkdtemp()
     os.symlink(three_dir(), os.path.join(work, "three"))
     scene.export(os.path.join(work, "model.glb"))
-    H, cells, labels = layout(views, width)
+    H, cells, labels = layout(views, width, scene.extents)
     html = (HTML.replace("__TITLE__", title).replace("__LABELS__", labels).replace("__W__", str(width))
             .replace("__H__", str(H)).replace("__VIEWS__", json.dumps(views)).replace("__CELLS__", json.dumps(cells))
-            .replace("__BG__", bg))
+            .replace("__BG__", bg).replace("__SAME__", "true" if same_scale else "false").replace("__PAD__", str(PAD)))
     open(os.path.join(work, "index.html"), "w", encoding="utf-8").write(html)
 
     class Q(http.server.SimpleHTTPRequestHandler):
@@ -241,6 +288,7 @@ def main():
     ap.add_argument("--up", default=None, choices=["z", "y"])
     ap.add_argument("--glb", help="確認ページ用のGLBも書き出す")
     ap.add_argument("--width", type=int, default=1800)
+    ap.add_argument("--same-scale", action="store_true", help="平行投影のビューの縮尺をそろえる")
     a = ap.parse_args()
 
     if a.scene:
@@ -262,7 +310,7 @@ def main():
     if a.glb:
         os.makedirs(os.path.dirname(os.path.abspath(a.glb)), exist_ok=True)
         scene.export(a.glb)
-    render(scene, title, views, a.out, a.width)
+    render(scene, title, views, a.out, a.width, same_scale=a.same_scale)
     print(a.out)
 
 
