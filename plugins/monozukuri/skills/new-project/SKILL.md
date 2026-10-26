@@ -20,7 +20,7 @@ description: >
   and updates an existing project's tools after a plugin update (scaffold.py --update-tools).
   Projects are Japanese or English (meta.lang in the params file; scaffold.py --lang en), switched later through chat.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # 新規プロジェクトの雛形
