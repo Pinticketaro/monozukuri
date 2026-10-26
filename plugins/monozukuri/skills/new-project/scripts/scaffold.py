@@ -251,11 +251,13 @@ def update_tools(proj, force, lang_flag=None):
     known = known_versions()
     vf = os.path.join(tools, VERSION_FILE)
     old_ver = open(vf, encoding="utf-8").read().strip() if os.path.exists(vf) else None
+    base = old_ver                                       # 手を加えた所を見分けるとき、元にした版と比べる
     if not old_ver:
         # 記録が無ければ、中身がいちばん多く合う版を推定する
         score = {v: sum(1 for f, e in d.items() if os.path.exists(os.path.join(tools, f)) and sha(os.path.join(tools, f)) in e["sha256"])
                  for v, d in known.items()}
         best = max(score, key=score.get) if score else None
+        base = best if best and score[best] else None
         old_ver = T["estimated"].format(v=best) if best and score[best] else T["unknown"]
     print(T["start"].format(old=old_ver, new=new_ver, tools=tools))
 
@@ -275,7 +277,10 @@ def update_tools(proj, force, lang_flag=None):
         # プロジェクトで手を加えたファイル。足した定義が新しい版にすべてあれば上書きしてよい
         mine, theirs = top_defs(dst), top_defs(src)
         if f.endswith(".py") and mine is not None and theirs is not None and mine <= theirs:
-            olds = [d[f]["defs"] for v, d in known.items() if f in d and v != new_ver]   # 今の版より前の版と比べる
+            if base in known and f in known[base]:
+                olds = [known[base][f]["defs"]]
+            else:                                        # 元の版がわからなければ、今の版より前の版と比べる
+                olds = [d[f]["defs"] for v, d in known.items() if f in d and v != new_ver]
             added = sorted(mine - set(olds[-1])) if olds else []
             plan.append((f, T["upd_mine"].format(names=T["names"].format(names=", ".join(added)) if added else "")))
             continue
