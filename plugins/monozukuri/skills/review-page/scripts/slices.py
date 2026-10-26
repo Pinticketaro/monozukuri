@@ -9,10 +9,12 @@
   python3 slices.py --scene scene.json --section section.png --at x=80 --zoom 0,40
     --zoom=a,b … 断面の横方向を a〜b mm だけ拡大して描く（負の値があるので = でつなぐ）
 座標はモデルのまま（単位mm、up=z を前提。up=y のモデルは scene.json に "up": "y"）。
+言葉（見出し・凡例）は --lang ja|en、無ければ scene.json の "lang"、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 """
 import argparse
 import json
 import os
+import sys
 
 import matplotlib
 import numpy as np
@@ -22,6 +24,31 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
+
+
+def resolve_lang(explicit=None, data=None):
+    """言葉を決める：引数の --lang ＞ データ（scene.json の "lang"）＞ 環境変数 MONOZUKURI_LANG ＞ ja"""
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def help_lang(argv):
+    """--help の言葉。引数を読む前なので、--lang と --scene の scene.json だけ先に見る"""
+    got = {}
+    for i, s in enumerate(argv):
+        for k in ("--lang", "--scene"):
+            if s == k and i + 1 < len(argv):
+                got[k] = argv[i + 1]
+            elif s.startswith(k + "="):
+                got[k] = s[len(k) + 1:]
+    data = None
+    try:
+        data = json.load(open(got["--scene"], encoding="utf-8")).get("lang")
+    except Exception:
+        pass
+    return resolve_lang(got.get("--lang"), data)
 
 
 def setup_font():
@@ -116,8 +143,9 @@ def draw_silhouette(ax, shape, color):
 SEC_STYLES = ["-", "--", ":", "-."]
 
 
-def plan(sc, parts, out, zs=None):
+def plan(sc, parts, out, zs=None, lang="ja"):
     """zs：切る高さのリスト（mm）。None なら各部品の高さの中央"""
+    ja = lang == "ja"
     fig, ax = plt.subplots(figsize=(14, 8))
     handles = []
     for name, color, m in parts:
@@ -131,26 +159,37 @@ def plan(sc, parts, out, zs=None):
                 continue
             ls = "-" if zs is None else SEC_STYLES[zs.index(z) % len(SEC_STYLES)]
             draw_shape(ax, loops_to_shape(sec.discrete), color, 1.5, 0.18, ls=ls, zorder=3)
-        where = f"、断面{(z0 + z1) / 2:.1f}" if zs is None else ("、断面なし" if not cuts else "")
-        handles.append(plt.Line2D([], [], color=darker(color, 0.8), lw=3, label=f"{name}（高さ{z0:.1f}〜{z1:.1f}{where}）"))
+        if ja:
+            where = f"、断面{(z0 + z1) / 2:.1f}" if zs is None else ("、断面なし" if not cuts else "")
+            label = f"{name}（高さ{z0:.1f}〜{z1:.1f}{where}）"
+        else:
+            where = f", cut at {(z0 + z1) / 2:.1f}" if zs is None else (", not cut" if not cuts else "")
+            label = f"{name} (height {z0:.1f}–{z1:.1f}{where})"
+        handles.append(plt.Line2D([], [], color=darker(color, 0.8), lw=3, label=label))
     if zs is not None:
-        handles += [plt.Line2D([], [], color="#444", lw=1.6, ls=SEC_STYLES[i % len(SEC_STYLES)], label=f"高さ{z:g}mmの断面")
+        handles += [plt.Line2D([], [], color="#444", lw=1.6, ls=SEC_STYLES[i % len(SEC_STYLES)],
+                               label=f"高さ{z:g}mmの断面" if ja else f"Section at height {z:g} mm")
                     for i, z in enumerate(zs)]
-    handles.append(Patch(color="#999", alpha=0.3, label="薄い面＝真上から見た外形"))
+    handles.append(Patch(color="#999", alpha=0.3, label="薄い面＝真上から見た外形" if ja else "Light fill = outline seen from above"))
     ax.set_aspect("equal")
     ax.set_axisbelow(True)
     ax.grid(True, color="#dde3de", lw=0.6)
     ax.set_xlabel("X (mm)")
     ax.set_ylabel("Y (mm)")
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=10, frameon=False)
-    what = "各部品の高さの中央" if zs is None else "高さ " + "・".join(f"{z:g}" for z in zs) + "mm"
-    ax.set_title(f"{sc.get('title', '')} 平面図（濃い線＝{what}の断面、薄い面＝真上から見た外形）", fontsize=13, loc="left")
+    if ja:
+        what = "各部品の高さの中央" if zs is None else "高さ " + "・".join(f"{z:g}" for z in zs) + "mm"
+        title = f"{sc.get('title', '')} 平面図（濃い線＝{what}の断面、薄い面＝真上から見た外形）"
+    else:
+        what = "mid-height of each part" if zs is None else "height " + ", ".join(f"{z:g}" for z in zs) + " mm"
+        title = f"{sc.get('title', '')} Plan (dark lines = section at {what}, light fill = outline seen from above)"
+    ax.set_title(title, fontsize=13, loc="left")
     fig.tight_layout()
     fig.savefig(out, dpi=120, bbox_inches="tight", pad_inches=0.2)
     print(out)
 
 
-def section(sc, parts, out, at, zoom):
+def section(sc, parts, out, at, zoom, lang="ja"):
     axis, val = at.split("=")
     val = float(val)
     normal = {"x": [1, 0, 0], "y": [0, 1, 0]}[axis]
@@ -174,32 +213,38 @@ def section(sc, parts, out, at, zoom):
     ax.set_xlabel(("Y" if axis == "x" else "X") + " (mm)")
     ax.set_ylabel("Z (mm)")
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=10, frameon=False)
-    ax.set_title(f"{sc.get('title', '')} 断面 {axis.upper()}={val:g}mm", fontsize=13, loc="left")
+    ax.set_title(f"{sc.get('title', '')} 断面 {axis.upper()}={val:g}mm" if lang == "ja"
+                 else f"{sc.get('title', '')} Section {axis.upper()}={val:g} mm", fontsize=13, loc="left")
     fig.tight_layout()
     fig.savefig(out, dpi=120, bbox_inches="tight", pad_inches=0.2)
     print(out)
 
 
 def main():
+    ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser()
     ap.add_argument("--scene", required=True)
     ap.add_argument("--plan")
-    ap.add_argument("--plan-z", help="平面図で切る高さ（mm、カンマ区切り）。例: 45,80。省くと各部品の高さの中央")
+    ap.add_argument("--plan-z", help="平面図で切る高さ（mm、カンマ区切り）。例: 45,80。省くと各部品の高さの中央" if ja
+                    else "heights to cut the plan at (mm, comma-separated), e.g. 45,80. Default: mid-height of each part")
     ap.add_argument("--section")
-    ap.add_argument("--at", default=None, help="x=値 または y=値（既定：Yの中央）")
+    ap.add_argument("--at", default=None, help="x=値 または y=値（既定：Yの中央）" if ja else "x=value or y=value (default: middle of Y)")
     ap.add_argument("--zoom")
+    ap.add_argument("--lang", choices=["ja", "en"], help="見出し・凡例の言葉（既定：scene.json の lang ＞ 環境変数 MONOZUKURI_LANG ＞ ja）" if ja
+                    else "language of titles and legends (default: scene.json lang > MONOZUKURI_LANG > ja)")
     a = ap.parse_args()
     setup_font()
     sc, parts = load(a.scene)
+    lang = resolve_lang(a.lang, sc.get("lang"))
     if a.plan:
-        plan(sc, parts, a.plan, [float(z) for z in a.plan_z.split(",")] if a.plan_z else None)
+        plan(sc, parts, a.plan, [float(z) for z in a.plan_z.split(",")] if a.plan_z else None, lang)
     if a.section:
         at = a.at
         if not at:
             lo = min(m.bounds[0][1] for _, _, m in parts)
             hi = max(m.bounds[1][1] for _, _, m in parts)
             at = f"y={(lo + hi) / 2:.2f}"
-        section(sc, parts, a.section, at, a.zoom)
+        section(sc, parts, a.section, at, a.zoom, lang)
 
 
 if __name__ == "__main__":

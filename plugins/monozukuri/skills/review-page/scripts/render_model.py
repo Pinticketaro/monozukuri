@@ -16,6 +16,7 @@ scene.json の形
   ビューごとに枠いっぱいに合わせ、隅に縮尺の目安（例「目盛 20mm」）を入れる。
   --same-scale を付けると、平行投影のビューの縮尺をそろえる（真上と正面の大きさを見比べるとき）。
 --glb を付けると、確認ページで回して見るための GLB も書き出す。
+言葉（ビュー名・目盛・表示）は --lang ja|en、無ければ scene.json の "lang"、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 
 前提: setup スキルで trimesh・playwright・three.js を入れておく（STEP は cascadio も）
 """
@@ -31,9 +32,59 @@ import threading
 import numpy as np
 import trimesh
 
+DOC_EN = """Render 3D models (STL / OBJ / 3MF / GLB / STEP) with shadows into one PNG.
+Works the same for mocks and for models exported from Fusion or other CAD.
+
+Usage
+  python3 render_model.py --scene scene.json --out preview.png [--glb model.glb]
+  python3 render_model.py frame.stl:#d9d4cb plate.stl:#bcd6e4:0.6 --out preview.png --title "v03 exterior"
+
+Part spec:  file[:color[:opacity[:roughness[:metalness]]]]  (color #rrggbb, opacity 0-1)
+scene.json shape
+  {"title": "...", "up": "z", "views": ["iso", "back", "side"], "lang": "en",
+   "parts": [{"file": "parts/frame.stl", "name": "Frame", "color": "#d9d4cb",
+              "opacity": 1, "roughness": 0.8, "metalness": 0}]}
+  file is relative to scene.json. up is the model's up axis (z for Fusion and most CAD).
+  View names: iso (from above, front left), back (from above, rear), front, side (right), top (straight down)
+  The first view is large; the rest line up below it. Parallel views (front, side, top) draw no ground
+  shadow, each fills its own frame, and gets a scale bar in the corner (e.g. "Scale 20 mm").
+  --same-scale gives the parallel views one scale (to compare the top and front sizes).
+--glb also writes a GLB to rotate on the review page.
+Language (view names, scale bar, messages): --lang ja|en, else scene.json "lang", else MONOZUKURI_LANG, else ja.
+
+Requires: trimesh, playwright and three.js from the setup skill (cascadio for STEP)
+"""
+
 CACHE = os.environ.get("MONOZUKURI_CACHE", os.path.expanduser("~/.cache/monozukuri"))
-VIEW_LABEL = {"iso": "斜め上から", "back": "斜め後ろから", "front": "正面から", "side": "右横から", "top": "真上から"}
+VIEW_LABEL = {"ja": {"iso": "斜め上から", "back": "斜め後ろから", "front": "正面から", "side": "右横から", "top": "真上から"},
+              "en": {"iso": "Isometric", "back": "Rear isometric", "front": "Front", "side": "Right side", "top": "Top"}}
+BAR_LABEL = {"ja": "目盛 ${L}mm", "en": "Scale ${L} mm"}       # 縮尺の目安（three.js 側のテンプレート文字列）
 BG = "#f4f5f2"
+
+
+def resolve_lang(explicit=None, data=None):
+    """言葉を決める：引数の --lang ＞ データ（scene.json の "lang"）＞ 環境変数 MONOZUKURI_LANG ＞ ja"""
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def help_lang(argv):
+    """--help の言葉。引数を読む前なので、--lang と --scene の scene.json だけ先に見る"""
+    got = {}
+    for i, s in enumerate(argv):
+        for k in ("--lang", "--scene"):
+            if s == k and i + 1 < len(argv):
+                got[k] = argv[i + 1]
+            elif s.startswith(k + "="):
+                got[k] = s[len(k) + 1:]
+    data = None
+    try:
+        data = json.load(open(got["--scene"], encoding="utf-8")).get("lang")
+    except Exception:
+        pass
+    return resolve_lang(got.get("--lang"), data)
 
 
 def hex2rgba(h, a=1.0):
@@ -68,26 +119,33 @@ def load_mm(path):
     return obj
 
 
-def load_mesh(path):
+def load_mesh(path, lang="ja"):
     m = load_mm(path)
     if m.is_empty:
-        raise SystemExit(f"中身が空です: {path}")
+        raise SystemExit(f"中身が空です: {path}" if lang == "ja" else f"The model is empty: {path}")
     return m
 
 
-def report_size(scene, up):
+def report_size(scene, up, lang="ja"):
     """全体の大きさを mm で出す。読み込みのたびに既知の寸法と見比べる（単位の取り違え＝25.4倍・1000倍などを止める）"""
     ext = scene.extents
     if up == "z":                       # three.js 座標（Y上）から元の X・Y・Z に戻して表示
         ext = [ext[0], ext[2], ext[1]]
-    print(f"全体の大きさ X {ext[0]:.1f} × Y {ext[1]:.1f} × Z {ext[2]:.1f} mm")
+    if lang == "ja":
+        print(f"全体の大きさ X {ext[0]:.1f} × Y {ext[1]:.1f} × Z {ext[2]:.1f} mm")
+    else:
+        print(f"Overall size X {ext[0]:.1f} × Y {ext[1]:.1f} × Z {ext[2]:.1f} mm")
     big = max(ext)
     if big < 5 or big > 2000:
-        print("!! 大きさが不自然です。単位（mm・m・インチ）の取り違えを疑ってください。"
-              "既知の寸法と比べ、25.4倍・1000倍・1/1000 になっていないか確認")
+        if lang == "ja":
+            print("!! 大きさが不自然です。単位（mm・m・インチ）の取り違えを疑ってください。"
+                  "既知の寸法と比べ、25.4倍・1000倍・1/1000 になっていないか確認")
+        else:
+            print("!! The size looks wrong. Suspect a unit mix-up (mm, m, inch). "
+                  "Compare with a known dimension and check it is not 25.4x, 1000x or 1/1000.")
 
 
-def build_scene(parts, base, up):
+def build_scene(parts, base, up, lang="ja"):
     scene = trimesh.Scene()
     # three.js は Y が上。Z上のモデルは X軸まわりに -90° 回して合わせる
     R = np.eye(4)
@@ -95,7 +153,7 @@ def build_scene(parts, base, up):
         R = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])
     for i, p in enumerate(parts):
         f = p["file"] if os.path.isabs(p["file"]) else os.path.join(base, p["file"])
-        m = load_mesh(f)
+        m = load_mesh(f, lang)
         m.apply_transform(R)
         rgba = hex2rgba(p.get("color", "#c9ccc6"), p.get("opacity", 1.0))
         mat = trimesh.visual.material.PBRMaterial(
@@ -171,7 +229,7 @@ new GLTFLoader().load('./model.glb',(gl)=>{
     const [x,y,w,h]=CELLS[i], ppm=fit[i].ppm, L=sameL||barLen(w,ppm);
     const bar=document.createElement('div'); bar.className='bar';
     bar.style.left=(x+18)+'px'; bar.style.top=(H-y-22)+'px'; bar.style.width=Math.round(L*ppm)+'px'; document.body.appendChild(bar);
-    const lab=document.createElement('div'); lab.className='barlab'; lab.textContent=`目盛 ${L}mm`;
+    const lab=document.createElement('div'); lab.className='barlab'; lab.textContent=`__BARLAB__`;
     lab.style.left=(x+18)+'px'; lab.style.top=(H-y-44)+'px'; document.body.appendChild(lab);
   }
   VIEWS.forEach((v,i)=>{
@@ -207,7 +265,7 @@ def view_aspect(v, ext):
     return {"side": z / y, "top": x / z, "front": x / y}.get(v, PERSP_ASPECT)
 
 
-def layout(views, W, ext):
+def layout(views, W, ext, lang="ja"):
     """先頭のビューを大きく、残りを下に1列に並べる。three.js のビューポートは左下原点。
     下の列は、形の縦横比に合う高さにする（細長い枠に縦長の正面図が小さく入るのを避ける）。"""
     big_h = int(W * 0.42)
@@ -226,30 +284,32 @@ def layout(views, W, ext):
         else:                                           # 入りきらないときは等分（従来どおり）
             widths = [avail // n] * n
     H = 40 + big_h + (small_h + 40 if rest else 0) + 10
-    cells, labels = [], []
+    cells, labels, names = [], [], VIEW_LABEL[lang]
     cells.append([0, H - 40 - big_h, W, big_h])
     x = gap
     for i, w in enumerate(widths):
         cells.append([x, 10, w, small_h])
-        labels.append(f'<div class="lab" style="left:{x + 14}px;top:{H - 10 - small_h - 30}px">{VIEW_LABEL[rest[i]]}</div>')
+        labels.append(f'<div class="lab" style="left:{x + 14}px;top:{H - 10 - small_h - 30}px">{names[rest[i]]}</div>')
         x += w + gap
-    labels.insert(0, f'<div class="lab" style="left:24px;top:44px">{VIEW_LABEL[views[0]]}</div>')
+    labels.insert(0, f'<div class="lab" style="left:24px;top:44px">{names[views[0]]}</div>')
     return H, cells, "\n".join(labels)
 
 
-def three_dir():
+def three_dir(lang="ja"):
     d = os.environ.get("THREE_DIR") or os.path.join(CACHE, "three", "node_modules", "three")
     if not os.path.isfile(os.path.join(d, "build", "three.module.js")):
-        raise SystemExit("three.js が見つかりません。setup スキル（setup.sh）を実行してください")
+        raise SystemExit("three.js が見つかりません。setup スキル（setup.sh）を実行してください" if lang == "ja"
+                         else "three.js was not found. Run the setup skill (setup.sh).")
     return d
 
 
-def render(scene, title, views, out, width=1800, bg=BG, same_scale=False):
+def render(scene, title, views, out, width=1800, bg=BG, same_scale=False, lang="ja"):
     work = tempfile.mkdtemp()
-    os.symlink(three_dir(), os.path.join(work, "three"))
+    os.symlink(three_dir(lang), os.path.join(work, "three"))
     scene.export(os.path.join(work, "model.glb"))
-    H, cells, labels = layout(views, width, scene.extents)
-    html = (HTML.replace("__TITLE__", title).replace("__LABELS__", labels).replace("__W__", str(width))
+    H, cells, labels = layout(views, width, scene.extents, lang)
+    html = (HTML.replace("__TITLE__", title).replace("__LABELS__", labels).replace("__BARLAB__", BAR_LABEL[lang])
+            .replace("__W__", str(width))
             .replace("__H__", str(H)).replace("__VIEWS__", json.dumps(views)).replace("__CELLS__", json.dumps(cells))
             .replace("__BG__", bg).replace("__SAME__", "true" if same_scale else "false").replace("__PAD__", str(PAD)))
     open(os.path.join(work, "index.html"), "w", encoding="utf-8").write(html)
@@ -273,7 +333,7 @@ def render(scene, title, views, out, width=1800, bg=BG, same_scale=False):
             pg.wait_for_function("window.DONE===true || window.ERR", timeout=180000)
             err = pg.evaluate("window.ERR")
             if err:
-                raise SystemExit(f"描画に失敗しました: {err}")
+                raise SystemExit(f"描画に失敗しました: {err}" if lang == "ja" else f"Rendering failed: {err}")
             os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
             pg.screenshot(path=out)
             br.close()
@@ -282,16 +342,21 @@ def render(scene, title, views, out, width=1800, bg=BG, same_scale=False):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("parts", nargs="*", help="ファイル[:色[:不透明度[:粗さ[:金属感]]]]")
+    ja = help_lang(sys.argv[1:]) == "ja"
+    ap = argparse.ArgumentParser(description=__doc__ if ja else DOC_EN, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("parts", nargs="*", help="ファイル[:色[:不透明度[:粗さ[:金属感]]]]" if ja
+                    else "file[:color[:opacity[:roughness[:metalness]]]]")
     ap.add_argument("--scene", help="scene.json")
     ap.add_argument("--out", required=True)
     ap.add_argument("--title", default="")
-    ap.add_argument("--views", default=None, help="カンマ区切り。例: iso,back,side")
+    ap.add_argument("--views", default=None, help="カンマ区切り。例: iso,back,side" if ja else "comma-separated, e.g. iso,back,side")
     ap.add_argument("--up", default=None, choices=["z", "y"])
-    ap.add_argument("--glb", help="確認ページ用のGLBも書き出す")
+    ap.add_argument("--glb", help="確認ページ用のGLBも書き出す" if ja else "also write a GLB for the review page")
     ap.add_argument("--width", type=int, default=1800)
-    ap.add_argument("--same-scale", action="store_true", help="平行投影のビューの縮尺をそろえる")
+    ap.add_argument("--same-scale", action="store_true", help="平行投影のビューの縮尺をそろえる" if ja
+                    else "use one scale for the parallel views")
+    ap.add_argument("--lang", choices=["ja", "en"], help="図と表示の言葉（既定：scene.json の lang ＞ 環境変数 MONOZUKURI_LANG ＞ ja）" if ja
+                    else "language of labels and messages (default: scene.json lang > MONOZUKURI_LANG > ja)")
     a = ap.parse_args()
 
     if a.scene:
@@ -300,20 +365,23 @@ def main():
         parts = sc["parts"]
     else:
         sc, base, parts = {}, os.getcwd(), [parse_part(s) for s in a.parts]
+    lang = resolve_lang(a.lang, sc.get("lang"))
     if not parts:
-        raise SystemExit("部品がありません（--scene か ファイル名を指定）")
+        raise SystemExit("部品がありません（--scene か ファイル名を指定）" if lang == "ja"
+                         else "No parts (give --scene or file names)")
     up = a.up or sc.get("up", "z")
     views = (a.views.split(",") if a.views else sc.get("views")) or ["iso", "back", "side"]
     for v in views:
-        if v not in VIEW_LABEL:
-            raise SystemExit(f"ビュー名が違います: {v}（{', '.join(VIEW_LABEL)}）")
+        if v not in VIEW_LABEL[lang]:
+            raise SystemExit(f"ビュー名が違います: {v}（{', '.join(VIEW_LABEL[lang])}）" if lang == "ja"
+                             else f"Unknown view name: {v} ({', '.join(VIEW_LABEL[lang])})")
     title = a.title or sc.get("title", "")
-    scene = build_scene(parts, base, up)
-    report_size(scene, up)
+    scene = build_scene(parts, base, up, lang)
+    report_size(scene, up, lang)
     if a.glb:
         os.makedirs(os.path.dirname(os.path.abspath(a.glb)), exist_ok=True)
         scene.export(a.glb)
-    render(scene, title, views, a.out, a.width, same_scale=a.same_scale)
+    render(scene, title, views, a.out, a.width, same_scale=a.same_scale, lang=lang)
     print(a.out)
 
 

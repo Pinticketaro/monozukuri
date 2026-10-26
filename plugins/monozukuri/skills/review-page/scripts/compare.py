@@ -1,9 +1,11 @@
 """前の版と今の版の画像を並べた比較画像を作る（左：前、中：今、右：変わった所を赤で強調）。
 使い方: python3 compare.py before.png after.png --out compare.png [--labels "v02" "v03"] [--no-diff]
 大きさが違う画像は、同じ高さにそろえてから比べる（差分は形がそろっているときだけ意味がある）。
+言葉（見出し・表示）は --lang ja|en、無ければ環境変数 MONOZUKURI_LANG、どちらも無ければ ja。
 """
 import argparse
 import os
+import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
@@ -11,6 +13,25 @@ FONT_CANDIDATES = ["/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
                    "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
                    "/System/Library/Fonts/Hiragino Sans GB.ttc",
                    "C:/Windows/Fonts/YuGothM.ttc"]
+
+
+def resolve_lang(explicit=None, data=None):
+    """言葉を決める：引数の --lang ＞ データ ＞ 環境変数 MONOZUKURI_LANG ＞ ja"""
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def help_lang(argv):
+    """--help の言葉。引数を読む前なので、--lang だけ先に見る"""
+    got = None
+    for i, s in enumerate(argv):
+        if s == "--lang" and i + 1 < len(argv):
+            got = argv[i + 1]
+        elif s.startswith("--lang="):
+            got = s[len("--lang="):]
+    return resolve_lang(got)
 
 
 def font(size):
@@ -46,14 +67,20 @@ def diff_image(a, b):
 
 
 def main():
+    ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser()
     ap.add_argument("before")
     ap.add_argument("after")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--labels", nargs=2, default=["前の版", "この版"])
+    ap.add_argument("--labels", nargs=2, default=None, help="既定：前の版 この版" if ja else "default: Previous, This version")
     ap.add_argument("--height", type=int, default=520)
     ap.add_argument("--no-diff", action="store_true")
+    ap.add_argument("--lang", choices=["ja", "en"], help="見出し・表示の言葉（既定：環境変数 MONOZUKURI_LANG ＞ ja）" if ja
+                    else "language of labels and messages (default: MONOZUKURI_LANG > ja)")
     a = ap.parse_args()
+    lang = resolve_lang(a.lang)
+    if a.labels is None:
+        a.labels = ["前の版", "この版"] if lang == "ja" else ["Previous", "This version"]
 
     A, B = Image.open(a.before).convert("RGB"), Image.open(a.after).convert("RGB")
     h = a.height
@@ -61,8 +88,8 @@ def main():
     note = ""
     if not a.no_diff:
         d, changed = diff_image(A, B)
-        tiles.append((fit(d, h), "変わった所（赤）"))
-        note = f"画素の変化 {changed * 100:.1f}%"
+        tiles.append((fit(d, h), "変わった所（赤）" if lang == "ja" else "Changed (red)"))
+        note = f"画素の変化 {changed * 100:.1f}%" if lang == "ja" else f"Pixels changed {changed * 100:.1f}%"
     pad, top = 16, 46
     W = sum(t.width for t, _ in tiles) + pad * (len(tiles) + 1)
     out = Image.new("RGB", (W, h + top + pad), (244, 245, 242))

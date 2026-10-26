@@ -4,9 +4,38 @@
 寸法ファイルの形（monozukuri の雛形）
   {"meta": {...}, "params": {"outer_w": {"value": 160, "unit": "mm", "label": "外形の幅"}, ...}}
 値だけの形 {"outer_w": 160, ...} や、入れ子の JSON でも比べられる（キーを a.b.c とつなげる）。
+表示の言葉は --lang ja|en、無ければ新しい版の meta.lang、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
+--json の中身（キーの名前）は言葉によらず同じ。
 """
 import argparse
 import json
+import os
+import sys
+
+
+def resolve_lang(explicit=None, data=None):
+    """言葉を決める：引数の --lang ＞ データ（新しい版の meta.lang）＞ 環境変数 MONOZUKURI_LANG ＞ ja"""
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def help_lang(argv):
+    """--help の言葉。引数を読む前なので、--lang だけ先に見る"""
+    got = None
+    for i, s in enumerate(argv):
+        if s == "--lang" and i + 1 < len(argv):
+            got = argv[i + 1]
+        elif s.startswith("--lang="):
+            got = s[len("--lang="):]
+    return resolve_lang(got)
+
+
+def meta_lang(d):
+    """寸法ファイルの meta.lang（無ければ None）"""
+    meta = d.get("meta") if isinstance(d, dict) else None
+    return meta.get("lang") if isinstance(meta, dict) else None
 
 
 def flatten(d, prefix=""):
@@ -48,18 +77,26 @@ def diff(a, b):
 
 
 def main():
+    ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser()
     ap.add_argument("before")
     ap.add_argument("after")
     ap.add_argument("--json")
+    ap.add_argument("--lang", choices=["ja", "en"], help="表示の言葉（既定：新しい版の meta.lang ＞ 環境変数 MONOZUKURI_LANG ＞ ja）" if ja
+                    else "language of the printed list (default: meta.lang of the newer file > MONOZUKURI_LANG > ja)")
     a = ap.parse_args()
-    rows = diff(json.load(open(a.before, encoding="utf-8")), json.load(open(a.after, encoding="utf-8")))
+    before, after = json.load(open(a.before, encoding="utf-8")), json.load(open(a.after, encoding="utf-8"))
+    lang = resolve_lang(a.lang, meta_lang(after))
+    rows = diff(before, after)
     if a.json:
         json.dump(rows, open(a.json, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     if not rows:
-        print("変わった値はありません")
+        print("変わった値はありません" if lang == "ja" else "No values changed")
     for r in rows:
-        d = f"（{r['delta']:+g}{r['unit']}）" if "delta" in r else ""
+        if lang == "ja":
+            d = f"（{r['delta']:+g}{r['unit']}）" if "delta" in r else ""
+        else:
+            d = f" ({r['delta']:+g}{r['unit']})" if "delta" in r else ""
         print(f"- {r['label']}: {r['before']} → {r['after']}{r['unit'] if r['after'] is not None else ''}{d}")
 
 
