@@ -49,6 +49,7 @@ python3 <scripts>/params_diff.py params/params_vPP.json params/params_vNN.json -
 - 平行投影（`top`・`front`・`side`）には稜線が重なるので、穴や段差の確認には `--views iso,top,side` などを使う。
 - 前の版と同じ向きの画像を `compare` に before/after で渡すと、ページで重ねて動かせる。並べた静止画が要るときは `compare.py`（差分を赤で強調）。
 - 断面は見たい所で切る：`--at x=値` / `--at y=値`、拡大は `--zoom=a,b`。
+- 平面図は、各部品の高さの中央で切った断面（濃い線）に、真上から見た外形（薄い面）を重ねる。決まった高さで切りたいときは `--plan-z 45,80`。
 - **できた画像は Read で一度ずつ見る**。部品の抜け、色の取り違え、描画の失敗に気づいたら直してから進む（見るのは1回、直すのも1回）。
 - `scene.json` の `notes`（モックが見つけた注意点）があれば、ページの summary か questions に入れる。
 

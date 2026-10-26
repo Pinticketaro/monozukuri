@@ -1,8 +1,10 @@
 """立体モデルを切って、平面図（上から見た各部品の輪郭の重ね合わせ）と断面図を描く。
 部品ごとに色を分けるので、穴ずれ・はみ出し・すき間がひと目でわかる。
+平面図は、断面（濃い線）の下に、真上から見た外形（薄い面）を重ねる。切る高さに無い耳や出っ張りも外形で見える。
 
 使い方
-  python3 slices.py --scene scene.json --plan plan.png
+  python3 slices.py --scene scene.json --plan plan.png                 （各部品の高さの中央で切る）
+  python3 slices.py --scene scene.json --plan plan.png --plan-z 45,80  （高さ 45mm と 80mm で切る）
   python3 slices.py --scene scene.json --section section.png --at y=50      （Y=50mm の面で切る）
   python3 slices.py --scene scene.json --section section.png --at x=80 --zoom 0,40
     --zoom=a,b … 断面の横方向を a〜b mm だけ拡大して描く（負の値があるので = でつなぐ）
@@ -19,6 +21,7 @@ import trimesh
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
+from matplotlib.patches import Patch  # noqa: E402
 
 
 def setup_font():
@@ -73,38 +76,77 @@ def darker(color, k=0.55):
     return tuple(c * k for c in to_rgb(color))
 
 
-def draw_shape(ax, shape, color, lw, fill_alpha):
+def draw_shape(ax, shape, color, lw, fill_alpha, ls="-", zorder=2):
     if shape is None or shape.is_empty:
         return
     edge = darker(color)
     for poly in getattr(shape, "geoms", [shape]):
         xs, ys = poly.exterior.xy
-        ax.fill(xs, ys, color=color, alpha=fill_alpha, lw=0)
-        ax.plot(xs, ys, color=edge, lw=lw)
+        ax.fill(xs, ys, color=color, alpha=fill_alpha, lw=0, zorder=zorder)
+        ax.plot(xs, ys, color=edge, lw=lw, ls=ls, zorder=zorder)
         for h in poly.interiors:
             hx, hy = h.xy
-            ax.plot(hx, hy, color=edge, lw=lw * 0.8)
+            ax.plot(hx, hy, color=edge, lw=lw * 0.8, ls=ls, zorder=zorder)
 
 
-def plan(sc, parts, out):
+def silhouette(m):
+    """真上から見た外形：上向きの面を XY に落として和を取る（閉じた立体なら、これで全部の面を落としたのと同じ）"""
+    from shapely import union_all
+    from shapely.geometry import Polygon
+    tri = m.triangles[m.face_normals[:, 2] > 1e-6][:, :, :2]
+    polys = [Polygon(t) for t in tri]
+    polys = [p for p in polys if p.area > 1e-6]
+    return union_all(polys).buffer(0) if polys else None
+
+
+def draw_silhouette(ax, shape, color):
+    if shape is None or shape.is_empty:
+        return
+    for poly in getattr(shape, "geoms", [shape]):
+        if poly.geom_type != "Polygon":
+            continue
+        xs, ys = poly.exterior.xy
+        ax.fill(xs, ys, color=color, alpha=0.35, lw=0, zorder=1)
+        ax.plot(xs, ys, color=darker(color, 0.75), lw=0.9, alpha=0.8, zorder=1)
+        for h in poly.interiors:
+            hx, hy = h.xy
+            ax.fill(hx, hy, color="white", alpha=0.5, lw=0, zorder=1)
+
+
+SEC_STYLES = ["-", "--", ":", "-."]
+
+
+def plan(sc, parts, out, zs=None):
+    """zs：切る高さのリスト（mm）。None なら各部品の高さの中央"""
     fig, ax = plt.subplots(figsize=(14, 8))
     handles = []
     for name, color, m in parts:
+        draw_silhouette(ax, silhouette(m), color)
+    for name, color, m in parts:
         z0, z1 = m.bounds[0][2], m.bounds[1][2]
-        sec = m.section(plane_origin=[0, 0, (z0 + z1) / 2], plane_normal=[0, 0, 1])
-        if sec is None:
-            continue
-        draw_shape(ax, loops_to_shape(sec.discrete), color, 1.3, 0.18)
-        handles.append(plt.Line2D([], [], color=darker(color, 0.8), lw=3, label=f"{name}（高さ{z0:.1f}〜{z1:.1f}）"))
+        cuts = [(z0 + z1) / 2] if zs is None else [z for z in zs if z0 < z < z1]
+        for z in cuts:
+            sec = m.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+            if sec is None:
+                continue
+            ls = "-" if zs is None else SEC_STYLES[zs.index(z) % len(SEC_STYLES)]
+            draw_shape(ax, loops_to_shape(sec.discrete), color, 1.5, 0.18, ls=ls, zorder=3)
+        where = f"、断面{(z0 + z1) / 2:.1f}" if zs is None else ("、断面なし" if not cuts else "")
+        handles.append(plt.Line2D([], [], color=darker(color, 0.8), lw=3, label=f"{name}（高さ{z0:.1f}〜{z1:.1f}{where}）"))
+    if zs is not None:
+        handles += [plt.Line2D([], [], color="#444", lw=1.6, ls=SEC_STYLES[i % len(SEC_STYLES)], label=f"高さ{z:g}mmの断面")
+                    for i, z in enumerate(zs)]
+    handles.append(Patch(color="#999", alpha=0.3, label="薄い面＝真上から見た外形"))
     ax.set_aspect("equal")
     ax.set_axisbelow(True)
     ax.grid(True, color="#dde3de", lw=0.6)
     ax.set_xlabel("X (mm)")
     ax.set_ylabel("Y (mm)")
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=10, frameon=False)
-    ax.set_title(f"{sc.get('title', '')} 平面図（各部品の高さの中央で切った輪郭）", fontsize=13, loc="left")
+    what = "各部品の高さの中央" if zs is None else "高さ " + "・".join(f"{z:g}" for z in zs) + "mm"
+    ax.set_title(f"{sc.get('title', '')} 平面図（濃い線＝{what}の断面、薄い面＝真上から見た外形）", fontsize=13, loc="left")
     fig.tight_layout()
-    fig.savefig(out, dpi=120)
+    fig.savefig(out, dpi=120, bbox_inches="tight", pad_inches=0.2)
     print(out)
 
 
@@ -134,7 +176,7 @@ def section(sc, parts, out, at, zoom):
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=10, frameon=False)
     ax.set_title(f"{sc.get('title', '')} 断面 {axis.upper()}={val:g}mm", fontsize=13, loc="left")
     fig.tight_layout()
-    fig.savefig(out, dpi=120)
+    fig.savefig(out, dpi=120, bbox_inches="tight", pad_inches=0.2)
     print(out)
 
 
@@ -142,6 +184,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scene", required=True)
     ap.add_argument("--plan")
+    ap.add_argument("--plan-z", help="平面図で切る高さ（mm、カンマ区切り）。例: 45,80。省くと各部品の高さの中央")
     ap.add_argument("--section")
     ap.add_argument("--at", default=None, help="x=値 または y=値（既定：Yの中央）")
     ap.add_argument("--zoom")
@@ -149,7 +192,7 @@ def main():
     setup_font()
     sc, parts = load(a.scene)
     if a.plan:
-        plan(sc, parts, a.plan)
+        plan(sc, parts, a.plan, [float(z) for z in a.plan_z.split(",")] if a.plan_z else None)
     if a.section:
         at = a.at
         if not at:
