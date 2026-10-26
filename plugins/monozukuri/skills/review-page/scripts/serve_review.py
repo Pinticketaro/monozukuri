@@ -13,6 +13,15 @@ three.js や 3D モデルの読み込みは file:// では動かないので、�
 Claude は「フィードバックを読んで」と頼まれたらこのファイルを読み、返信（status・resolvedIn・reply）と
 決定（decisions）を同じファイルに書く。ページを開き直す（タブに戻る）と見える。
 サーバーの場所は review/.serve.json に書く（--stop が使う）。
+表示の言語：--lang ja|en ＞ review/board.json の "lang" ＞ 環境変数 MONOZUKURI_LANG ＞ ja。
+ページの文言は board.html が board.json の "lang" で選ぶ。
+
+English
+  Opens the review page on this PC (for setups that cannot publish an Artifact, e.g. Claude Code).
+  Serves <project>/review/ on a free localhost port and opens the browser.
+    serve_review.py <project> [--no-open] [--stop] [--lang ja|en]
+  Feedback and answers written on the page are saved to review/feedback_local.json (same shape as the
+  Artifact db). Message language: --lang > review/board.json "lang" > env MONOZUKURI_LANG > ja.
 """
 import argparse
 import datetime
@@ -31,6 +40,47 @@ STATE = ".serve.json"
 WRITABLE = {"feedback", "answers"}       # ページから書けるのはこの2つ。decisions は Claude がファイルに書く
 MAX_BODY = 64 * 1024
 lock = threading.Lock()
+
+# 表示する文言（ja／en）
+MSG = {
+    "ja": {
+        "open_manually": "ブラウザで開いてください: {url}",
+        "stopped": "止めました（{url}）",
+        "not_running": "動いているサーバーはありません",
+        "no_index": "{rv}/index.html がありません。先に build_page.py で確認ページを作ってください",
+        "running": "すでに動いています: {url}（止めるとき: python3 {cmd} {project} --stop）",
+        "page": "確認ページ: {url}",
+        "store": "フィードバックの保存先: {path}",
+        "stop_hint": "止めるとき: python3 {cmd} {project} --stop",
+        "port_help": "ポート（既定：空いているもの）",
+    },
+    "en": {
+        "open_manually": "Open this in a browser: {url}",
+        "stopped": "Stopped ({url})",
+        "not_running": "No server is running",
+        "no_index": "{rv}/index.html not found. Build the review page with build_page.py first",
+        "running": "Already running: {url} (to stop: python3 {cmd} {project} --stop)",
+        "page": "Review page: {url}",
+        "store": "Feedback is saved to: {path}",
+        "stop_hint": "To stop: python3 {cmd} {project} --stop",
+        "port_help": "port (default: any free port)",
+    },
+}
+
+
+def resolve_lang(explicit=None, data=None):
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def board_lang(rv):
+    """review/board.json の lang（無ければ None）"""
+    try:
+        return json.load(open(os.path.join(rv, "board.json"), encoding="utf-8")).get("lang")
+    except (OSError, ValueError, AttributeError):
+        return None
 
 
 def load_store(path):
@@ -57,12 +107,12 @@ def alive(pid):
         return False
 
 
-def open_browser(url):
+def open_browser(url, lang="ja"):
     cmd = {"darwin": ["open", url]}.get(sys.platform, ["xdg-open", url])
     try:
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except FileNotFoundError:
-        print(f"ブラウザで開いてください: {url}")
+        print(MSG[lang]["open_manually"].format(url=url))
 
 
 def make_handler(rv):
@@ -127,40 +177,43 @@ def make_handler(rv):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("project", nargs="?", default=".")
-    ap.add_argument("--port", type=int, default=0, help="ポート（既定：空いているもの）")
+    ap.add_argument("--port", type=int, default=0, help=MSG[resolve_lang()]["port_help"])
     ap.add_argument("--no-open", action="store_true")
     ap.add_argument("--stop", action="store_true")
+    ap.add_argument("--lang", choices=["ja", "en"])
     a = ap.parse_args()
     rv = os.path.join(os.path.abspath(a.project), "review")
+    lang = resolve_lang(a.lang, board_lang(rv))
+    m = MSG[lang]
     state = os.path.join(rv, STATE)
     st = json.load(open(state)) if os.path.exists(state) else {}
 
     if a.stop:
         if st.get("pid") and alive(st["pid"]):
             os.kill(st["pid"], signal.SIGTERM)
-            print(f"止めました（{st.get('url')}）")
+            print(m["stopped"].format(url=st.get("url")))
         else:
-            print("動いているサーバーはありません")
+            print(m["not_running"])
         if os.path.exists(state):
             os.remove(state)
         return
     if not os.path.isfile(os.path.join(rv, "index.html")):
-        sys.exit(f"{rv}/index.html がありません。先に build_page.py で確認ページを作ってください")
+        sys.exit(m["no_index"].format(rv=rv))
     if st.get("pid") and alive(st["pid"]):
-        print(f"すでに動いています: {st['url']}（止めるとき: python3 {sys.argv[0]} {a.project} --stop）")
+        print(m["running"].format(url=st["url"], cmd=sys.argv[0], project=a.project))
         if not a.no_open:
-            open_browser(st["url"])
+            open_browser(st["url"], lang)
         return
 
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", a.port), make_handler(rv))
     url = f"http://127.0.0.1:{httpd.server_address[1]}/index.html"
     json.dump({"pid": os.getpid(), "url": url}, open(state, "w"))
-    print(f"確認ページ: {url}", flush=True)
-    print(f"フィードバックの保存先: {os.path.join(rv, STORE)}", flush=True)
-    print(f"止めるとき: python3 {sys.argv[0]} {a.project} --stop", flush=True)
+    print(m["page"].format(url=url), flush=True)
+    print(m["store"].format(path=os.path.join(rv, STORE)), flush=True)
+    print(m["stop_hint"].format(cmd=sys.argv[0], project=a.project), flush=True)
     if not a.no_open:
-        open_browser(url)
+        open_browser(url, lang)
 
     def bye(*_):
         threading.Thread(target=httpd.shutdown, daemon=True).start()

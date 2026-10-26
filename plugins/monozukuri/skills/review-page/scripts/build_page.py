@@ -3,10 +3,12 @@
 使い方
   python3 build_page.py --root <プロジェクト> --manifest <版の説明.json>
   python3 build_page.py --root <プロジェクト> --rebuild          （画像はそのまま、ページだけ作り直す）
+  どちらも --lang ja|en でページの言語を指定できる（下の「言語」）
 
 版の説明（manifest）の形。パスはプロジェクトのフォルダからの相対パス
   {
     "project": "DZ60キーボード",            ← 初回だけ必須
+    "lang": "ja",                           ← 任意。ページの言語（ja／en）
     "version": "v03", "prev": "v02", "date": "2026-10-22",
     "stage": "モック",                      ← モック／モデル（Fusion）／試作品 など
     "summary": "この版で見てほしいことを1〜2文で",
@@ -33,12 +35,45 @@
   ページの「書き出す」では、STL は 3Dモデル（GLB）から部品ごとにその場で作り、STEP は載せたファイルを使う。
   どちらも ZIP にまとめて保存する（アーティファクトの保存は .stl / .step を直接扱えないため）。
 
+言語（ページの文言・はい／いいえ・「モックが見つけた注意」・このスクリプトの表示）
+  --lang ＞ manifest の "lang" ＞ scene.json（manifest の parts）の "lang" ＞ board.json の "lang"
+  ＞ 環境変数 MONOZUKURI_LANG ＞ ja。決まった言語は board.json の "lang" に残る（--rebuild はそれを使う）。
+  ページに切り替えボタンは無い。変えるときは --lang を付けて作り直す。
+
 出力（<プロジェクト>/review/）
   board.json             … 全部の版の記録（ページの元データ）
   index.html             … 公開するページ
   img/<版>/…             … 縮小した画像（webp）と3Dモデル（model.glb.txt：GLBをbase64にしたもの）
   publish_<版>.json      … 公開に使う files の一覧（この版で増えたファイルだけ）
   publish_all.json       … 全ファイルの一覧（新しい URL に初めて公開するとき）
+
+English
+  Adds one version to the review page (review board) and prepares the files to publish.
+  Usage: build_page.py --root <project> --manifest <manifest.json> [--lang ja|en]
+         build_page.py --root <project> --rebuild [--lang ja|en]   (re-render the page only)
+  Manifest fields (paths are relative to the project folder):
+    project      project name (required the first time)
+    lang         optional page language, "ja" or "en"
+    version, prev, date, stage ("mock", "model (Fusion)", "prototype", ...)
+    summary      1-2 sentences on what to look at in this version
+    changes      list of what changed
+    questions    things to decide. A plain string is answered in the feedback panel;
+                 {"q": ..., "type": "yesno", "why": ...} gets Yes/No buttons;
+                 {"q": ..., "options": ["A ...", {"label": ..., "note": ..., "img": ...}]} gets one choice
+                 per person. Answers go to the db "answers" collection (one per person, can be changed).
+                 Question candidates in scene.json notes (below) are added too.
+    images       [{"src", "caption", "group"}]; the first one is shown large
+    compare      [{"before", "after", "caption"}] (slider) or [{"src", "caption"}]
+    params_diff  output of params_diff.py --json (path or the list itself)
+    model        output of render_model.py --glb (optional, up to 11MB, embedded as base64 text)
+    notes        optional notes
+    parts        scene.json path or [{"name", "key"}], for part names in the STL export.
+                 scene.json notes are read too: dict entries become questions, plain strings are added
+                 to the notes under "Found by the mock:" (text already in the manifest notes is skipped).
+    step         mock.py step/index.json path or [{"src", "name", "file"}], for the STEP export
+  Language: --lang > manifest "lang" > scene.json "lang" > board.json "lang" > env MONOZUKURI_LANG > ja.
+  The result is stored in board.json "lang". The page has no language toggle; rebuild with --lang to change it.
+  Output in <project>/review/: board.json, index.html, img/<version>/..., publish_<version>.json, publish_all.json
 """
 import argparse
 import json
@@ -51,6 +86,50 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "assets", "board.html")
 MAX_W = 2000
 MAX_GLB = 11 * 1024 * 1024
+
+# 表示する文言（ja／en）。ページの文言は board.html の I18N にある
+MSG = {
+    "ja": {
+        "title": "{project} 確認ボード",
+        "yes": "はい", "no": "いいえ",
+        "found": "モックが見つけた注意：", "bullet": "・",
+        "group": "図",
+        "need_project": "初回は manifest に project（プロジェクト名）が要ります",
+        "no_file": "ファイルがありません: {p}",
+        "glb_big": "!! GLB が {mb:.1f}MB あるので載せません（11MBまで）。部品を減らすか粗くしてください",
+        "step_big": "!! STEP {src} が {mb:.1f}MB あるので載せません（11MBまで）",
+        "built": "review/index.html を作りました（{n}版）。この版で増えたファイル {k}個",
+        "publish": "公開に使う一覧: review/publish_{ver}.json（初めての公開や新しい URL のときは review/publish_all.json）",
+        "rebuilt": "review/index.html を作り直しました",
+        "usage": "--manifest か --rebuild を指定してください",
+    },
+    "en": {
+        "title": "{project} review board",
+        "yes": "Yes", "no": "No",
+        "found": "Found by the mock:", "bullet": "- ",
+        "group": "Figures",
+        "need_project": "The first manifest needs \"project\" (the project name)",
+        "no_file": "File not found: {p}",
+        "glb_big": "!! The GLB is {mb:.1f}MB, so it is not included (limit 11MB). Use fewer parts or a coarser mesh",
+        "step_big": "!! STEP {src} is {mb:.1f}MB, so it is not included (limit 11MB)",
+        "built": "Built review/index.html ({n} versions). New files in this version: {k}",
+        "publish": "Files to publish: review/publish_{ver}.json (for a first publish or a new URL: review/publish_all.json)",
+        "rebuilt": "Rebuilt review/index.html",
+        "usage": "Specify --manifest or --rebuild",
+    },
+}
+
+
+def resolve_lang(explicit=None, data=None):
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def first_lang(*vs):
+    """データに入っている言語のうち、最初の有効なもの（無ければ None）"""
+    return next((v for v in vs if v in ("ja", "en")), None)
 
 
 def vkey(v):
@@ -70,15 +149,17 @@ def put_image(src, dst_dir, name):
     return out
 
 
-def add_version(root, man):
+def add_version(root, man, cli_lang=None):
     rv = os.path.join(root, "review")
     os.makedirs(rv, exist_ok=True)
     bpath = os.path.join(rv, "board.json")
     board = json.load(open(bpath, encoding="utf-8")) if os.path.exists(bpath) else {"project": "", "versions": []}
+    # 言語：--lang ＞ manifest ＞ scene.json ＞ board.json ＞ 環境変数 ＞ ja（scene.json を読むまでは scene.json 抜きで決めておく）
+    lang = resolve_lang(cli_lang, first_lang(man.get("lang"), board.get("lang")))
     if man.get("project"):
         board["project"] = man["project"]
     if not board["project"]:
-        raise SystemExit("初回は manifest に project（プロジェクト名）が要ります")
+        raise SystemExit(MSG[lang]["need_project"])
     ver = man["version"]
     vdir = os.path.join(rv, "img", ver)
     if os.path.isdir(vdir):
@@ -91,14 +172,17 @@ def add_version(root, man):
     def src_path(p):
         q = p if os.path.isabs(p) else os.path.join(root, p)
         if not os.path.exists(q):
-            raise SystemExit(f"ファイルがありません: {p}")
+            raise SystemExit(MSG[lang]["no_file"].format(p=p))
         return q
 
     entry = {k: man.get(k) for k in ("version", "prev", "date", "stage", "summary", "changes", "notes")}
+    # scene.json（manifest の parts に渡したもの）：言語・notes・部品一覧を読む
+    scene = json.load(open(src_path(man["parts"]), encoding="utf-8")) if isinstance(man.get("parts"), str) else {}
+    lang = resolve_lang(cli_lang, first_lang(man.get("lang"), scene.get("lang"), board.get("lang")))
+    board["lang"] = lang
+    t = MSG[lang]
     # scene.json の notes：問いの候補（dict）は問いに、文字だけのものはメモに
-    scene_notes = []
-    if isinstance(man.get("parts"), str):
-        scene_notes = json.load(open(src_path(man["parts"]), encoding="utf-8")).get("notes") or []
+    scene_notes = scene.get("notes") or []
     questions = list(man.get("questions") or [])
     asked = {(q if isinstance(q, str) else q.get("q") or q.get("question", "")).strip() for q in questions}
     for n in scene_notes:
@@ -108,7 +192,7 @@ def add_version(root, man):
     texts = [n for n in scene_notes if isinstance(n, str) and n not in (man.get("notes") or "")]
     if texts:
         entry["notes"] = ((man.get("notes") or "") + "\n\n" if man.get("notes") else "") + \
-            "モックが見つけた注意：\n" + "\n".join("・" + t for t in texts)
+            t["found"] + "\n" + "\n".join(t["bullet"] + s for s in texts)
 
     entry["questions"] = []
     for i, q in enumerate(questions):
@@ -120,7 +204,7 @@ def add_version(root, man):
             item["why"] = q["why"]
         if q.get("type") == "yesno":
             item["type"] = "yesno"
-            item["options"] = [{"id": "yes", "label": "はい"}, {"id": "no", "label": "いいえ"}]
+            item["options"] = [{"id": "yes", "label": t["yes"]}, {"id": "no", "label": t["no"]}]
         elif q.get("options"):
             item["type"] = "choice"
             item["options"] = []
@@ -138,7 +222,7 @@ def add_version(root, man):
         out = put_image(src_path(im["src"]), vdir, f"img{i + 1:02d}")
         new_files.append(out)
         entry["images"].append({"src": "img/" + ver + "/" + os.path.basename(out),
-                                "caption": im.get("caption", ""), "group": im.get("group", "図")})
+                                "caption": im.get("caption", ""), "group": im.get("group", t["group"])})
     entry["compare"] = []
     for i, c in enumerate(man.get("compare", [])):
         if "before" in c:
@@ -158,7 +242,7 @@ def add_version(root, man):
     if man.get("model"):
         g = src_path(man["model"])
         if os.path.getsize(g) > MAX_GLB:
-            print(f"!! GLB が {os.path.getsize(g) / 1e6:.1f}MB あるので載せません（11MBまで）。部品を減らすか粗くしてください")
+            print(t["glb_big"].format(mb=os.path.getsize(g) / 1e6))
         else:
             # アーティファクトは .glb をそのまま配信しないので、base64 のテキストにして載せる（ページ側で戻す）
             import base64
@@ -171,7 +255,7 @@ def add_version(root, man):
     # 書き出し用の部品一覧（GLB のノード p<番号>_<キー> と対応）。scene.json か一覧そのもの
     parts = man.get("parts")
     if isinstance(parts, str):
-        parts = json.load(open(src_path(parts), encoding="utf-8")).get("parts", [])
+        parts = scene.get("parts", [])
     entry["parts"] = [{"name": p.get("name", ""), "key": p.get("key") or os.path.splitext(os.path.basename(p.get("file", "")))[0]}
                       for p in (parts or [])]
 
@@ -187,7 +271,7 @@ def add_version(root, man):
         for i, st in enumerate(steps):
             g = src_path(st["src"])
             if os.path.getsize(g) > MAX_GLB:
-                print(f"!! STEP {st['src']} が {os.path.getsize(g) / 1e6:.1f}MB あるので載せません（11MBまで）")
+                print(t["step_big"].format(src=st["src"], mb=os.path.getsize(g) / 1e6))
                 continue
             fname = st.get("file") or os.path.basename(g)
             dst = os.path.join(sdir, f"{i + 1:02d}.step.txt")
@@ -202,13 +286,16 @@ def add_version(root, man):
     files = {rel(f): os.path.relpath(f, root).replace(os.sep, "/") for f in new_files}
     write_publish(rv, f"publish_{ver}.json", files)
     write_all(rv, root)
-    print(f"review/index.html を作りました（{len(board['versions'])}版）。この版で増えたファイル {len(files)}個")
-    print(f"公開に使う一覧: review/publish_{ver}.json（初めての公開や新しい URL のときは review/publish_all.json）")
+    print(t["built"].format(n=len(board["versions"]), k=len(files)))
+    print(t["publish"].format(ver=ver))
 
 
 def render(rv, board):
     html = open(TEMPLATE, encoding="utf-8").read()
+    lang = resolve_lang(None, board.get("lang"))
+    board = dict(board, lang=lang)       # ページは BOARD.lang で文言を選ぶ
     data = json.dumps(board, ensure_ascii=False).replace("</", "<\\/")
+    html = html.replace("__TITLE__", esc(MSG[lang]["title"].format(project=board["project"])))
     html = html.replace("/*__BOARD__*/null", data).replace("__PROJECT__", esc(board["project"]))
     open(os.path.join(rv, "index.html"), "w", encoding="utf-8").write(html)
 
@@ -236,17 +323,24 @@ def main():
     ap.add_argument("--root", default=".")
     ap.add_argument("--manifest")
     ap.add_argument("--rebuild", action="store_true")
+    ap.add_argument("--lang", choices=["ja", "en"])
     a = ap.parse_args()
     root = os.path.abspath(a.root)
     if a.rebuild:
         rv = os.path.join(root, "review")
-        render(rv, json.load(open(os.path.join(rv, "board.json"), encoding="utf-8")))
+        bpath = os.path.join(rv, "board.json")
+        board = json.load(open(bpath, encoding="utf-8"))
+        lang = resolve_lang(a.lang, board.get("lang"))
+        if board.get("lang") != lang:      # 決まった言語を board.json に残す（serve_review.py も読む）
+            board["lang"] = lang
+            json.dump(board, open(bpath, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        render(rv, board)
         write_all(rv, root)
-        print("review/index.html を作り直しました")
+        print(MSG[lang]["rebuilt"])
     elif a.manifest:
-        add_version(root, json.load(open(a.manifest, encoding="utf-8")))
+        add_version(root, json.load(open(a.manifest, encoding="utf-8")), a.lang)
     else:
-        ap.error("--manifest か --rebuild を指定してください")
+        ap.error(MSG[resolve_lang(a.lang)]["usage"])
 
 
 if __name__ == "__main__":

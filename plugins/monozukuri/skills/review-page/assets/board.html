@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>__PROJECT__ 確認ボード</title>
+<title>__TITLE__</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
@@ -154,39 +154,39 @@ dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
 
 <div class="wrap">
   <header class="top">
-    <div class="eyebrow">確認ボード</div>
+    <div class="eyebrow" data-i18n="board"></div>
     <h1 id="project">__PROJECT__</h1>
     <div class="meta" id="meta"></div>
-    <nav class="vers" id="vers" aria-label="版"></nav>
+    <nav class="vers" id="vers" data-i18n-aria="versions"></nav>
   </header>
   <div class="layout">
     <main id="main"></main>
-    <aside class="side" aria-label="フィードバック">
+    <aside class="side" data-i18n-aria="feedback">
       <div class="panel">
         <div>
-          <h2>フィードバック</h2>
-          <p class="note" id="fbnote">この版を見て気づいたことを書いてください。次の版の変更点として反映します。</p>
+          <h2 data-i18n="feedback"></h2>
+          <p class="note" id="fbnote" data-i18n="fbIntro"></p>
         </div>
         <form id="fbform" hidden>
           <div>
-            <label class="l" for="fbtarget">どこについて</label>
+            <label class="l" for="fbtarget" data-i18n="fbTarget"></label>
             <select id="fbtarget"></select>
           </div>
-          <div class="kinds" role="radiogroup" aria-label="種類">
-            <label><input type="radio" name="kind" id="kind-fix" value="fix" checked> 直したい</label>
-            <label><input type="radio" name="kind" id="kind-good" value="good"> 良い</label>
-            <label><input type="radio" name="kind" id="kind-ask" value="ask"> 質問</label>
+          <div class="kinds" role="radiogroup" data-i18n-aria="fbKind">
+            <label><input type="radio" name="kind" id="kind-fix" value="fix" checked> <span data-i18n="kind.fix"></span></label>
+            <label><input type="radio" name="kind" id="kind-good" value="good"> <span data-i18n="kind.good"></span></label>
+            <label><input type="radio" name="kind" id="kind-ask" value="ask"> <span data-i18n="kind.ask"></span></label>
           </div>
           <div>
-            <label class="l" for="fbtext">内容</label>
-            <textarea id="fbtext" placeholder="例：手前の高さがもう少し低いほうがいい／USBの穴の位置が気になる"></textarea>
+            <label class="l" for="fbtext" data-i18n="fbText"></label>
+            <textarea id="fbtext" data-i18n-ph="fbPlaceholder"></textarea>
           </div>
           <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
             <span class="status" id="fbstatus" role="status"></span>
-            <button class="btn" type="submit" id="fbsend">送る</button>
+            <button class="btn" type="submit" id="fbsend" data-i18n="send"></button>
           </div>
         </form>
-        <div id="fblist"><p class="empty">フィードバックを読み込んでいます…</p></div>
+        <div id="fblist"><p class="empty" data-i18n="fbLoading"></p></div>
       </div>
     </aside>
   </div>
@@ -195,8 +195,129 @@ dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
 
 <script>
 const BOARD = /*__BOARD__*/null;
-const KIND = {fix:"直したい", good:"良い", ask:"質問"};
-const STATUS = {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"};
+// 画面の文言（ja／en）。言語は board.json の lang（build_page.py が決める）。切り替えボタンは置かない（Claude との会話で変える）
+const I18N = {
+  ja: {
+    locale: "ja-JP",
+    board: "確認ボード", versions: "版", feedback: "フィードバック",
+    fbIntro: "この版を見て気づいたことを書いてください。次の版の変更点として反映します。",
+    fbTarget: "どこについて", fbKind: "種類", fbText: "内容",
+    fbPlaceholder: "例：手前の高さがもう少し低いほうがいい／USBの穴の位置が気になる",
+    send: "送る", fbLoading: "フィードバックを読み込んでいます…",
+    kind: {fix:"直したい", good:"良い", ask:"質問"},
+    status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
+    yesno: {yes: "はい", no: "いいえ"},
+    prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：",
+    hero: "外観", spin: "回して見る",
+    changes: "この版で変えたこと",
+    questions: "決めてほしいこと",
+    qHint: "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。",
+    qNoDb: "この画面では答えを保存できません。claude.ai でページを開くと選べます。",
+    qReadOnly: "この権限では選べません。集計だけ表示しています。",
+    compare: "前の版との比較", comparePos: "比較の位置",
+    figures: "図", figure: "図",
+    dims: "寸法の変化", thItem: "項目", thBefore: "前", thAfter: "今", thDelta: "差", added: "追加", removed: "削除",
+    exportH: "書き出す", format: "形式",
+    stlNote: "メッシュ。スライサー・確認用", stepNote: "ソリッド。Fusion などで編集",
+    saveZip: "ZIPで保存",
+    expNote: "単位は mm、Z が上。部品ごとのファイルを ZIP にまとめて保存します。", noStep: "この版には STEP がありません。",
+    notes: "メモ",
+    allParts: "全部品を1つにまとめたもの",
+    expChecking: "保存できるか確かめています…",
+    expNoDownloads: "このページでは保存が使えないので書き出せません（公開のときに保存が有効になっていないか、許可されていません）",
+    expNoClaude: "この画面では保存できません。claude.ai でページを開いてください",
+    expPick: "書き出す部品を選んでください",
+    expNoZip: "ZIP の部品を読み込めませんでした。ページを開き直してください",
+    expBuilding: "作っています…", expDelivered: "渡しました", expSaved: "保存しました",
+    expDeclined: "保存をやめました",
+    expRate: "確認の画面が開いています。閉じてからもう一度押してください",
+    expTooLarge: "大きすぎて保存できません。部品を減らしてください",
+    expFailed: code => "保存できませんでした" + (code ? `（${code}）` : ""),
+    loading3d: "読み込み中…", spinHint: "ドラッグで回転・ピンチで拡大", fail3d: "3Dを読み込めませんでした",
+    people: n => `${n}人`,
+    chosenBy: items => "選んだ人：" + items.map(([who, label]) => `${who}（${label}）`).join("、"),
+    you: "あなた", someone: "だれか",
+    writeInFeedback: "フィードバック欄に書いてください", noneChosen: "まだ誰も選んでいません",
+    decided: "決定：", clearChoice: "選択を取り消す", write: "書く", writeReason: "理由・別の案を書く",
+    saving: "保存しています…", cleared: "取り消しました", saved: "保存しました",
+    noPermChoose: "この権限では選べません", saveRetry: "保存できませんでした。少し待ってからもう一度選んでください",
+    all: "全体", cmpPrefix: "比較：", qPrefix: "決めてほしいこと：", question: "決めてほしいこと",
+    noFeedback: v => `${v} へのフィードバックはまだありません。`,
+    olderOpen: n => `前の版からの未対応 ${n}件`,
+    thisPC: "このPC",
+    localNote: "このPCで開いた確認ページです。書いたことは review/feedback_local.json に残ります。書き終わったら Claude に「フィードバックを読んで」と頼んでください。",
+    noDb: "この画面ではフィードバックを読み書きできません。コメント機能で書き込んでください。",
+    viewOnly: "閲覧のみの権限です。書き込むには編集できる権限が必要です。",
+    fbLoadFailed: code => `フィードバックを読み込めませんでした（${code}）。ページを開き直してください。`,
+    needText: "内容を書いてください", sending: "送っています…", sent: "送りました",
+    noPermWrite: "この権限では書き込めません", sendRetry: "送れませんでした。少し待ってからもう一度送ってください",
+  },
+  en: {
+    locale: "en-US",
+    board: "Review board", versions: "Versions", feedback: "Feedback",
+    fbIntro: "Write what you notice about this version. It goes into the changes for the next version.",
+    fbTarget: "About", fbKind: "Type", fbText: "Comment",
+    fbPlaceholder: "e.g. The front could be a bit lower / Not sure about the USB hole position",
+    send: "Send", fbLoading: "Loading feedback…",
+    kind: {fix:"Fix", good:"Good", ask:"Question"},
+    status: {open:"Open", applied:"Applied", answered:"Answered", declined:"Declined"},
+    yesno: {yes: "Yes", no: "No"},
+    prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ",
+    hero: "Main view", spin: "View in 3D",
+    changes: "Changed in this version",
+    questions: "Questions to decide",
+    qHint: "Pick a button and it is saved as your answer. You can change it later. Put reasons or other ideas in the feedback panel.",
+    qNoDb: "Answers cannot be saved on this screen. Open the page on claude.ai to choose.",
+    qReadOnly: "Your access does not allow choosing. Showing the tally only.",
+    compare: "Compared with the previous version", comparePos: "Comparison position",
+    figures: "Figures", figure: "Figure",
+    dims: "Dimension changes", thItem: "Item", thBefore: "Before", thAfter: "Now", thDelta: "Diff", added: "added", removed: "removed",
+    exportH: "Export", format: "Format",
+    stlNote: "Mesh. For slicers and checking", stepNote: "Solid. Edit in Fusion and similar",
+    saveZip: "Save as ZIP",
+    expNote: "Units are mm, Z up. Each part is a separate file, saved together in one ZIP.", noStep: " This version has no STEP.",
+    notes: "Notes",
+    allParts: "All parts in one file",
+    expChecking: "Checking whether saving works…",
+    expNoDownloads: "Export is off because saving is not available on this page (saving was not enabled when it was published, or it is not allowed).",
+    expNoClaude: "Saving does not work on this screen. Open the page on claude.ai.",
+    expPick: "Choose the parts to export",
+    expNoZip: "Could not load the ZIP library. Reload the page.",
+    expBuilding: "Building…", expDelivered: "Handed over", expSaved: "Saved",
+    expDeclined: "Save canceled",
+    expRate: "A confirmation is already open. Close it, then press again.",
+    expTooLarge: "Too large to save. Select fewer parts.",
+    expFailed: code => "Could not save" + (code ? ` (${code})` : ""),
+    loading3d: "Loading…", spinHint: "Drag to rotate, pinch to zoom", fail3d: "Could not load the 3D model",
+    people: n => n === 1 ? "1 person" : `${n} people`,
+    chosenBy: items => "Chosen by: " + items.map(([who, label]) => `${who} (${label})`).join(", "),
+    you: "you", someone: "someone",
+    writeInFeedback: "Write your answer in the feedback panel", noneChosen: "No one has chosen yet",
+    decided: "Decided: ", clearChoice: "Clear my choice", write: "Write", writeReason: "Add a reason or another idea",
+    saving: "Saving…", cleared: "Cleared", saved: "Saved",
+    noPermChoose: "Your access does not allow choosing", saveRetry: "Could not save. Wait a moment and choose again.",
+    all: "Whole design", cmpPrefix: "Comparison: ", qPrefix: "Question: ", question: "Question",
+    noFeedback: v => `No feedback on ${v} yet.`,
+    olderOpen: n => `Still open from earlier versions: ${n}`,
+    thisPC: "This PC",
+    localNote: "This review page is open on this PC. What you write is saved in review/feedback_local.json. When you are done, ask Claude to \"read the feedback\".",
+    noDb: "Feedback cannot be read or written on this screen. Use comments instead.",
+    viewOnly: "View-only access. You need edit access to write.",
+    fbLoadFailed: code => `Could not load feedback (${code}). Reload the page.`,
+    needText: "Write something first", sending: "Sending…", sent: "Sent",
+    noPermWrite: "Your access does not allow writing", sendRetry: "Could not send. Wait a moment and send again.",
+  },
+};
+const LANG = BOARD.lang === "en" ? "en" : "ja";
+const T = I18N[LANG];
+const KIND = T.kind;
+const STATUS = T.status;
+document.documentElement.lang = LANG;
+// 静的な部分（ヘッダー・フィードバック欄）の文言を入れる。data-i18n="kind.fix" のように . でたどる
+const tr = key => key.split(".").reduce((o, k) => o?.[k], T) ?? "";
+document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = tr(el.dataset.i18n));
+document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", tr(el.dataset.i18nAria)));
+document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = tr(el.dataset.i18nPh));
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const vers = BOARD.versions;
@@ -210,6 +331,9 @@ let myId = null;
 let answerDb = null;       // 書き込める db（読み取りだけのときは null）
 let dbState = "loading";   // loading → rw（選べる）／ro（集計だけ）／none（db が使えない画面）
 const qOf = q => typeof q === "string" ? {q, type: "text"} : q;   // 0.2 までの版は文字列
+// 選択肢の表示名。はい／いいえ は画面の言語で出す（言語を変える前に作った版でも揃う）
+const optLabel = (q, o) => (q.type === "yesno" && T.yesno[o.id]) || o.label;
+const labelOf = (q, id) => { const o = (q.options || []).find(o => o.id === id); return (o && optLabel(q, o)) || id; };
 const safeSeg = s => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, "_");
 const ansId = (ver, i, uid) => `${safeSeg(ver)}~q${i}~${safeSeg(uid)}`;
 
@@ -226,7 +350,7 @@ function renderHeader(){
     cur.stage ? `<span class="chip stage">${esc(cur.stage)}</span>` : "",
     `<span class="num">${esc(cur.version)}</span>`,
     cur.date ? `<span class="num">${esc(cur.date)}</span>` : "",
-    cur.prev ? `<span>前の版 <span class="num">${esc(cur.prev)}</span></span>` : ""
+    cur.prev ? `<span>${esc(T.prevLabel)} <span class="num">${esc(cur.prev)}</span></span>` : ""
   ].join("");
   $("#vers").innerHTML = vers.map(v => `<button type="button" data-v="${esc(v.version)}" aria-current="${v === cur}">${esc(v.version)}</button>`).join("");
   $("#vers").querySelectorAll("button").forEach(b => b.onclick = () => { cur = vers.find(v => v.version === b.dataset.v); history.replaceState(null, "", "#" + cur.version); renderAll(); });
@@ -235,10 +359,10 @@ function renderHeader(){
 function heroHTML(){
   const img = cur.images[0];
   if (!img) return "";
-  return `<section aria-label="外観"><div class="hero" id="hero">
+  return `<section aria-label="${esc(T.hero)}"><div class="hero" id="hero">
     <img src="${esc(img.src)}" alt="${esc(img.caption)}" data-cap="${esc(img.caption)}">
     <div class="bar"><span>${esc(img.caption)}</span>
-    ${cur.model ? `<button class="btn ghost" type="button" id="spin">回して見る</button>` : ""}</div></div></section>`;
+    ${cur.model ? `<button class="btn ghost" type="button" id="spin">${esc(T.spin)}</button>` : ""}</div></div></section>`;
 }
 
 function mainHTML(){
@@ -246,20 +370,20 @@ function mainHTML(){
   out.push(heroHTML());
   const lists = [];
   if (cur.summary) out.push(`<p class="summary">${esc(cur.summary)}</p>`);
-  if (cur.changes?.length) lists.push(`<div class="box"><h3>この版で変えたこと</h3><ul>${cur.changes.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`);
+  if (cur.changes?.length) lists.push(`<div class="box"><h3>${esc(T.changes)}</h3><ul>${cur.changes.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`);
   if (lists.length) out.push(`<section class="cols">${lists.join("")}</section>`);
-  if (cur.questions?.length) out.push(`<section aria-label="決めてほしいこと"><h2>決めてほしいこと</h2>
-    <p class="note" id="qnote" style="margin:0">ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。</p>
+  if (cur.questions?.length) out.push(`<section aria-label="${esc(T.questions)}"><h2>${esc(T.questions)}</h2>
+    <p class="note" id="qnote" style="margin:0">${esc(T.qHint)}</p>
     <div class="qs" id="qs"></div></section>`);
 
   if (cur.compare?.length){
-    out.push(`<section aria-label="前の版との比較"><h2>前の版との比較</h2><div class="gallery">${cur.compare.map((c, i) => c.before ? `
+    out.push(`<section aria-label="${esc(T.compare)}"><h2>${esc(T.compare)}</h2><div class="gallery">${cur.compare.map((c, i) => c.before ? `
       <figure><div class="slider" style="--pos:50%" data-i="${i}">
-        <img src="${esc(c.before)}" alt="${esc(cur.prev || "前の版")}：${esc(c.caption)}">
-        <div class="after"><img src="${esc(c.after)}" alt="${esc(cur.version)}：${esc(c.caption)}"></div>
+        <img src="${esc(c.before)}" alt="${esc(cur.prev || T.prevVer)}${esc(T.sep)}${esc(c.caption)}">
+        <div class="after"><img src="${esc(c.after)}" alt="${esc(cur.version)}${esc(T.sep)}${esc(c.caption)}"></div>
         <div class="handle"></div>
-        <span class="tag" style="left:8px">${esc(cur.prev || "前")}</span><span class="tag" style="right:8px">${esc(cur.version)}</span>
-        <input type="range" min="0" max="100" value="50" id="cmp-${esc(cur.version)}-${i}" aria-label="比較の位置">
+        <span class="tag" style="left:8px">${esc(cur.prev || T.prevShort)}</span><span class="tag" style="right:8px">${esc(cur.version)}</span>
+        <input type="range" min="0" max="100" value="50" id="cmp-${esc(cur.version)}-${i}" aria-label="${esc(T.comparePos)}">
       </div><figcaption><span>${esc(c.caption)}</span></figcaption></figure>` : `
       <figure><img src="${esc(c.src)}" alt="${esc(c.caption)}" data-cap="${esc(c.caption)}"><figcaption><span>${esc(c.caption)}</span></figcaption></figure>`).join("")}</div></section>`);
   }
@@ -267,33 +391,33 @@ function mainHTML(){
   const rest = cur.images.slice(1);
   if (rest.length){
     const groups = {};
-    rest.forEach(im => (groups[im.group || "図"] ??= []).push(im));
-    out.push(`<section aria-label="図"><h2>図</h2>${Object.entries(groups).map(([g, ims]) => `
+    rest.forEach(im => (groups[im.group || T.figures] ??= []).push(im));
+    out.push(`<section aria-label="${esc(T.figures)}"><h2>${esc(T.figures)}</h2>${Object.entries(groups).map(([g, ims]) => `
       <div class="group-title">${esc(g)}</div><div class="gallery">${ims.map(im => `
         <figure><img src="${esc(im.src)}" alt="${esc(im.caption)}" data-cap="${esc(im.caption)}" loading="lazy">
         <figcaption><span>${esc(im.caption)}</span></figcaption></figure>`).join("")}</div>`).join("")}</section>`);
   }
 
   if (cur.params_diff?.length){
-    out.push(`<section aria-label="寸法の変化"><h2>寸法の変化 <span class="num" style="color:var(--muted);font-weight:400;font-size:13px">${esc(cur.prev || "")} → ${esc(cur.version)}</span></h2>
-      <div class="tablewrap"><table><thead><tr><th>項目</th><th style="text-align:right">前</th><th style="text-align:right">今</th><th style="text-align:right">差</th></tr></thead><tbody>
+    out.push(`<section aria-label="${esc(T.dims)}"><h2>${esc(T.dims)} <span class="num" style="color:var(--muted);font-weight:400;font-size:13px">${esc(cur.prev || "")} → ${esc(cur.version)}</span></h2>
+      <div class="tablewrap"><table><thead><tr><th>${esc(T.thItem)}</th><th style="text-align:right">${esc(T.thBefore)}</th><th style="text-align:right">${esc(T.thAfter)}</th><th style="text-align:right">${esc(T.thDelta)}</th></tr></thead><tbody>
       ${cur.params_diff.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${fmt(r.before, r.unit)}</td><td class="n">${fmt(r.after, r.unit)}</td>
-        <td class="n ${r.delta > 0 ? "up" : r.delta < 0 ? "down" : ""}">${r.delta !== undefined ? (r.delta > 0 ? "+" : "") + esc(r.delta) : (r.kind === "added" ? "追加" : r.kind === "removed" ? "削除" : "")}</td></tr>`).join("")}
+        <td class="n ${r.delta > 0 ? "up" : r.delta < 0 ? "down" : ""}">${r.delta !== undefined ? (r.delta > 0 ? "+" : "") + esc(r.delta) : (r.kind === "added" ? esc(T.added) : r.kind === "removed" ? esc(T.removed) : "")}</td></tr>`).join("")}
       </tbody></table></div></section>`);
   }
   if (cur.model || cur.step?.length){
     const hasStl = !!cur.model, hasStep = !!cur.step?.length;
-    out.push(`<section aria-label="書き出す"><h2>書き出す</h2><div class="box exp">
-      <div class="fmt" role="radiogroup" aria-label="形式">
-        <label><input type="radio" name="fmt" id="fmt-stl" value="stl" ${hasStl ? "checked" : "disabled"}> STL <small>メッシュ。スライサー・確認用</small></label>
-        <label><input type="radio" name="fmt" id="fmt-step" value="step" ${!hasStl && hasStep ? "checked" : ""} ${hasStep ? "" : "disabled"}> STEP <small>ソリッド。Fusion などで編集</small></label>
+    out.push(`<section aria-label="${esc(T.exportH)}"><h2>${esc(T.exportH)}</h2><div class="box exp">
+      <div class="fmt" role="radiogroup" aria-label="${esc(T.format)}">
+        <label><input type="radio" name="fmt" id="fmt-stl" value="stl" ${hasStl ? "checked" : "disabled"}> STL <small>${esc(T.stlNote)}</small></label>
+        <label><input type="radio" name="fmt" id="fmt-step" value="step" ${!hasStl && hasStep ? "checked" : ""} ${hasStep ? "" : "disabled"}> STEP <small>${esc(T.stepNote)}</small></label>
       </div>
       <div class="checks" id="explist"></div>
-      <div class="go"><button class="btn" type="button" id="expgo">ZIPで保存</button><span class="status" id="expstatus" role="status"></span></div>
-      <p class="note" style="margin:0">単位は mm、Z が上。部品ごとのファイルを ZIP にまとめて保存します。${hasStep ? "" : "この版には STEP がありません。"}</p>
+      <div class="go"><button class="btn" type="button" id="expgo">${esc(T.saveZip)}</button><span class="status" id="expstatus" role="status"></span></div>
+      <p class="note" style="margin:0">${esc(T.expNote)}${hasStep ? "" : esc(T.noStep)}</p>
     </div></section>`);
   }
-  if (cur.notes) out.push(`<section><div class="box"><h3>メモ</h3><p style="margin:0;white-space:pre-wrap">${esc(cur.notes)}</p></div></section>`);
+  if (cur.notes) out.push(`<section><div class="box"><h3>${esc(T.notes)}</h3><p style="margin:0;white-space:pre-wrap">${esc(cur.notes)}</p></div></section>`);
   return out.join("");
 }
 
@@ -332,7 +456,7 @@ function expItems(){
   if (expFormat() === "step") return (cur.step || []).map((st, i) => ({id: "s" + i, name: st.name, file: st.file}));
   const parts = cur.parts?.length ? cur.parts : [];
   const items = parts.map((p, i) => ({id: "p" + i, name: p.name || p.key, file: `${String(i + 1).padStart(2, "0")}_${p.key || "part"}.stl`}));
-  items.push({id: "all", name: "全部品を1つにまとめたもの", file: `all_${cur.version}.stl`});
+  items.push({id: "all", name: T.allParts, file: `all_${cur.version}.stl`});
   return items;
 }
 function renderExpList(){
@@ -354,20 +478,18 @@ let downloadsApi;            // undefined：確かめ中／null：使えない
 function showExpState(){
   const st = $("#expstatus"), go = $("#expgo");
   if (!go) return;
-  if (downloadsApi === undefined){ go.disabled = true; st.textContent = "保存できるか確かめています…"; return; }
+  if (downloadsApi === undefined){ go.disabled = true; st.textContent = T.expChecking; return; }
   go.disabled = !downloadsApi;
-  st.textContent = downloadsApi ? "" : window.claude
-    ? "このページでは保存が使えないので書き出せません（公開のときに保存が有効になっていないか、許可されていません）"
-    : "この画面では保存できません。claude.ai でページを開いてください";
+  st.textContent = downloadsApi ? "" : window.claude ? T.expNoDownloads : T.expNoClaude;
 }
 async function exportZip(){
   const st = $("#expstatus"), go = $("#expgo");
   if (!downloadsApi){ showExpState(); return; }
   const ids = new Set([...document.querySelectorAll("#explist input:checked")].map(c => c.dataset.id));
   const items = expItems().filter(it => ids.has(it.id));
-  if (!items.length){ st.textContent = "書き出す部品を選んでください"; return; }
-  if (typeof JSZip === "undefined"){ st.textContent = "ZIP の部品を読み込めませんでした。ページを開き直してください"; return; }
-  go.disabled = true; st.textContent = "作っています…";
+  if (!items.length){ st.textContent = T.expPick; return; }
+  if (typeof JSZip === "undefined"){ st.textContent = T.expNoZip; return; }
+  go.disabled = true; st.textContent = T.expBuilding;
   try {
     const zip = new JSZip(), fmt = expFormat();
     if (fmt === "step"){
@@ -401,19 +523,19 @@ async function exportZip(){
     const blob = await zip.generateAsync({type: "blob", compression: "DEFLATE"});
     const name = `${BOARD.project}_${cur.version}_${fmt.toUpperCase()}.zip`;
     const res = await downloadsApi.save({filename: name, data: blob});
-    st.textContent = res.status === "delivered" ? "渡しました" : "保存しました";
+    st.textContent = res.status === "delivered" ? T.expDelivered : T.expSaved;
   } catch (e) {
     const code = e && e.code;
-    st.textContent = code === "declined" ? "保存をやめました"
-      : code === "rate_limited" ? "確認の画面が開いています。閉じてからもう一度押してください"
-      : code === "too_large" ? "大きすぎて保存できません。部品を減らしてください"
-      : "保存できませんでした" + (code ? `（${code}）` : "");
+    st.textContent = code === "declined" ? T.expDeclined
+      : code === "rate_limited" ? T.expRate
+      : code === "too_large" ? T.expTooLarge
+      : T.expFailed(code);
     if (!code) console.error(e);
   } finally { go.disabled = false; }
 }
 
 async function openViewer(btn){
-  btn.disabled = true; btn.textContent = "読み込み中…";
+  btn.disabled = true; btn.textContent = T.loading3d;
   try {
     const THREE = await import("three");
     const {GLTFLoader} = await import("three/addons/loaders/GLTFLoader.js");
@@ -441,9 +563,9 @@ async function openViewer(btn){
     const size = () => { const w = canvas.clientWidth, h = canvas.clientHeight; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
     new ResizeObserver(size).observe(canvas); size();
     (function loop(){ ctl.update(); r.render(s, cam); requestAnimationFrame(loop); })();
-    btn.textContent = "ドラッグで回転・ピンチで拡大";
+    btn.textContent = T.spinHint;
   } catch (e) {
-    btn.textContent = "3Dを読み込めませんでした"; console.error(e);
+    btn.textContent = T.fail3d; console.error(e);
   }
 }
 
@@ -459,12 +581,12 @@ function renderQuestions(){
     const total = list.length;
     const dis = !answerDb || dec ? "disabled" : "";
     const count = id => list.filter(a => a.choice === id).length;
-    const decLabel = dec ? (q.options || []).find(o => o.id === dec.choice)?.label || dec.choice : "";
+    const decLabel = dec ? labelOf(q, dec.choice) : "";
     let body = "";
     if (q.type === "yesno"){
       body = `<div class="seg" role="radiogroup" aria-label="${esc(q.q)}">${q.options.map(o => `
         <label><input class="vis" type="radio" name="ans-${esc(ver)}-${i}" id="ans-${esc(ver)}-${i}-${esc(o.id)}" value="${esc(o.id)}" data-qi="${i}"
-          ${mine?.choice === o.id ? "checked" : ""} ${dis}>${esc(o.label)}<span class="cnt">${count(o.id)}</span></label>`).join("")}</div>`;
+          ${mine?.choice === o.id ? "checked" : ""} ${dis}>${esc(optLabel(q, o))}<span class="cnt">${count(o.id)}</span></label>`).join("")}</div>`;
     } else if (q.type === "choice"){
       body = `<div class="opts" role="radiogroup" aria-label="${esc(q.q)}">${q.options.map(o => {
         const n = count(o.id), pct = total ? Math.round(100 * n / total) : 0;
@@ -473,21 +595,21 @@ function renderQuestions(){
           <span class="top"><input type="radio" name="ans-${esc(ver)}-${i}" id="ans-${esc(ver)}-${i}-${esc(o.id)}" value="${esc(o.id)}" data-qi="${i}"
             ${mine?.choice === o.id ? "checked" : ""} ${dis}><span class="lbl">${esc(o.label)}</span></span>
           ${o.note ? `<span class="on">${esc(o.note)}</span>` : ""}
-          <span class="tally"><span class="bar"><i style="width:${pct}%"></i></span><span>${n}人</span></span></label>`;
+          <span class="tally"><span class="bar"><i style="width:${pct}%"></i></span><span>${esc(T.people(n))}</span></span></label>`;
       }).join("")}</div>`;
     }
     const who = list.length && q.type !== "text"
-      ? "選んだ人：" + list.map(a => `${esc(a.author === myId ? "あなた" : names[a.author] || "だれか")}（${esc((q.options || []).find(o => o.id === a.choice)?.label || a.choice)}）`).join("、")
-      : (q.type === "text" ? "フィードバック欄に書いてください" : "まだ誰も選んでいません");
+      ? T.chosenBy(list.map(a => [esc(a.author === myId ? T.you : names[a.author] || T.someone), esc(labelOf(q, a.choice))]))
+      : (q.type === "text" ? T.writeInFeedback : T.noneChosen);
     return `<div class="qcard ${dec ? "decided" : ""}">
       <div class="qhead"><span class="qn">Q${i + 1}</span><span class="qt">${esc(q.q)}</span>
-        ${dec ? `<span class="chip dec">決定：${esc(decLabel)}${dec.version ? " " + esc(dec.version) : ""}</span>` : ""}</div>
+        ${dec ? `<span class="chip dec">${esc(T.decided)}${esc(decLabel)}${dec.version ? " " + esc(dec.version) : ""}</span>` : ""}</div>
       ${q.why ? `<p class="qwhy">${esc(q.why)}</p>` : ""}
       ${body}
       ${dec?.note ? `<div class="reply" style="font-size:13px;border-left:2px solid var(--accent);padding-left:8px">${esc(dec.note)}</div>` : ""}
       <div class="qfoot"><span class="who">${who}</span>
-        ${mine && !dec && answerDb ? `<button type="button" class="linkbtn" data-clear="${i}">選択を取り消す</button>` : ""}
-        <button type="button" class="linkbtn" data-q="${i}">${q.type === "text" ? "書く" : "理由・別の案を書く"}</button>
+        ${mine && !dec && answerDb ? `<button type="button" class="linkbtn" data-clear="${i}">${esc(T.clearChoice)}</button>` : ""}
+        <button type="button" class="linkbtn" data-q="${i}">${esc(q.type === "text" ? T.write : T.writeReason)}</button>
         <span class="status" id="qst-${i}" role="status"></span></div></div>`;
   }).join("");
   box.querySelectorAll("input[data-qi]").forEach(r => r.onchange = () => saveAnswer(Number(r.dataset.qi), r.value));
@@ -499,9 +621,9 @@ function renderQuestions(){
   });
   const st = answerDb ? "rw" : dbState === "rw" ? "ro" : dbState;
   if ($("#qnote")) $("#qnote").textContent = !cur.questions.some(q => qOf(q).type !== "text") || st === "rw" || st === "loading"
-    ? "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。"
-    : st === "none" ? "この画面では答えを保存できません。claude.ai でページを開くと選べます。"
-    : "この権限では選べません。集計だけ表示しています。";
+    ? T.qHint
+    : st === "none" ? T.qNoDb
+    : T.qReadOnly;
 }
 
 // 1つの問いへの書き込みは1度に1回。続けて押されたら最後の選択だけを書く
@@ -517,38 +639,38 @@ async function saveAnswer(i, choice){
   try {
     while (job.next !== undefined){
       const c = job.next; job.next = undefined;
-      if (st()) st().textContent = "保存しています…";
+      if (st()) st().textContent = T.saving;
       const ref = answerDb.collection("answers").doc(id);
       if (c === null) await ref.delete();
       else await ref.set({version: ver, q: i, question: q.q, choice: c,
-        label: (q.options || []).find(o => o.id === c)?.label || c, author: myId, updatedAt: new Date().toISOString()});
-      if (st()) st().textContent = c === null ? "取り消しました" : "保存しました";
+        label: labelOf(q, c), author: myId, updatedAt: new Date().toISOString()});
+      if (st()) st().textContent = c === null ? T.cleared : T.saved;
     }
   } catch (err) {
-    if (st()) st().textContent = err.code === "invalid_argument" ? "この権限では選べません" : "保存できませんでした。少し待ってからもう一度選んでください";
+    if (st()) st().textContent = err.code === "invalid_argument" ? T.noPermChoose : T.saveRetry;
     if (err.code === "invalid_argument"){ answerDb = null; renderQuestions(); }
   } finally { job.busy = false; }
 }
 
 function targets(){
-  const t = [["all", "全体"]];
+  const t = [["all", T.all]];
   cur.images.forEach((im, i) => t.push(["img:" + i, im.caption]));
-  (cur.compare || []).forEach((c, i) => t.push(["cmp:" + i, "比較：" + c.caption]));
-  (cur.questions || []).forEach((q, i) => t.push(["q:" + i, "決めてほしいこと：" + qOf(q).q]));
+  (cur.compare || []).forEach((c, i) => t.push(["cmp:" + i, T.cmpPrefix + c.caption]));
+  (cur.questions || []).forEach((q, i) => t.push(["q:" + i, T.qPrefix + qOf(q).q]));
   return t;
 }
 function targetLabel(f){
   const v = vers.find(x => x.version === f.version) || cur;
   const [k, i] = String(f.target || "all").split(":");
-  if (k === "img") return v.images[i]?.caption || "図";
-  if (k === "cmp") return "比較：" + (v.compare?.[i]?.caption || "");
-  if (k === "q") return v.questions?.[i] ? qOf(v.questions[i]).q : "決めてほしいこと";
-  return "全体";
+  if (k === "img") return v.images[i]?.caption || T.figure;
+  if (k === "cmp") return T.cmpPrefix + (v.compare?.[i]?.caption || "");
+  if (k === "q") return v.questions?.[i] ? qOf(v.questions[i]).q : T.question;
+  return T.all;
 }
 
 function fbItem(f){
   const who = names[f.author] || "";
-  const when = f.createdAt ? new Date(f.createdAt).toLocaleString("ja-JP", {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"}) : "";
+  const when = f.createdAt ? new Date(f.createdAt).toLocaleString(T.locale, {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"}) : "";
   return `<div class="fb"><div class="row">
       <span class="chip k-${esc(f.kind)}">${esc(KIND[f.kind] || f.kind)}</span>
       <span class="chip s-${esc(f.status || "open")}">${esc(STATUS[f.status || "open"])}${f.resolvedIn ? " " + esc(f.resolvedIn) : ""}</span>
@@ -565,8 +687,8 @@ function renderFeedback(){
   const mine = feedback.filter(f => f.version === cur.version).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   const older = feedback.filter(f => f.version !== cur.version && (f.status || "open") === "open" && f.version < cur.version);
   let html = "";
-  html += mine.length ? mine.map(fbItem).join("") : `<p class="empty">${esc(cur.version)} へのフィードバックはまだありません。</p>`;
-  if (older.length) html += `<h3 class="group-title" style="margin-top:12px">前の版からの未対応 ${older.length}件</h3>` + older.map(fbItem).join("");
+  html += mine.length ? mine.map(fbItem).join("") : `<p class="empty">${T.noFeedback(esc(cur.version))}</p>`;
+  if (older.length) html += `<h3 class="group-title" style="margin-top:12px">${esc(T.olderOpen(older.length))}</h3>` + older.map(fbItem).join("");
   $("#fblist").innerHTML = html;
 }
 
@@ -608,7 +730,7 @@ async function localStore(){
     doc: id => ({set: doc => post({collection: name, id, doc}), delete: () => post({collection: name, id, delete: true})}),
   })};
   const user = {can: async () => true, id: async () => "local",
-    profiles: async ids => Object.fromEntries(ids.map(i => [i, {name: i === "local" ? "このPC" : ""}]))};
+    profiles: async ids => Object.fromEntries(ids.map(i => [i, {name: i === "local" ? T.thisPC : ""}]))};
   return {db, user};
 }
 
@@ -621,12 +743,12 @@ async function localStore(){
     const local = await localStore();
     if (local){
       ({db, user} = local);
-      $("#fbnote").textContent = "このPCで開いた確認ページです。書いたことは review/feedback_local.json に残ります。書き終わったら Claude に「フィードバックを読んで」と頼んでください。";
+      $("#fbnote").textContent = T.localNote;
     }
   }
   if (!db){
     dbState = "none"; renderQuestions();
-    $("#fbnote").textContent = "この画面ではフィードバックを読み書きできません。コメント機能で書き込んでください。";
+    $("#fbnote").textContent = T.noDb;
     $("#fblist").innerHTML = "";
     return;
   }
@@ -651,7 +773,7 @@ async function localStore(){
     renderQuestions();
   }, () => {});
   $("#fbform").hidden = !canWrite;
-  if (!canWrite) $("#fbnote").textContent = "閲覧のみの権限です。書き込むには編集できる権限が必要です。";
+  if (!canWrite) $("#fbnote").textContent = T.viewOnly;
   db.collection("feedback").onSnapshot(async snap => {
     feedback = snap.docs.map(d => ({id: d.id, ...d.data()}));
     const ids = [...new Set(feedback.map(f => f.author).filter(Boolean))];
@@ -659,22 +781,22 @@ async function localStore(){
       try { const ps = await user.profiles(ids); ids.forEach(id => names[id] = ps[id]?.name || ""); } catch (e) {}
     }
     renderFeedback();
-  }, err => { $("#fblist").innerHTML = `<p class="empty">フィードバックを読み込めませんでした（${esc(err.code)}）。ページを開き直してください。</p>`; });
+  }, err => { $("#fblist").innerHTML = `<p class="empty">${T.fbLoadFailed(esc(err.code))}</p>`; });
 
   $("#fbform").onsubmit = async e => {
     e.preventDefault();
     const text = $("#fbtext").value.trim();
-    if (!text){ $("#fbstatus").textContent = "内容を書いてください"; return; }
-    $("#fbsend").disabled = true; $("#fbstatus").textContent = "送っています…";
+    if (!text){ $("#fbstatus").textContent = T.needText; return; }
+    $("#fbsend").disabled = true; $("#fbstatus").textContent = T.sending;
     try {
       await db.collection("feedback").add({
         version: cur.version, target: $("#fbtarget").value,
         kind: document.querySelector('input[name="kind"]:checked').value,
         text, author: myId, createdAt: new Date().toISOString(), status: "open"
       });
-      $("#fbtext").value = ""; $("#fbstatus").textContent = "送りました";
+      $("#fbtext").value = ""; $("#fbstatus").textContent = T.sent;
     } catch (err) {
-      $("#fbstatus").textContent = err.code === "invalid_argument" ? "この権限では書き込めません" : "送れませんでした。少し待ってからもう一度送ってください";
+      $("#fbstatus").textContent = err.code === "invalid_argument" ? T.noPermWrite : T.sendRetry;
       if (err.code === "invalid_argument"){ canWrite = false; $("#fbform").hidden = true; }
     } finally { $("#fbsend").disabled = false; }
   };
