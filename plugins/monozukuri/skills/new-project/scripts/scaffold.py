@@ -156,10 +156,15 @@ def update_tools(proj, force):
                 print("  build() の外は同じです。差し替えは要りません")
             else:
                 print(f"  build() の外の違い（{len(body)}行。新しい枠組みを使うときは、mock.py.new の build() を今の build() に置き換えて使う）：")
-                for d in body[:40]:
+                mine_src = open(mine, encoding="utf-8").read()
+                if "run_mock(build)" not in mine_src and "def main(" in mine_src:
+                    print("   ※ 新しい mock.py は main() を持たず、最後で common.run_mock(build) を呼びます。今の mock.py の"
+                          " def main() から下を消し、if __name__ == \"__main__\": common.run_mock(build) にすると、"
+                          "サポートが要る面の確認などの新しい機能が使えます")
+                for d in body[:20]:
                     print("   " + d)
-                if len(body) > 40:
-                    print(f"   …ほか {len(body) - 40}行")
+                if len(body) > 20:
+                    print(f"   …ほか {len(body) - 20}行")
 
     open(vf, "w", encoding="utf-8").write(new_ver + "\n")
     gi = os.path.join(proj, ".gitignore")

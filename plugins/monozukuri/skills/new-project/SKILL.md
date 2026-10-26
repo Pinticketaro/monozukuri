@@ -53,6 +53,7 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 - 寸法ファイルは `params`（形の寸法）と `fab`（加工の値：実板厚 `t_*`・`kerf`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
 - 細部は作らない。形・大きさ・比率・配置がわかる粗さにとどめる（`references/conventions.md`）。
 - 寸法から機械的にわかる問題（造形範囲を超える、中身が入らない）は notes に出す。
+- 3Dプリントする部品は、サポートが要りそうな下向きの面（水平から `overhang_deg`＝45° より浅い面）が自動で notes に出る。中身・既製品・レーザーの板など刷らない部品は、部品の6つめに `{"print": False}` を付けて外す。印刷の向きを変えるときは `{"up": "-z"}` など（寸法ファイルの `meta.print_up` でもよい）。`--process laser` のプロジェクトでは調べない。
 - わからない寸法は仮の値で進め、寸法ファイルの label に「仮」と書き、ユーザーに実測をお願いする項目として報告に入れる。
 
 ### 4. 1回目の画像を作って見る
@@ -86,6 +87,7 @@ python3 scripts/scaffold.py --update-tools <プロジェクトのフォルダ>
 ```
 - 上書きするのはプラグインが持ち主のファイルだけ（`geom.py`・`common.py`・`coupons.py`・`dims_sheet.py`・`render_model.py`・`slices.py`・`compare.py`・`params_diff.py`・`requirements.txt`）。元は `tools/.backup-<日時>/` に残る。
 - `mock.py` は上書きしない（利用者の `build()` があるため）。新しい雛形が `tools/mock.py.new` に置かれ、`build()` の外の違いが表示される。新しい枠組みを使うときは、`mock.py.new` の `build()` をプロジェクトの `build()` に置き換えて `mock.py` にする。
+  - 0.3.0 以前の `mock.py`（`main()` を持つもの）は、`def main()` から下を消して `if __name__ == "__main__": common.run_mock(build)` にする。中身・既製品など3Dプリントしない部品には、部品の6つめに `{"print": False}` を付ける（張り出しの確認から外す）。
 - プロジェクトで手を加えたファイルは、足した関数が新しい版にすべてあれば上書きする。新しい版に無い関数があると、何も上書きせずに止まる。その関数を残すかユーザーに確かめ、上書きしてよければ `--force`。
 - 使ったプラグインの版は `tools/.monozukuri-version` に記録される（「0.3.0 → 0.4.0」のように表示）。
 - 更新したら review-page の SKILL.md も読み直す（手順や問いの形が変わっていることがある）。

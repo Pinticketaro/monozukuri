@@ -11,19 +11,19 @@
 
 ▼ 雛形の例（全部3Dプリント）：350ml缶を入れる底つきの筒に、ストラップを通す耳を左右に付けたケース。
   build() の中を自分の形に書き換える。形は geom.py の道具で書く（同じ定義から STL と STEP の両方ができる）。
-  部品は (表示名, 形, 色, 不透明度, 英字のキー) で足す。キーはファイル名と STEP の部品名に使う
-  （STEP の部品名を英数字にしておくと、Fusion などで文字化けしない）。
+  部品は (表示名, 形, 色, 不透明度, 英字のキー[, オプション]) で足す。キーはファイル名と STEP の部品名に使う
+  （STEP の部品名を英数字にしておくと、Fusion などで文字化けしない）。オプションは
+  {"print": False}（3Dプリントしない部品：中身・既製品・レーザーの板）、{"up": "-z"}（印刷の向き）。
+  3Dプリントする部品は、サポートが要りそうな下向きの面（張り出し overhang_deg より浅い面）が自動で注意に出る。
   輪郭：RRect（角丸の長方形）・Circle（円）・Poly（多角形）。立体：slab（押し出し＋穴）・cyl（円柱）・box（直方体）・
   tube（筒）・cone（円錐台）・revolve（回転体）・lug_with_slot（ストラップを通す耳）。
   組み合わせ：+ 足す、- 引く、& 重なり、.translate(x, y, z)、.rotate_z(角度)。細部（フィレット・ネジ山など）は作らない。
 """
-import json
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 import common  # noqa: E402
-import geom  # noqa: E402
 from geom import cone, cyl, lug_with_slot, tube  # noqa: E402
 
 
@@ -50,7 +50,7 @@ def build(prm):
     z = P.bottom_t
     can_body_h = P.can_h - P.can_neck_h
     can = cyl(0, 0, P.can_d, z, can_body_h) + cone(0, 0, P.can_d, P.can_top_d, z + can_body_h, P.can_neck_h)
-    parts.append(("缶（中身）", can, col.get("content", "#b23a3a"), 1.0, "can"))
+    parts.append(("缶（中身）", can, col.get("content", "#b23a3a"), 1.0, "can", {"print": False}))
 
     # 寸法から機械的にわかる問題
     if hasattr(P, "clr_slide") and P.can_gap < P.clr_slide:
@@ -65,47 +65,5 @@ def build(prm):
     return parts, notes
 
 
-def main():
-    ver = common.version_from_argv()
-    want_step = "--no-step" not in sys.argv
-    prm = common.load(ver)
-    parts, notes = build(prm)
-
-    pdir = common.out_dir(ver, "parts")
-    scene = {"title": f"{prm.meta.get('title', '')} {ver}", "up": "z", "views": ["iso", "back", "side"], "parts": []}
-    for i, (name, solid, color, opacity, key) in enumerate(parts):
-        fn = f"{i + 1:02d}_{key}.stl"
-        geom.export_stl(solid, os.path.join(pdir, fn))
-        scene["parts"].append({"file": f"parts/{fn}", "name": name, "key": key, "color": color, "opacity": opacity,
-                               "roughness": 0.3 if opacity < 1 else 0.8})
-    scene["notes"] = notes
-    sp = os.path.join(common.out_dir(ver), "scene.json")
-    json.dump(scene, open(sp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(sp)
-
-    if want_step and geom.has_cad():
-        sdir = common.out_dir(ver, "step")
-        index = []
-        asm = os.path.join(sdir, f"assembly_{ver}.step")
-        geom.export_assembly([(k, s, c, o) for _n, s, c, o, k in parts], asm)
-        index.append({"src": os.path.relpath(asm, common.ROOT), "name": "組み立て（全部品）", "file": f"assembly_{ver}.step"})
-        bad = []
-        for i, (name, solid, _c, _o, key) in enumerate(parts):
-            fp = os.path.join(sdir, f"{i + 1:02d}_{key}.step")
-            geom.export_step(solid, fp)
-            ok, se, me = geom.check_step(solid, fp)
-            if not ok:
-                bad.append(f"{name}: STEP {se} / メッシュ {me}")
-            index.append({"src": os.path.relpath(fp, common.ROOT), "name": name, "file": os.path.basename(fp)})
-        json.dump(index, open(os.path.join(sdir, "index.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-        print(f"{sdir}（STEP {len(index)}個）")
-        print("STEP の大きさの確認:", "すべて一致" if not bad else "ずれあり → " + " / ".join(bad))
-    elif want_step:
-        print("STEP は省きました（CadQuery がありません。setup スキルで `setup.sh --with-cad`）")
-
-    for n in notes:
-        print("注意:", n)
-
-
 if __name__ == "__main__":
-    main()
+    common.run_mock(build)
