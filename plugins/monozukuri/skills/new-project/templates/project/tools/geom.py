@@ -135,6 +135,9 @@ class Solid:
             elif self.op == "cyl":
                 cx, cy, d, z0, h = a
                 self._mf = m3.Manifold.cylinder(h, d / 2, d / 2, SEG).translate([cx, cy, z0])
+            elif self.op == "cone":
+                cx, cy, d0, d1, z0, h = a
+                self._mf = m3.Manifold.cylinder(h, d0 / 2, d1 / 2, SEG).translate([cx, cy, z0])
             elif self.op == "box":
                 x0, y0, z0, w, d, h = a
                 self._mf = m3.Manifold.cube([w, d, h]).translate([x0, y0, z0])
@@ -162,6 +165,9 @@ class Solid:
             elif self.op == "cyl":
                 cx, cy, d, z0, h = a
                 self._cq = cq.Workplane("XY").workplane(offset=z0).center(cx, cy).circle(d / 2).extrude(h)
+            elif self.op == "cone":
+                cx, cy, d0, d1, z0, h = a
+                self._cq = cq.Workplane("XY").add(cq.Solid.makeCone(d0 / 2, d1 / 2, h, cq.Vector(cx, cy, z0)))
             elif self.op == "box":
                 x0, y0, z0, w, d, h = a
                 self._cq = cq.Workplane("XY").box(w, d, h, centered=False).translate((x0, y0, z0))
@@ -184,6 +190,11 @@ def slab(outer, z0, t, holes=()):
 def cyl(cx, cy, d, z0, h):
     """円柱：中心 (cx, cy)、直径 d、z0 から高さ h"""
     return Solid("cyl", float(cx), float(cy), float(d), float(z0), float(h))
+
+
+def cone(cx, cy, d0, d1, z0, h):
+    """円錐台：中心 (cx, cy)、下の直径 d0・上の直径 d1、z0 から高さ h（缶の肩・すぼまる形）"""
+    return Solid("cone", float(cx), float(cy), float(d0), float(d1), float(z0), float(h))
 
 
 def box(x0, y0, z0, w, d, h):

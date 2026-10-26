@@ -76,5 +76,16 @@ python3 tools/coupons.py v01
 外観画像をユーザーに見せ（SendUserFile）、review-page スキルで確認ページを作って公開する。以後は review-page の手順で版を回す。
 `--git` で作った場合は最初のコミットまでできている。GitHub に上げるのはユーザーが望んだときだけ。
 
+## プラグインを更新したら（既存のプロジェクトの道具を新しくする）
+`tools/` はプロジェクトにコピーされるので、プラグインを更新しても既存のプロジェクトは古い道具のままになる。更新したら、まず道具を新しくする。
+```bash
+python3 scripts/scaffold.py --update-tools <プロジェクトのフォルダ>
+```
+- 上書きするのはプラグインが持ち主のファイルだけ（`geom.py`・`common.py`・`coupons.py`・`dims_sheet.py`・`render_model.py`・`slices.py`・`compare.py`・`params_diff.py`・`requirements.txt`）。元は `tools/.backup-<日時>/` に残る。
+- `mock.py` は上書きしない（利用者の `build()` があるため）。新しい雛形が `tools/mock.py.new` に置かれ、`build()` の外の違いが表示される。新しい枠組みを使うときは、`mock.py.new` の `build()` をプロジェクトの `build()` に置き換えて `mock.py` にする。
+- プロジェクトで手を加えたファイルは、足した関数が新しい版にすべてあれば上書きする。新しい版に無い関数があると、何も上書きせずに止まる。その関数を残すかユーザーに確かめ、上書きしてよければ `--force`。
+- 使ったプラグインの版は `tools/.monozukuri-version` に記録される（「0.3.0 → 0.4.0」のように表示）。
+- 更新したら review-page の SKILL.md も読み直す（手順や問いの形が変わっていることがある）。
+
 ## 報告
 2〜3文：何を作ったか、最初のモックで見てほしい所、実測をお願いしたい値。フォルダの中身の列挙はしない。

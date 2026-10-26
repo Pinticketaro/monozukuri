@@ -3,6 +3,8 @@ out/**/parts/
 out/**/step/
 out/**/*.glb
 # 公開用に縮小した画像は残す（ページの履歴になる）
+# 道具を新しくしたときの控え（scaffold.py --update-tools）
+tools/.backup-*/
 # スライサーの出力
 *.gcode
 # 一時ファイル

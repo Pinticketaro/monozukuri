@@ -1,0 +1,246 @@
+{
+ "0.2.0": {
+  "common.py": {
+   "sha256": [
+    "189174ae5ce1b7ea67891330f60840a9987dc9200a25d845ee4a164059d1fea7"
+   ],
+   "defs": [
+    "latest",
+    "load",
+    "out_dir",
+    "prev_version",
+    "version_from_argv",
+    "versions"
+   ]
+  },
+  "coupons.py": {
+   "sha256": [
+    "a724d1520f3837533ceb5fd236933cb2ff22c106bdf7bdf20dad45993ecd99f3"
+   ],
+   "defs": [
+    "box",
+    "comb_path",
+    "cyl",
+    "dimples",
+    "fdm_fit",
+    "fdm_insert",
+    "laser_svg",
+    "main",
+    "svg_dots",
+    "svg_rect",
+    "to_mesh"
+   ]
+  },
+  "dims_sheet.py": {
+   "sha256": [
+    "5614c188e0aaab3009254ccf4324362b31918424f326fd42bd484625860b674a"
+   ],
+   "defs": [
+    "main"
+   ]
+  },
+  "requirements.txt": {
+   "sha256": [
+    "92c24f0e66fe87e7aef59ecec5f2a4a94ab401e945420f0a9e3d150453201297"
+   ],
+   "defs": []
+  },
+  "mock.py": {
+   "sha256": [
+    "278711c39433debb02b92d686d23f39bb4fa5ef4bef868de0a48d9e49786b5c9"
+   ],
+   "defs": [
+    "build",
+    "circle",
+    "cyl",
+    "main",
+    "rrect",
+    "slab",
+    "to_mesh"
+   ]
+  },
+  "render_model.py": {
+   "sha256": [
+    "40fafe2c9c4328016445e01045b4140b5f5dc8b047889218240783ca53bd5e2b"
+   ],
+   "defs": [
+    "build_scene",
+    "hex2rgba",
+    "layout",
+    "load_mesh",
+    "main",
+    "parse_part",
+    "render",
+    "report_size",
+    "three_dir"
+   ]
+  },
+  "slices.py": {
+   "sha256": [
+    "ab52cee446e1ec483f6924aed96a5b101ec6571935265f2e193be361e59297af"
+   ],
+   "defs": [
+    "darker",
+    "draw_shape",
+    "load",
+    "loops_to_shape",
+    "main",
+    "plan",
+    "section",
+    "setup_font"
+   ]
+  },
+  "compare.py": {
+   "sha256": [
+    "31b688dbc3fb51f36b3e19ee1ffbebfc959466287404958c450f11836b45de2c"
+   ],
+   "defs": [
+    "diff_image",
+    "fit",
+    "font",
+    "main"
+   ]
+  },
+  "params_diff.py": {
+   "sha256": [
+    "390c621446021db789b71fd9d26a8cd6eb4ab436f3f08ee48d411e6dbaf32993"
+   ],
+   "defs": [
+    "diff",
+    "flatten",
+    "main"
+   ]
+  }
+ },
+ "0.3.0": {
+  "geom.py": {
+   "sha256": [
+    "5a19b593f0a49b730b63f3ff7a91977513fe21eba431616de8429cc6888e7e04"
+   ],
+   "defs": [
+    "Circle",
+    "Outline",
+    "Poly",
+    "RRect",
+    "Solid",
+    "box",
+    "check_step",
+    "cyl",
+    "export_assembly",
+    "export_step",
+    "export_stl",
+    "has_cad",
+    "slab",
+    "to_trimesh"
+   ]
+  },
+  "common.py": {
+   "sha256": [
+    "189174ae5ce1b7ea67891330f60840a9987dc9200a25d845ee4a164059d1fea7"
+   ],
+   "defs": [
+    "latest",
+    "load",
+    "out_dir",
+    "prev_version",
+    "version_from_argv",
+    "versions"
+   ]
+  },
+  "coupons.py": {
+   "sha256": [
+    "a724d1520f3837533ceb5fd236933cb2ff22c106bdf7bdf20dad45993ecd99f3"
+   ],
+   "defs": [
+    "box",
+    "comb_path",
+    "cyl",
+    "dimples",
+    "fdm_fit",
+    "fdm_insert",
+    "laser_svg",
+    "main",
+    "svg_dots",
+    "svg_rect",
+    "to_mesh"
+   ]
+  },
+  "dims_sheet.py": {
+   "sha256": [
+    "5614c188e0aaab3009254ccf4324362b31918424f326fd42bd484625860b674a"
+   ],
+   "defs": [
+    "main"
+   ]
+  },
+  "requirements.txt": {
+   "sha256": [
+    "8efc39bee274cd1fced3e5524442187075db73217110b07bf8d8d2706ec5fbeb"
+   ],
+   "defs": []
+  },
+  "mock.py": {
+   "sha256": [
+    "8d6e80bc73c14e92275d6d2fb373fa2afbc1ed7609542811a97c1f5508e07a64"
+   ],
+   "defs": [
+    "build",
+    "main"
+   ]
+  },
+  "render_model.py": {
+   "sha256": [
+    "ed7301089c6e963480e7328fbc12f202e1c2061028fcc118403650fc64878c8c"
+   ],
+   "defs": [
+    "build_scene",
+    "hex2rgba",
+    "layout",
+    "load_mesh",
+    "load_mm",
+    "main",
+    "parse_part",
+    "render",
+    "report_size",
+    "three_dir"
+   ]
+  },
+  "slices.py": {
+   "sha256": [
+    "9eeee1c80842b75f6024d0ee022beb9bdb6be40459a6d6a2a0437ff806f53acd"
+   ],
+   "defs": [
+    "darker",
+    "draw_shape",
+    "load",
+    "load_mm",
+    "loops_to_shape",
+    "main",
+    "plan",
+    "section",
+    "setup_font"
+   ]
+  },
+  "compare.py": {
+   "sha256": [
+    "31b688dbc3fb51f36b3e19ee1ffbebfc959466287404958c450f11836b45de2c"
+   ],
+   "defs": [
+    "diff_image",
+    "fit",
+    "font",
+    "main"
+   ]
+  },
+  "params_diff.py": {
+   "sha256": [
+    "390c621446021db789b71fd9d26a8cd6eb4ab436f3f08ee48d411e6dbaf32993"
+   ],
+   "defs": [
+    "diff",
+    "flatten",
+    "main"
+   ]
+  }
+ }
+}
