@@ -4,6 +4,10 @@
 #   既定で cadquery（モックの STEP 書き出し用）も入れる。数分かかる。
 #   --no-cad  … cadquery を入れない（STL だけでよいとき。--with-cad は旧い書き方で、無視される）
 # 何度実行しても安全（入っているものは飛ばす）。
+# Python の置き場所
+#   macOS：プロジェクトの外の仮想環境 ~/.monozukuri/venv に入れる（MONOZUKURI_VENV で変更可）
+#   Linux（クラウドの作業環境など）：今までどおり python3 に直接入れる（MONOZUKURI_VENV を指定すれば仮想環境）
+#   PYTHON を指定すると、その Python に直接入れる（conda など。PYTHON=python）
 set -u
 
 WITH_CAD=1
@@ -11,10 +15,33 @@ for a in "$@"; do [ "$a" = "--no-cad" ] && WITH_CAD=0; done
 
 CACHE="${MONOZUKURI_CACHE:-$HOME/.cache/monozukuri}"
 THREE_VER="0.160.0"
-PY="${PYTHON:-python3}"
 mkdir -p "$CACHE"
 
 say() { printf '\n== %s\n' "$*"; }
+
+VENV="${MONOZUKURI_VENV:-}"
+if [ -z "${PYTHON:-}" ] && [ -z "$VENV" ] && [ "$(uname -s)" = "Darwin" ]; then
+  VENV="$HOME/.monozukuri/venv"
+fi
+if [ -n "${PYTHON:-}" ]; then
+  PY="$PYTHON"
+elif [ -n "$VENV" ]; then
+  say "Python の仮想環境（${VENV}）"
+  if [ -x "$VENV/bin/python" ]; then
+    echo "あります"
+  else
+    BASE="${BASE_PYTHON:-python3}"
+    if ! "$BASE" -c 'import sys; sys.exit(0 if (3, 10) <= sys.version_info[:2] else 1)' 2>/dev/null; then
+      echo "!! Python 3.10 以上が要ります（mac: brew install python@3.12）。BASE_PYTHON で使う Python を指定できます"
+      exit 1
+    fi
+    mkdir -p "$(dirname "$VENV")" && "$BASE" -m venv "$VENV" && "$VENV/bin/python" -m pip install -q --upgrade pip \
+      && echo "作りました（元の Python: $("$BASE" --version 2>&1)）"
+  fi
+  PY="$VENV/bin/python"
+else
+  PY="python3"
+fi
 
 pip_install() {
   # 外部管理された環境（Debian/Ubuntu の system python）では --break-system-packages が要る
@@ -29,7 +56,7 @@ pip_install() {
 }
 
 say "Python パッケージ"
-PKGS="numpy shapely matplotlib manifold3d trimesh pillow playwright cascadio"
+PKGS="numpy shapely matplotlib manifold3d trimesh networkx pillow playwright cascadio"
 MISSING=""
 for p in $PKGS; do
   mod="$p"; [ "$p" = "pillow" ] && mod="PIL"

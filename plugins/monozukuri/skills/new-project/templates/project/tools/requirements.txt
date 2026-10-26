@@ -3,6 +3,7 @@ shapely>=2.0
 matplotlib>=3.7
 manifold3d>=3.0
 trimesh>=4.0
+networkx        # 断面・平面図（trimesh の section が使う）
 pillow>=10.0
 playwright>=1.40
 cascadio        # STEP を読むとき

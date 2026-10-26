@@ -25,10 +25,17 @@ def row(name, ok, note=""):
 
 
 def main():
+    try:
+        # CadQuery は trimesh（が読む cascadio）より先に読む。逆だと macOS では終わるときに落ちる（Abort trap）
+        import cadquery  # noqa: F401
+    except Exception:
+        pass
+    row("Python", sys.version_info[:2] >= (3, 10), f"{sys.version.split()[0]}  {sys.executable}")
     for mod, label, required in [("numpy", "numpy", True), ("shapely", "shapely（2Dの形）", True),
                                  ("matplotlib", "matplotlib（断面・平面図）", True),
                                  ("manifold3d", "manifold3d（モックの立体）", True),
                                  ("trimesh", "trimesh（STL/OBJ/STEPの読み込み）", True),
+                                 ("networkx", "networkx（断面・平面図で輪郭をたどる）", True),
                                  ("PIL", "Pillow（画像の比較）", True),
                                  ("playwright", "playwright（外観の描画）", True),
                                  ("cascadio", "cascadio（STEPの読み込み）", False),
@@ -39,7 +46,7 @@ def main():
         except Exception:
             row(label, False if required else None, "未インストール")
 
-    env = {"three_dir": None, "cjk_font": None, "cjk_font_path": None}
+    env = {"python": sys.executable, "three_dir": None, "cjk_font": None, "cjk_font_path": None}
     three = os.path.join(CACHE, "three", "node_modules", "three")
     if os.path.isfile(os.path.join(three, "build", "three.module.js")):
         env["three_dir"] = three
@@ -85,6 +92,10 @@ def main():
         print(f"{st:3}  {name.ljust(w)}  {note}")
     bad = [r for r in rows if r[1] == "NG"]
     print("\n準備できています" if not bad else f"\n{len(bad)}件の不足があります")
+    import shutil
+    sys_py = shutil.which("python3")
+    if not sys_py or os.path.realpath(sys_py) != os.path.realpath(sys.executable):
+        print(f"monozukuri のスクリプトは、python3 の代わりに次の Python で実行してください：\n  {sys.executable}")
     sys.exit(1 if bad else 0)
 
 

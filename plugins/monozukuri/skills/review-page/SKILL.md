@@ -16,7 +16,7 @@ metadata:
 1つのプロジェクトに1つのページ（同じ URL）を持ち、版を重ねるたびに追加していく。ページには版の切り替え、外観・図、前の版との比較スライダー、寸法の変化、回して見られる3D、STL / STEP の書き出し、フィードバック欄がある。
 
 スクリプトはこのスキルの `scripts/`、ページのひな形は `assets/board.html`（ページの決まりに合わせて作ってあるので手で書き直さない）。
-環境が足りないとき（import エラー、three.js がない）は先に monozukuri の setup スキルを実行する。
+環境が足りないとき（import エラー、three.js がない）は先に monozukuri の setup スキルを実行する。PC（mac）では、コマンドの `python3` を setup が示した Python（`~/.monozukuri/venv/bin/python`）に読み替える。
 
 ## 聞き方（選択式の画面）
 番号で選ぶ問いの画面（AskUserQuestion）が使えるとき（Claude Code・Claude アプリ）は、足りない情報と決めてほしいことをこれで聞く。問いの候補（mock の notes の yesno／options）は、ページに載せるのと同じ形でこの画面でも聞ける。
