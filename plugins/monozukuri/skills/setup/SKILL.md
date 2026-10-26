@@ -2,7 +2,9 @@
 name: setup
 description: >
   This skill should be used when the user asks to "モックの環境を整えて", "プレビューの環境を作って",
-  "monozukuri のセットアップ", "描画できるようにして", "Mac で描画できるようにして", "PC で描画したい", or when a monozukuri script fails because a library,
+  "monozukuri のセットアップ", "描画できるようにして", "Mac で描画できるようにして", "PC で描画したい",
+  "set up the mock environment", "set up monozukuri", "set up the preview environment",
+  "make rendering work on my Mac", "I want to render on my PC", or when a monozukuri script fails because a library,
   Chromium, three.js or a Japanese font is missing. Installs and checks everything the monozukuri mock and
   review-page scripts need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery for STEP output, playwright +
   Chromium, three.js, CJK font) and runs a test render. On macOS it installs into ~/.monozukuri/venv.
@@ -16,6 +18,12 @@ metadata:
 
 ## 聞き方
 決めてほしいこと（どこで動かすか、cadquery を入れるか）は、番号で選ぶ問いの画面（AskUserQuestion）が使えるときはそれで聞く。1回に4問まで、1問に2〜4択、おすすめの案を先頭に「（おすすめ）」付きで置く。「その他」は自動で付くので選択肢に入れない。画面が使えない環境では文字で聞く。
+
+## 言語（日本語・英語）
+- ユーザーが書いた言語で答える。問いの画面（AskUserQuestion）の問いと選択肢も、その言語で書く（英語なら「（おすすめ）」は「(Recommended)」）。
+- ユーザーが英語で書いているときは、`MONOZUKURI_LANG=en` を付けて実行する（`MONOZUKURI_LANG=en bash scripts/setup.sh`、`MONOZUKURI_LANG=en python3 scripts/check_env.py`）。表と表示が英語になる。付けなければ今までどおり日本語。
+- setup はプロジェクトを持たないので、言語は環境変数で決める。プロジェクトの言語は寸法ファイル（params/params_vNN.json）の `meta.lang`（`ja`／`en`、無ければ `ja`）。決め方・切り替え方は new-project スキルの「言語」。
+- 英語で使うときも日本語フォントは入れる（部品名や前の版の文字に日本語が残ることがある）。
 
 ## 手順
 
@@ -36,7 +44,7 @@ metadata:
    - 最後に `check_env.py` が表を出す。`NG` が残ったら下の「つまずいたとき」で直し、`python3 scripts/check_env.py` だけを再実行する。
    - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery はモックを STEP で書き出すときだけ必要。無ければモックは STL だけになる）。
    - テスト描画の PNG のパスが出るので、Read で開いて一度だけ確かめる：斜め上の図に影、右横の図に段差と面取りの明暗が見えること。
-   - 表の最後に「python3 の代わりに次の Python で実行してください」と出たら（mac の仮想環境など）、以後の monozukuri のコマンドの `python3` はその Python に読み替える（例：`~/.monozukuri/venv/bin/python tools/mock.py`）。
+   - 表の最後に「python3 の代わりに次の Python で実行してください」（英語ではその訳）と出たら（mac の仮想環境など）、以後の monozukuri のコマンドの `python3` はその Python に読み替える（例：`~/.monozukuri/venv/bin/python tools/mock.py`）。
 
 4. **ユーザーへの報告は1〜2文**：準備できたこと、入らなかったものがあればその影響（例：「STEP は読めないので STL で書き出してください」）。
 

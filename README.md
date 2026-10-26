@@ -1,5 +1,7 @@
 # monozukuri
 
+English: [README.en.md](README.en.md)
+
 レーザー加工・3Dプリントのものづくりで、**立体のモック → 確認ページ → フィードバック → 次の版** を速く回すための Claude プラグイン。
 モックは形と比率を決めるための粗い立体で、最終形は Fusion などで人がモデル化する前提です。モデル化した結果（STL / STEP）も同じ確認ページで見比べられます。
 
@@ -41,13 +43,19 @@
 
 迷ったら「次は何をすればいい？」と聞いてください。プロジェクトのチェックリストを見て案内します。
 
-## できること（v0.4.0）
+## できること（v0.5.0）
 
 | スキル | こう頼むと動く | すること |
 | --- | --- | --- |
 | setup | 「モックの環境を整えて」「Mac で描画できるようにして」 | 描画・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）をまとめて入れ、テスト描画まで確かめる。Mac ではプロジェクトの外の仮想環境（`~/.monozukuri/venv`）に入れる |
-| new-project | 「新しいものづくりを始めたい」「試し片を作って」「道具を新しくして」 | 寸法ファイル（形の寸法＋加工の値と信頼度）、モック生成（1つの形の定義から STL と STEP。STEP は本物の円弧・円柱・円錐を持ち、Fusion で部品ごとのコンポーネントとして開ける）、試し片の生成、描画・断面・比較・寸法表のスクリプト、段階チェックリスト、引き継ぎ資料、Git 設定の雛形を作り、最初のモックを描く。作り方（レーザー／3Dプリント／両方）に合わせて加工の値と手順を絞り、3Dプリントでサポートが要りそうな面を自動で知らせる |
+| new-project | 「新しいものづくりを始めたい」「試し片を作って」「道具を新しくして」「英語にして」 | 寸法ファイル（形の寸法＋加工の値と信頼度）、モック生成（1つの形の定義から STL と STEP。STEP は本物の円弧・円柱・円錐を持ち、Fusion で部品ごとのコンポーネントとして開ける）、試し片の生成、描画・断面・比較・寸法表のスクリプト、段階チェックリスト、引き継ぎ資料、Git 設定の雛形を作り、最初のモックを描く。作り方（レーザー／3Dプリント／両方）に合わせて加工の値と手順を絞り、3Dプリントでサポートが要りそうな面を自動で知らせる。プロジェクトの言語（日本語／英語）を決め、切り替える |
 | review-page | 「この版の確認ページを作って」「フィードバックを読んで」「ブラウザで確認ページを開いて」 | モックや人が作ったモデル（STL / OBJ / STEP）を描画して前の版と比べ、プロジェクトごとの確認ページに版を追加して公開する（Claude Code では PC のブラウザで開く）。ページに書かれたフィードバックと答えを Claude が読み、反映したら返信や「決定」を付ける |
+
+### 0.5.0 で変わったこと
+
+- 英語に対応。言語はプロジェクトごとに日本語か英語。チャットで「英語にして」と頼んで切り替える。確認ページ・図・寸法ファイル・文書も英語になる。ページに切り替えボタンは無い
+- 英語で始めたプロジェクトは英語で作られ、文書のファイル名も英語になる（`docs/checklist.md` など）
+- 今までのプロジェクトは何もしなくても日本語のまま動く。英語にするときは、プラグインを更新してから「道具を新しくして」と頼む（英語の図や表示は新しい道具で出る）
 
 ### 0.4.0 で変わったこと
 
@@ -66,6 +74,12 @@
 - Claude Code では PC のブラウザで開ける（「ブラウザで確認ページを開いて」）
 - 「決めてほしいこと」に はい／いいえ や案の選択で答える
 - フィードバック（直したい／良い／質問）を図や問いごとに書く
+
+### 言語
+
+- 言語はプロジェクトごとに日本語か英語です。寸法ファイルの `meta.lang` に残ります。書かれていなければ日本語です。
+- 切り替えるときは、チャットで「英語にして」「日本語に戻して」と頼みます。確認ページに切り替えボタンはありません。
+- 英語のプロジェクトでは、確認ページ・図の文字・寸法表・試し片の手順書・文書が英語になります。部品名や寸法の名前は、書いたときの言葉のままです。
 
 詳しくは [plugins/monozukuri/README.md](plugins/monozukuri/README.md)。
 
@@ -89,11 +103,11 @@
 - 図面（寸法図、組立図・部品表）
 - 初学者向けに説明を増やすモードと、慣れた人向けに省くモード
 - 寸法違いの派生品の一括生成、機材・材料ごとの実測値の記録
-- 英語での利用
 
 ## 構成
 
 ```
+README.en.md                      英語の説明
 .claude-plugin/marketplace.json   マーケットプレイスの定義
 plugins/monozukuri/               プラグイン本体
   skills/setup/                   環境セットアップ
@@ -104,7 +118,7 @@ dist/monozukuri.plugin            Claude アプリ用のパッケージ
 
 ## English
 
-monozukuri is a Claude plugin for laser cutting and 3D printing that speeds up the loop of rough 3D mock → review page → feedback → next version, then hands the design to a human CAD workflow (STEP and Fusion parameters). Before the final build it measures your own machine's values (kerf, clearance, insert holes) with small test coupons. The skills currently respond in Japanese; English support is planned.
+English documentation: [README.en.md](README.en.md)
 
 ## ライセンス
 

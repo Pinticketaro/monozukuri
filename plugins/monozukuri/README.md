@@ -1,5 +1,7 @@
 # monozukuri（詳しい説明）
 
+English: [README.en.md](README.en.md)
+
 レーザー加工・3Dプリントのものづくりで、**立体のイメージを作る → 見る → フィードバック → 次の版** を速く回すためのプラグイン。
 モックは形と比率を決めるための粗い立体で、最終形は Fusion などで人がモデル化する前提。モデル化した結果も同じ確認ページで見比べられる。
 
@@ -35,7 +37,7 @@
 | スキル | こう頼むと動く | すること |
 |---|---|---|
 | setup | 「モックの環境を整えて」「描画できるようにして」「Mac で描画できるようにして」 | 描画・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）を入れ、テスト描画まで確かめる。Mac では `~/.monozukuri/venv` に入れる。スクリプトが足りないもので止まったときも使う |
-| new-project | 「新しいものづくりを始めたい」「試し片を作って」「カーフを測りたい」「インサートの穴径は」「この材料はレーザーで切っていい？」「道具を新しくして」「サポートが要る所を調べて」 | プロジェクトの雛形を作り、最初のモックを描く。試し片・はめあい・材料の可否の相談にも答える。プラグインを更新したら、既存プロジェクトの道具を新しくする |
+| new-project | 「新しいものづくりを始めたい」「試し片を作って」「カーフを測りたい」「インサートの穴径は」「この材料はレーザーで切っていい？」「道具を新しくして」「サポートが要る所を調べて」「英語にして」 | プロジェクトの雛形を作り、最初のモックを描く。試し片・はめあい・材料の可否の相談にも答える。プラグインを更新したら、既存プロジェクトの道具を新しくする。プロジェクトの言語（日本語／英語）を決め、切り替える |
 | review-page | 「この版の確認ページを作って」「前の版と比べて」「Fusionで作ったモデルを見せて」「フィードバックを読んで」「フィードバックを反映して」「ブラウザで確認ページを開いて」「外観だけ見せて」 | モックや人が作ったモデルを描画し、前の版と比べ、プロジェクトごとの確認ページ（同じURL）に版を追加して公開する（Claude Code では PC のブラウザで開く）。書かれたフィードバックを読み、反映したものを閉じる |
 
 足りない情報や決めてほしいことは、番号で選ぶ問いの画面（Claude Code・Claude アプリ）で聞く。答えは `docs/決定事項.md` と `LOG.md` に残る。
@@ -68,13 +70,42 @@ photos/                    試作品の写真
 review/                    確認ページの情報（URL など）
 ```
 
+英語のプロジェクトでは、文書のファイル名が英語になる（下の「言語」）。
+
+## 言語
+
+日本語（`ja`）と英語（`en`）に対応している。言語はプロジェクトごとに1つ。
+
+- **どこに残るか**：寸法ファイル（`params/params_vNN.json`）の `meta.lang`。無ければ日本語。今までのプロジェクトは何もしなくても日本語のまま動く。
+- **始めるとき**：雛形は `scaffold.py --lang ja|en` で作る（英語で頼めば Claude が `--lang en` を付ける）。`meta.lang` に記録され、文書・寸法ファイル・例の `mock.py` がその言語になる。
+- **切り替えるとき**：チャットで「英語にして」「日本語に戻して」と頼む。Claude が寸法ファイルの `meta.lang` を書き換え、次にモックと確認ページを作るときからその言語になる。確認ページに切り替えボタンは無い。手順は new-project スキルの「言語」にある。
+- **英語になるもの**：確認ページの文言、図の文字（ビュー名・目盛）、寸法表と試し片の手順書、スクリプトの表示、プロジェクトの文書。部品名や寸法の `label` は、寸法ファイルや `mock.py` に書いた言葉のまま。
+- **前の版**：作り終えた版の図は、作ったときの言語のまま。
+- **道具の更新**：`scaffold.py --update-tools` が置く `mock.py.new` も、プロジェクトの言語（いちばん新しい寸法ファイルの `meta.lang`）になる。
+- **setup**：プロジェクトを持たないので、環境変数 `MONOZUKURI_LANG`（`ja`／`en`）で決める。英語で頼めば Claude が `MONOZUKURI_LANG=en` を付ける。英語でも日本語フォントは入れる。
+- **決める順**：スクリプトの `--lang ja|en` ＞ 処理するデータの言語（寸法ファイルの `meta.lang`、`scene.json`・manifest・`review/board.json` の `lang`）＞ 環境変数 `MONOZUKURI_LANG` ＞ `ja`。確認ページの言語は `review/board.json` の `lang` に残る。
+- **加工の値の status**：英語の寸法ファイルでは英語で書く（`initial`・`measured`・`guideline`・`standard`・`calculated` など）。
+
+英語のプロジェクトのファイル名：
+
+| 日本語 | 英語 |
+|---|---|
+| `docs/チェックリスト.md` | `docs/checklist.md` |
+| `docs/決定事項.md` | `docs/decisions.md` |
+| `docs/引き継ぎ.md` | `docs/handoff.md` |
+| `docs/寸法表_vNN.md` | `docs/dims_vNN.md` |
+| `measurements/試し片記録.csv` | `measurements/coupon_log.csv` |
+| `measurements/実測.md` | `measurements/measured.md` |
+
+`docs/fusion_params_vNN.csv` はどちらの言語でも同じ名前。
+
 ## 寸法ファイル
 
 寸法は寸法ファイルだけに書き、モック・試し片・寸法表はすべてここから作る。
 
 - `params`：形の寸法。項目ごとに `label` を付ける。分からない寸法は仮の値で進め、label に「仮」と書く。
 - `fab`：加工の値（実板厚 `t_*`、`kerf`、`clr_*`、`insert_hole`、`overhang_deg` など）。各項目に `status` と `basis`（根拠）と、どの作り方で使うか（`process`：`laser`／`fdm`）を持たせる。雛形を作るとき `--process` で、使わない作り方の項目は外れる。
-  - `status` は「初期値」「実測」「指針」「規格」「計算」のどれか。
+  - `status` は「初期値」「実測」「指針」「規格」「計算」「経験則」のどれか（英語のプロジェクトは initial・measured・guideline・standard・calculated・rule of thumb）。
   - 本番の前に、カーフ・板厚・クリアランス・インサート穴は「実測」にする。確認ページにも「初期値」のまま残っている値が出る。
 
 ## モックと STEP
@@ -132,7 +163,7 @@ new-project の参照資料（`skills/new-project/references/`）にまとめて
 
 ## スクリプトを直接使うとき
 
-各スキルの `scripts/` と、雛形の `tools/` にある。どれも `--help` で使い方が出る。
+各スキルの `scripts/` と、雛形の `tools/` にある。どれも `--help` で使い方が出る。表示の言語は `--lang ja|en` で変えられる（無ければデータの言語、上の「言語」）。
 
 - `render_model.py`：STL/OBJ/3MF/GLB/STEP を影付きで描画（複数の視点を1枚に）、GLB の書き出し
 - `slices.py`：平面図（部品の断面と、真上から見た外形の重ね合わせ。`--plan-z` で切る高さ）と断面図
@@ -140,7 +171,7 @@ new-project の参照資料（`skills/new-project/references/`）にまとめて
 - `params_diff.py`：寸法ファイルの差分
 - `build_page.py`：確認ページに版を追加
 - `serve_review.py`：確認ページを PC のブラウザで開く（フィードバックは `review/feedback_local.json`）
-- `scaffold.py`：雛形の作成（`--process`）、既存プロジェクトの道具の更新（`--update-tools`）
+- `scaffold.py`：雛形の作成（`--process`、`--lang`）、既存プロジェクトの道具の更新（`--update-tools`）
 - 雛形の `tools/geom.py`：形の定義（STL と STEP の両方に出せる）
 - 雛形の `tools/coupons.py`：試し片（レーザー SVG、3Dプリント STL、手順書）
 - 雛形の `tools/dims_sheet.py`：寸法表と Fusion 用パラメータ一覧
