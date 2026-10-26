@@ -145,7 +145,8 @@ textarea{min-height:92px;resize:vertical}
 .s-open{color:var(--open);border-color:var(--open)} .s-applied,.s-answered{color:var(--done);border-color:var(--done)} .s-declined{color:var(--no);border-color:var(--no)}
 .note{font-size:13px;color:var(--muted)}
 .status{font-size:13px;min-height:1.4em}
-dialog{border:0;padding:0;background:transparent;max-width:min(96vw,1800px)}
+dialog{border:0;padding:0;background:transparent;max-width:min(96vw,1800px);cursor:zoom-out}
+dialog .lbclose{position:fixed;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(10,14,12,.6);color:#fff;font-size:24px;line-height:1;cursor:pointer}
 dialog::backdrop{background:rgba(10,14,12,.82)}
 dialog img{display:block;max-width:100%;max-height:88vh;height:auto;border-radius:4px}
 dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
@@ -191,7 +192,7 @@ dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
     </aside>
   </div>
 </div>
-<dialog id="lb"><img id="lbimg" alt=""><p id="lbcap"></p></dialog>
+<dialog id="lb"><button type="button" class="lbclose" id="lbclose" data-i18n-aria="close">×</button><img id="lbimg" alt=""><p id="lbcap"></p></dialog>
 
 <script>
 const BOARD = /*__BOARD__*/null;
@@ -208,7 +209,7 @@ const I18N = {
     status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
     yesno: {yes: "はい", no: "いいえ"},
     prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：",
-    hero: "外観", spin: "回して見る",
+    hero: "外観", spin: "回して見る", close: "閉じる",
     changes: "この版で変えたこと",
     questions: "決めてほしいこと",
     qHint: "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。",
@@ -263,7 +264,7 @@ const I18N = {
     status: {open:"Open", applied:"Applied", answered:"Answered", declined:"Declined"},
     yesno: {yes: "Yes", no: "No"},
     prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ",
-    hero: "Main view", spin: "View in 3D",
+    hero: "Main view", spin: "View in 3D", close: "Close",
     changes: "Changed in this version",
     questions: "Questions to decide",
     qHint: "Pick a button and it is saved as your answer. You can change it later. Put reasons or other ideas in the feedback panel.",
@@ -318,6 +319,8 @@ const tr = key => key.split(".").reduce((o, k) => o?.[k], T) ?? "";
 document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = tr(el.dataset.i18n));
 document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", tr(el.dataset.i18nAria)));
 document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = tr(el.dataset.i18nPh));
+// 拡大した画像は、余白・画像・×のどこを押しても閉じる（Esc でも閉じる）
+document.getElementById("lb").addEventListener("click", e => e.currentTarget.close());
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const vers = BOARD.versions;
