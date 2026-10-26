@@ -13,6 +13,7 @@ scene.json の形
   file は scene.json からの相対パス。up はモデルの上方向（Fusion・多くのCADは z）。
   views に使える名前: iso（斜め上）, back（斜め後ろ）, front（正面）, side（右横）, top（真上）
   先頭のビューが大きく、残りが下に並ぶ。
+  平行投影（front・side・top）では地面の影を描かない。
 --glb を付けると、確認ページで回して見るための GLB も書き出す。
 
 前提: setup スキルで trimesh・playwright・three.js を入れておく（STEP は cascadio も）
@@ -159,6 +160,7 @@ new GLTFLoader().load('./model.glb',(gl)=>{
       cam.position.copy(c).addScaledVector(dv,dist); cam.lookAt(c);
     }
     edges.visible=!!ortho[v];
+    ground.visible=!ortho[v];          // 真上・正面・横では地面の影を描かない（大きな灰色の形になって読みにくい）
     r.setViewport(x,y,w,h); r.setScissor(x,y,w,h); r.setScissorTest(true); r.clear(); r.render(s,cam);
   });
   window.DONE=true;
