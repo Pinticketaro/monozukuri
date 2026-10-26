@@ -22,6 +22,23 @@
 輪郭は「角丸の長方形」「円」「多角形」の3種類。STEP では角丸は本物の円弧、円は本物の円、
 円柱・円錐・回転体は本物の曲面になる（点の並びで近似しないので、Fusion で寸法を測ったり
 フィレットを掛け直したりしやすい）。単位は mm。Z が上。
+
+English: a small toolkit. Write a shape once, and get both STL (mesh) and STEP (solid) from it.
+  - STL  … made with manifold3d. Fast and always available (for renders, sections and the review page)
+  - STEP … made with CadQuery (OpenCascade). A solid with real faces, arcs and cylinders, so you can open it in
+           Fusion and edit it with extrude, fillet, hole and so on. Use it as the starting point for the CAD model
+           (without CadQuery, STEP is skipped. The setup skill's `setup.sh --with-cad` installs it)
+How to use: inside build() in tools/mock.py, as in the example above.
+Outlines (2D): RRect(w, d, r, cx, cy) rounded rectangle, Circle(d, cx, cy), Poly([(x, y), ...]) polygon.
+Solids: slab(outline, z0, t, holes) extrude with holes, cyl(cx, cy, d, z0, h) cylinder, box(x0, y0, z0, w, d, h),
+  tube(cx, cy, d_out, d_in, z0, h) hollow cylinder, cone(cx, cy, d0, d1, z0, h) truncated cone,
+  revolve([(radius, height), ...], z0) solid of revolution around Z,
+  lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t) strap lug on a tube.
+Combine: a + b union, a - b cut, a & b intersection; .translate(x, y, z), .rotate_z(deg).
+Export: export_stl, export_step, export_assembly (one STEP with named, colored parts), check_step (re-reads the STEP
+  and checks its size against the mesh, a units check), to_trimesh, has_cad.
+In STEP, rounded corners are real arcs, circles are real circles, and cylinders, cones and revolved shapes are real
+curved surfaces (not point approximations), so dimensions and fillets are easy to work with in Fusion. Units: mm. Z is up.
 """
 import math
 

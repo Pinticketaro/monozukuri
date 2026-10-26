@@ -6,7 +6,17 @@
            試し片（tools/coupons.py）で測って「実測」に置き換える
   P = load("v03").P      → P.outer_w のように値だけで使える
   load().labels          → 項目名（寸法表・差分に使う）
+  load().lang            → 表示の言語（"ja" か "en"。寸法ファイルの meta.lang、無ければ環境変数 MONOZUKURI_LANG、無ければ "ja"）
 版を省くと、いちばん新しい版を使う。
+
+English: shared helpers for the project tools. Reads the params file params/params_vNN.json (the only place
+where one version's dimensions are written), finds versions, and makes output folders.
+  params … shape dimensions (decided with the mock)
+  fab    … fabrication values (kerf, real sheet thickness, clearance, insert holes). Values with status
+           "initial" are measured with coupons (tools/coupons.py) and replaced with "measured" values
+  load("v03").P.outer_w  → a value;  load().labels → item names;  load().lang → "ja" or "en"
+  Language: --lang ja|en on the command line > meta.lang in the params file > env MONOZUKURI_LANG > "ja".
+Without a version, the latest one is used.
 """
 import glob
 import json
@@ -17,6 +27,42 @@ from types import SimpleNamespace
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARAMS = os.path.join(ROOT, "params")
+
+MSG = {
+    "ja": {"no_params": "params/ に寸法ファイルがありません",
+           "assembly": "組み立て（全部品）",
+           "step_bad": "{name}: STEP {se} / メッシュ {me}",
+           "step_count": "{sdir}（STEP {n}個）",
+           "step_check": "STEP の大きさの確認:", "step_ok": "すべて一致", "step_ng": "ずれあり → ",
+           "step_skip": "STEP は省きました（CadQuery がありません。setup スキルの `setup.sh` で入ります）",
+           "question": "問いの候補:", "qtype": "（{t}）", "note": "注意:"},
+    "en": {"no_params": "No params file in params/",
+           "assembly": "Assembly (all parts)",
+           "step_bad": "{name}: STEP {se} / mesh {me}",
+           "step_count": "{sdir} ({n} STEP files)",
+           "step_check": "STEP size check:", "step_ok": "all match", "step_ng": "mismatch -> ",
+           "step_skip": "Skipped STEP (CadQuery is not installed. The setup skill's `setup.sh` installs it)",
+           "question": "Question candidate:", "qtype": "({t})", "note": "Note:"},
+}
+
+
+def resolve_lang(explicit=None, data=None):
+    """表示の言語を決める：明示（--lang）> データ（meta.lang など）> 環境変数 MONOZUKURI_LANG > "ja"。"""
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def lang_from_argv():
+    """コマンドの引数に --lang ja / --lang en（--lang=en も可）があればそれ、なければ None。"""
+    a = sys.argv[1:]
+    for i, x in enumerate(a):
+        if x == "--lang" and i + 1 < len(a):
+            return a[i + 1]
+        if x.startswith("--lang="):
+            return x.split("=", 1)[1]
+    return None
 
 
 def versions():
@@ -31,7 +77,7 @@ def versions():
 def latest():
     vs = versions()
     if not vs:
-        raise SystemExit("params/ に寸法ファイルがありません")
+        raise SystemExit(MSG[resolve_lang(lang_from_argv())]["no_params"])
     return vs[-1]
 
 
@@ -43,7 +89,8 @@ def version_from_argv():
     return latest()
 
 
-def load(ver=None):
+def load(ver=None, lang=None):
+    """lang を渡すとそれを優先する（--lang の値など）。無ければ寸法ファイルの meta.lang → 環境変数 → "ja"。"""
     ver = ver or latest()
     path = os.path.join(PARAMS, f"params_{ver}.json")
     d = json.load(open(path, encoding="utf-8"))
@@ -53,8 +100,9 @@ def load(ver=None):
     labels = {k: (v.get("label", k) if isinstance(v, dict) else k) for k, v in items.items()}
     units = {k: (v.get("unit", "") if isinstance(v, dict) else "") for k, v in items.items()}
     fab = {k: v for k, v in d.get("fab", {}).items()}
-    return SimpleNamespace(ver=ver, path=path, meta=d.get("meta", {}), P=SimpleNamespace(**vals),
-                           labels=labels, units=units, fab=fab, raw=d)
+    meta = d.get("meta", {})
+    return SimpleNamespace(ver=ver, path=path, meta=meta, lang=resolve_lang(lang, meta.get("lang")),
+                           P=SimpleNamespace(**vals), labels=labels, units=units, fab=fab, raw=d)
 
 
 def prev_version(ver):
@@ -105,13 +153,19 @@ def overhangs(mesh, deg=45.0, up="z", min_area=1.0):
     return sorted(out, key=lambda r: -r["area"])
 
 
-def overhang_notes(name, mesh, deg, up="z"):
+def overhang_notes(name, mesh, deg, up="z", lang="ja"):
     regs = overhangs(mesh, deg, up)
     if not regs:
         return []
+    flat = min(r["angle"] for r in regs)
+    if lang == "en":
+        where = "; ".join(f"height {r['z']:.0f}mm (near X{r['x']:+.0f}, Y{r['y']:+.0f}), about {r['area']:.0f}mm²"
+                          for r in regs[:3]) + (f"; {len(regs) - 3} more" if len(regs) > 3 else "")
+        face = "downward faces" + (f" (print orientation {up})" if up != "z" else "")
+        return [f"{name}: {face} likely need support: {where} "
+                f"({flat:.0f}° from horizontal; shallower than the {deg:g}° overhang limit)"]
     where = "、".join(f"高さ{r['z']:.0f}mm（X{r['x']:+.0f}・Y{r['y']:+.0f}付近）約{r['area']:.0f}mm²"
                      for r in regs[:3]) + (f" ほか{len(regs) - 3}か所" if len(regs) > 3 else "")
-    flat = min(r["angle"] for r in regs)
     face = "下向きの面" + (f"（印刷の向き {up}）" if up != "z" else "")
     return [f"{name}の{face}にサポートが要りそう：{where}（水平から{flat:.0f}°。張り出し{deg:g}°より浅い）"]
 
@@ -123,16 +177,19 @@ def run_mock(build):
     張り出しを調べない）、{"up": "-z"}（印刷の向き。z・-z・x・-x・y・-y。既定は z＝モデルの上がそのまま上）。
     印刷の向きは寸法ファイルの meta に "print_up": {"キー": "-z"} と書いてもよい（こちらが優先）。
     寸法ファイルの meta.process が laser でなければ、3Dプリントする部品のサポートが要りそうな面を調べて注意に足す
-    （しきい値は fab の overhang_deg、無ければ 45°）。"""
+    （しきい値は fab の overhang_deg、無ければ 45°）。
+    表示の言語は prm.lang（寸法ファイルの meta.lang。--lang ja|en で上書きできる）。scene.json の "lang" にも書く。"""
     import geom
     ver = version_from_argv()
     want_step = "--no-step" not in sys.argv
-    prm = load(ver)
+    prm = load(ver, lang=lang_from_argv())
+    msg = MSG[prm.lang]
     parts, notes = build(prm)
     parts = [tuple(p) + ({},) if len(p) == 5 else tuple(p) for p in parts]
 
     pdir = out_dir(ver, "parts")
-    scene = {"title": f"{prm.meta.get('title', '')} {ver}", "up": "z", "views": ["iso", "back", "side"], "parts": []}
+    scene = {"title": f"{prm.meta.get('title', '')} {ver}", "lang": prm.lang, "up": "z", "views": ["iso", "back", "side"],
+             "parts": []}
     for i, (name, solid, color, opacity, key, _opt) in enumerate(parts):
         fn = f"{i + 1:02d}_{key}.stl"
         geom.export_stl(solid, os.path.join(pdir, fn))
@@ -145,7 +202,7 @@ def run_mock(build):
         ups = prm.meta.get("print_up", {})
         for name, solid, _c, _o, key, opt in parts:
             if opt.get("print", True):
-                notes += overhang_notes(name, geom.to_trimesh(solid), deg, ups.get(key, opt.get("up", "z")))
+                notes += overhang_notes(name, geom.to_trimesh(solid), deg, ups.get(key, opt.get("up", "z")), lang=prm.lang)
 
     scene["notes"] = notes
     sp = os.path.join(out_dir(ver), "scene.json")
@@ -157,23 +214,23 @@ def run_mock(build):
         index = []
         asm = os.path.join(sdir, f"assembly_{ver}.step")
         geom.export_assembly([(k, s, c, o) for _n, s, c, o, k, _opt in parts], asm)
-        index.append({"src": os.path.relpath(asm, ROOT), "name": "組み立て（全部品）", "file": f"assembly_{ver}.step"})
+        index.append({"src": os.path.relpath(asm, ROOT), "name": msg["assembly"], "file": f"assembly_{ver}.step"})
         bad = []
         for i, (name, solid, _c, _o, key, _opt) in enumerate(parts):
             fp = os.path.join(sdir, f"{i + 1:02d}_{key}.step")
             geom.export_step(solid, fp)
             ok, se, me = geom.check_step(solid, fp)
             if not ok:
-                bad.append(f"{name}: STEP {se} / メッシュ {me}")
+                bad.append(msg["step_bad"].format(name=name, se=se, me=me))
             index.append({"src": os.path.relpath(fp, ROOT), "name": name, "file": os.path.basename(fp)})
         json.dump(index, open(os.path.join(sdir, "index.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-        print(f"{sdir}（STEP {len(index)}個）")
-        print("STEP の大きさの確認:", "すべて一致" if not bad else "ずれあり → " + " / ".join(bad))
+        print(msg["step_count"].format(sdir=sdir, n=len(index)))
+        print(msg["step_check"], msg["step_ok"] if not bad else msg["step_ng"] + " / ".join(bad))
     elif want_step:
-        print("STEP は省きました（CadQuery がありません。setup スキルの `setup.sh` で入ります）")
+        print(msg["step_skip"])
 
     for n in notes:
         if isinstance(n, dict):
-            print("問いの候補:", n.get("q", ""), f"（{n.get('type', '')}）")
+            print(msg["question"], n.get("q", ""), msg["qtype"].format(t=n.get("type", "")))
         else:
-            print("注意:", n)
+            print(msg["note"], n)
