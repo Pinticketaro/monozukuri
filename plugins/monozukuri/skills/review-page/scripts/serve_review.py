@@ -141,6 +141,10 @@ def make_handler(rv):
             if self.path.split("?")[0] == "/feedback":
                 with lock:
                     return self.send_json(200, load_store(store_path))
+            if self.path.split("?")[0] == "/stamp":
+                # ページが数秒ごとに見る小さな印。ページ（新しい版）とフィードバックのファイルが変わったかだけを返す
+                mt = lambda f: os.stat(os.path.join(rv, f)).st_mtime_ns if os.path.exists(os.path.join(rv, f)) else 0
+                return self.send_json(200, {"board": mt("index.html"), "store": mt(STORE)})
             if os.path.basename(self.path.split("?")[0]) in (STORE, STATE):
                 return self.send_json(404, {"error": "not_found"})
             return super().do_GET()

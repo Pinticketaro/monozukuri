@@ -145,6 +145,7 @@ textarea{min-height:92px;resize:vertical}
 .s-open{color:var(--open);border-color:var(--open)} .s-applied,.s-answered{color:var(--done);border-color:var(--done)} .s-declined{color:var(--no);border-color:var(--no)}
 .note{font-size:13px;color:var(--muted)}
 .status{font-size:13px;min-height:1.4em}
+.newver{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:10;display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--accent);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:14px;max-width:calc(100% - 32px)}
 dialog{border:0;padding:0;background:transparent;max-width:min(96vw,1800px);cursor:zoom-out}
 dialog .lbclose{position:fixed;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(10,14,12,.6);color:#fff;font-size:24px;line-height:1;cursor:pointer}
 dialog::backdrop{background:rgba(10,14,12,.82)}
@@ -209,7 +210,7 @@ const I18N = {
     status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
     yesno: {yes: "はい", no: "いいえ"},
     prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：",
-    hero: "外観", spin: "回して見る", close: "閉じる",
+    hero: "外観", spin: "回して見る", close: "閉じる", newVer: "新しい版ができました", loadNew: "読み込む",
     changes: "この版で変えたこと",
     questions: "決めてほしいこと",
     qHint: "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。",
@@ -264,7 +265,7 @@ const I18N = {
     status: {open:"Open", applied:"Applied", answered:"Answered", declined:"Declined"},
     yesno: {yes: "Yes", no: "No"},
     prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ",
-    hero: "Main view", spin: "View in 3D", close: "Close",
+    hero: "Main view", spin: "View in 3D", close: "Close", newVer: "A new version is ready", loadNew: "Load",
     changes: "Changed in this version",
     questions: "Questions to decide",
     qHint: "Pick a button and it is saved as your answer. You can change it later. Put reasons or other ideas in the feedback panel.",
@@ -722,11 +723,31 @@ async function localStore(){
     if (!r.ok) throw {code: "local_" + r.status};
     store = await r.json(); emit();
   };
-  // Claude がファイルに書いた返信・決定は、ページに戻ったときに読み直す
-  document.addEventListener("visibilitychange", async () => {
+  // 見ている間は3秒ごとに小さな印（/stamp）だけを見て、変わったときだけ読み直す。
+  // フィードバック・答え・決定は差し替え、新しい版はページを読み直す（書きかけの文があれば、ボタンを出して待つ）
+  let stamp = null;
+  const refetch = async () => { try { const r = await fetch("feedback", {cache: "no-store"}); if (r.ok){ store = await r.json(); emit(); } } catch (e) {} };
+  const newBoard = () => {
+    if (!($("#fbtext")?.value || "").trim()) return location.reload();
+    if (document.getElementById("newver")) return;
+    const bar = document.createElement("div"); bar.className = "newver"; bar.id = "newver"; bar.setAttribute("role", "status");
+    bar.innerHTML = `<span>${esc(T.newVer)}</span><button class="btn" type="button">${esc(T.loadNew)}</button>`;
+    bar.querySelector("button").onclick = () => location.reload();
+    document.body.appendChild(bar);
+  };
+  const poll = async () => {
     if (document.visibilityState !== "visible") return;
-    try { const r = await fetch("feedback", {cache: "no-store"}); if (r.ok){ store = await r.json(); emit(); } } catch (e) {}
-  });
+    try {
+      const r = await fetch("stamp", {cache: "no-store"});
+      if (!r.ok) return;                        // 古い serve_review.py（/stamp が無い）
+      const s = await r.json();
+      if (stamp && s.board !== stamp.board) newBoard();
+      if (stamp && s.store !== stamp.store) await refetch();
+      stamp = s;
+    } catch (e) {}
+  };
+  setInterval(poll, 3000); poll();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ refetch(); poll(); } });
   const db = {collection: name => ({
     onSnapshot(cb){ (subs[name] ??= []).push(cb); cb(snap(name)); return () => {}; },
     add: doc => post({collection: name, doc}),

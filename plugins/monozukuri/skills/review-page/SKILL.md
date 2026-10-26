@@ -117,7 +117,7 @@ python3 <scripts>/serve_review.py <プロジェクト>        # 裏で動かす�
 - `review/` を localhost の空いているポートで配り、ブラウザで開く（macOS は `open`、Linux は `xdg-open`）。3Dモデルの読み込みは file:// では動かないので、サーバーで配る。すでに動いていれば、そのページを開くだけ。
 - ページは Artifact の db が無いことを見て、ローカルで動く：フィードバックと問いの答えは `review/feedback_local.json` に保存され、「書き出す」はふつうのダウンロードになる。
 - ユーザーには「ブラウザで確認し、終わったら『フィードバックを読んで』と頼んでください」（英語なら "Check it in the browser, and when you're done, ask me to read the feedback."）と伝え、止め方（`python3 <scripts>/serve_review.py <プロジェクト> --stop`）も伝える。
-- 版を足したら `build_page.py` をもう一度実行するだけでよい（サーバーはそのまま。ページを開き直すと新しい版が見える）。
+- 版を足したら `build_page.py` をもう一度実行するだけでよい（サーバーはそのまま）。開いているページは3秒ごとに変わったかを見て、新しい版は自動で読み直し、Claude がファイルに書いた返信・決定もそのまま出る（書きかけの文があるときは「読み込む」ボタンを出して待つ）。
 - 外観だけ手早く見たいとき（「外観だけ見せて」）は、描画した PNG を `open out/vNN/preview.png` で開くだけでもよい。
 
 ### 書き出し（ページの「書き出す」）
