@@ -44,6 +44,12 @@ header.top{padding-block:22px 18px;margin-bottom:18px;border-bottom:1px solid va
 .vers button{font:500 13px var(--f-mono);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:4px;padding:3px 10px;cursor:pointer}
 .vers button[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 #meta a{color:var(--accent)}
+.tree{margin-top:10px}
+.tree summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.treewrap{overflow-x:auto;margin-top:8px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.treewrap svg{display:block}
+.treewrap a{cursor:pointer}
+.treewrap a:focus-visible rect{outline:2px solid var(--accent)}
 .vers .alts{display:inline-flex;gap:4px;padding:2px;border:1px dashed var(--line);border-radius:6px}
 .vers .alts button{border-style:solid}
 .vers button:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -163,6 +169,7 @@ dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
     <h1 id="project">__PROJECT__</h1>
     <div class="meta" id="meta"></div>
     <nav class="vers" id="vers" data-i18n-aria="versions"></nav>
+    <details class="tree" id="tree" hidden><summary id="treesum"></summary><div class="treewrap" id="treebody"></div></details>
   </header>
   <div class="layout">
     <main id="main"></main>
@@ -213,6 +220,7 @@ const I18N = {
     status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
     yesno: {yes: "はい", no: "いいえ"},
     prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：", altsLabel: "別の案", altsGroup: "{n} の案",
+    treeSum: "版の流れを見る（{n}版）", treeBranches: "・枝分かれ {m}", treeAria: "版の流れ（どの版から作ったか）", treeDead: "続けなかった案",
     hero: "外観", spin: "回して見る", close: "閉じる", newVer: "新しい版ができました", loadNew: "読み込む",
     changes: "この版で変えたこと",
     questions: "決めてほしいこと",
@@ -270,6 +278,7 @@ const I18N = {
     status: {open:"Open", applied:"Applied", answered:"Answered", declined:"Declined"},
     yesno: {yes: "Yes", no: "No"},
     prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ", altsLabel: "Alternatives", altsGroup: "alternatives of {n}",
+    treeSum: "Show the version tree ({n} versions)", treeBranches: ", {m} branch point(s)", treeAria: "Version tree (which version each came from)", treeDead: "not continued",
     hero: "Main view", spin: "View in 3D", close: "Close", newVer: "A new version is ready", loadNew: "Load",
     changes: "Changed in this version",
     questions: "Questions to decide",
@@ -360,6 +369,45 @@ function fmt(v, unit){ if (v === null || v === undefined) return "—"; return e
 function verNum(ver){ const m = /^v(\d+)/.exec(ver || ""); return m ? Number(m[1]) : -1; }
 function alts(v){ return vers.filter(x => x !== v && verNum(x.version) === verNum(v.version)); }
 
+// 版の流れ（ツリー）：どの版から作ったか（prev）を線でつなぐ。案は縦に分かれる。必要なときだけ開く
+let treeOpen = false;
+function renderTree(){
+  const box = $("#tree");
+  if (!box) return;
+  if (vers.length < 2){ box.hidden = true; return; }
+  box.hidden = false;
+  const byV = Object.fromEntries(vers.map(v => [v.version, v]));
+  const parentOf = v => byV[v.prev] ? v.prev : null;
+  const kids = {};
+  vers.forEach(v => { const p = parentOf(v); if (p) (kids[p] ??= []).push(v.version); });
+  const pos = {}; let lane = -1;
+  const place = (ver, depth, ln) => { pos[ver] = {x: depth, y: ln}; (kids[ver] || []).forEach((c, i) => place(c, depth + 1, i === 0 ? ln : ++lane)); };
+  vers.forEach(v => { if (!parentOf(v) && !(v.version in pos)) place(v.version, 0, ++lane); });
+  const maxX = Math.max(...Object.values(pos).map(p => p.x)), maxY = Math.max(...Object.values(pos).map(p => p.y));
+  const branches = Object.values(kids).filter(k => k.length > 1).length;
+  const CW = 140, RH = 50, NW = 114, NH = 36, PAD = 6;
+  const W = (maxX + 1) * CW + PAD, H = (maxY + 1) * RH + PAD;
+  const nx = p => PAD + p.x * CW, ny = p => PAD + p.y * RH;
+  const edges = vers.map(v => {
+    const p = parentOf(v); if (!p) return "";
+    const a = pos[p], b = pos[v.version], x1 = nx(a) + NW, y1 = ny(a) + NH / 2, x2 = nx(b), y2 = ny(b) + NH / 2, mx = (x1 + x2) / 2;
+    return `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>`;
+  }).join("");
+  const nodes = vers.map(v => {
+    const p = pos[v.version], on = v === cur, dead = !kids[v.version] && p.x < maxX;
+    const full = String(v.stage || ""), stage = full.length > 11 ? full.slice(0, 10) + "…" : full;
+    return `<a href="#${esc(v.version)}" aria-label="${esc(v.version)} ${esc(full)}${dead ? "（" + esc(T.treeDead) + "）" : ""}"><title>${esc(v.version)} ${esc(full)}${dead ? "（" + esc(T.treeDead) + "）" : ""}</title>
+      <rect x="${nx(p)}" y="${ny(p)}" width="${NW}" height="${NH}" rx="6" fill="${on ? "var(--accent)" : "var(--bg)"}"
+        stroke="${on ? "var(--accent)" : "var(--line)"}" stroke-width="1.5" ${dead ? 'stroke-dasharray="4 3" opacity=".6"' : ""}/>
+      <text x="${nx(p) + NW / 2}" y="${ny(p) + 15}" text-anchor="middle" font-size="13" font-family="var(--f-mono)" fill="${on ? "var(--accent-ink)" : "var(--fg)"}" ${dead ? 'opacity=".6"' : ""}>${esc(v.version)}</text>
+      <text x="${nx(p) + NW / 2}" y="${ny(p) + 29}" text-anchor="middle" font-size="10" fill="${on ? "var(--accent-ink)" : "var(--muted)"}" ${dead ? 'opacity=".6"' : ""}>${esc(stage)}</text></a>`;
+  }).join("");
+  $("#treesum").textContent = T.treeSum.replace("{n}", vers.length) + (branches ? T.treeBranches.replace("{m}", branches) : "");
+  $("#treebody").innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(T.treeAria)}">${edges}${nodes}</svg>`;
+  box.open = treeOpen;
+  box.ontoggle = () => { treeOpen = box.open; };
+}
+
 function renderHeader(){
   $("#meta").innerHTML = [
     cur.stage ? `<span class="chip stage">${esc(cur.stage)}</span>` : "",
@@ -375,6 +423,7 @@ function renderHeader(){
   $("#vers").innerHTML = groups.map(g => g.list.length > 1
     ? `<span class="alts" role="group" aria-label="${esc(T.altsGroup.replace("{n}", "v" + String(g.n).padStart(2, "0")))}">${g.list.map(btn).join("")}</span>`
     : btn(g.list[0])).join("");
+  renderTree();
   $("#vers").querySelectorAll("button").forEach(b => b.onclick = () => { cur = vers.find(v => v.version === b.dataset.v); history.replaceState(null, "", "#" + cur.version); renderAll(); });
 }
 
