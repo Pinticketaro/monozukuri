@@ -1,0 +1,17 @@
+# Mock solids (can be regenerated from the params file). Images are kept
+out/**/parts/
+out/**/step/
+out/**/*.glb
+# Downsized images for publishing are kept (they are the page's history)
+# Backups made when updating tools (scaffold.py --update-tools)
+tools/.backup-*/
+# Address of the local server that opens the review page (serve_review.py)
+review/.serve.json
+# Slicer output
+*.gcode
+# Temporary files
+__pycache__/
+*.blend1
+*~
+.DS_Store
+Thumbs.db

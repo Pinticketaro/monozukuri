@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "version": "v01",
+    "title": "{{NAME}}",
+    "lang": "en",
+    "note": "Template example (all 3D printed): a case for a 350ml can. A tube with a bottom, with lugs on the left and right for a strap. Rewrite each item to fit your own shape. scaffold fills in fab (the fabrication values) for the chosen process",
+    "colors": {"body": "#d9d4cb", "content": "#b23a3a"}
+  },
+  "params": {
+    "can_d":       {"value": 66.2,  "unit": "mm", "label": "Body diameter of the can inside (350ml, provisional; measure it)"},
+    "can_h":       {"value": 122.2, "unit": "mm", "label": "Can height (350ml, provisional; measure it)"},
+    "can_top_d":   {"value": 54.0,  "unit": "mm", "label": "Can lid diameter (provisional)"},
+    "can_neck_h":  {"value": 12.0,  "unit": "mm", "label": "Height of the can shoulder, the tapered part (provisional)"},
+    "can_gap":     {"value": 0.8,   "unit": "mm", "label": "Gap between the can and the inner wall (per side; removable-fit clearance + can variation)"},
+    "wall":        {"value": 2.0,   "unit": "mm", "label": "Tube wall thickness"},
+    "bottom_t":    {"value": 2.0,   "unit": "mm", "label": "Bottom thickness"},
+    "sleeve_h":    {"value": 90.0,  "unit": "mm", "label": "Tube height (from the bottom)"},
+    "drain_d":     {"value": 10.0,  "unit": "mm", "label": "Diameter of the drain hole in the bottom"},
+    "lug_w":       {"value": 28.0,  "unit": "mm", "label": "Strap lug width"},
+    "lug_out":     {"value": 11.0,  "unit": "mm", "label": "How far the lug sticks out from the tube"},
+    "lug_h":       {"value": 14.0,  "unit": "mm", "label": "Lug height"},
+    "lug_top_gap": {"value": 4.0,   "unit": "mm", "label": "Top edge of the lug to the top edge of the tube"},
+    "strap_w":     {"value": 20.0,  "unit": "mm", "label": "Strap width (provisional)"},
+    "strap_t":     {"value": 2.0,   "unit": "mm", "label": "Strap thickness (provisional)"},
+    "strap_clr":   {"value": 1.0,   "unit": "mm", "label": "Strap slot margin (per side; for fabric, easy threading comes first)"},
+    "bed_x":       {"value": 220,   "unit": "mm", "label": "Printer build area X"},
+    "bed_y":       {"value": 220,   "unit": "mm", "label": "Printer build area Y"},
+    "bed_z":       {"value": 250,   "unit": "mm", "label": "Printer build area Z"}
+  }
+}

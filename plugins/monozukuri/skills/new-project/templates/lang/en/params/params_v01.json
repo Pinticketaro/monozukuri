@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "version": "v01",
+    "title": "{{NAME}}",
+    "lang": "en",
+    "note": "Template example: a box with a PLA frame between two acrylic plates, holding an object inside. Rewrite each item to fit your own shape. The process list of a fab item names the methods that use the value (laser = laser cutting, fdm = 3D printing)",
+    "colors": {"frame": "#d9d4cb", "plate": "#bcd6e4", "content": "#2b2f2d", "screw": "#8a8d91"}
+  },
+  "params": {
+    "outer_w":    {"value": 180, "unit": "mm", "label": "Outer width (X)"},
+    "outer_d":    {"value": 110, "unit": "mm", "label": "Outer depth (Y)"},
+    "corner_r":   {"value": 8,   "unit": "mm", "label": "Corner radius"},
+    "frame_h":    {"value": 16,  "unit": "mm", "label": "Frame height"},
+    "wall":       {"value": 9,   "unit": "mm", "label": "Frame wall thickness"},
+    "hole_inset": {"value": 5.5, "unit": "mm", "label": "Screw hole center to outer edge (acrylic: at least 1.5× the hole diameter)"},
+    "window_w":   {"value": 130, "unit": "mm", "label": "Top plate window width"},
+    "window_d":   {"value": 64,  "unit": "mm", "label": "Top plate window depth"},
+    "content_w":  {"value": 150, "unit": "mm", "label": "Width of the object inside"},
+    "content_d":  {"value": 80,  "unit": "mm", "label": "Depth of the object inside"},
+    "content_h":  {"value": 10,  "unit": "mm", "label": "Height of the object inside"},
+    "bed_x":      {"value": 220, "unit": "mm", "label": "Printer build area X"},
+    "bed_y":      {"value": 220, "unit": "mm", "label": "Printer build area Y"}
+  },
+  "fab": {
+    "t_top":        {"value": 3.0,  "unit": "mm", "label": "Top plate thickness", "status": "initial", "basis": "Nominal size. 3mm acrylic can be off by ±0.7mm (MISUMI), so measure each sheet with calipers and replace this value", "process": ["laser"]},
+    "t_bottom":     {"value": 3.0,  "unit": "mm", "label": "Bottom plate thickness", "status": "initial", "basis": "Same as above", "process": ["laser"]},
+    "kerf":         {"value": 0.15, "unit": "mm", "label": "Laser kerf (full cut width k; the offset is k/2)", "status": "initial", "basis": "Middle of the published values for 3mm acrylic on a CO2 laser: 0.125 (measured by Ponoko) to 0.18 (CutLaserCut guideline). Measure it with a coupon", "process": ["laser"]},
+    "clr_fit":      {"value": 0.2,  "unit": "mm", "label": "General clearance for 3D prints (per side)", "status": "initial", "basis": "General value for the Ultimaker S7 from a university lab's table. No source for an Ender-3 value. Decide with a 3-step coupon (-0.1 / 0 / +0.1)", "process": ["fdm"]},
+    "clr_slide":    {"value": 0.3,  "unit": "mm", "label": "Clearance for removable and sliding fits in 3D prints (per side)", "status": "initial", "basis": "Same as above", "process": ["fdm"]},
+    "hole_comp":    {"value": 0.2,  "unit": "mm", "label": "Vertical hole enlargement (in CAD; 0 if the slicer compensates)", "status": "initial", "basis": "Pollen AM rule of thumb (draw a 4mm hole as 4.2mm). Compensate in either CAD or the slicer, not both", "process": ["fdm"]},
+    "insert_hole":  {"value": 4.0,  "unit": "mm", "label": "Pilot hole diameter for M3 heat-set inserts", "status": "initial", "basis": "CNC Kitchen and ruthex 4.0; UW–Madison about 4.3. Decide with coupons from 4.0 to 4.4", "process": ["fdm"]},
+    "insert_depth": {"value": 4.0,  "unit": "mm", "label": "Pilot hole depth for M3 short inserts (length 3.0 + 1)", "status": "guideline", "basis": "CNC Kitchen: blind hole depth is insert length + 1mm", "process": ["fdm"]},
+    "boss_d":       {"value": 7.2,  "unit": "mm", "label": "Insert boss outer diameter (hole diameter + 2 × minimum wall 1.6)", "status": "calculated", "basis": "CNC Kitchen minimum wall", "process": ["fdm"]},
+    "overhang_deg": {"value": 45,   "unit": "°",  "label": "Overhang angle printable without support (measured from horizontal; downward faces shallower than this need support)", "status": "rule of thumb", "basis": "Common FDM guide (the 45° rule). It changes with printer, material, cooling and layer height, so check it with an overhang test print", "process": ["fdm"]},
+    "screw_clear":  {"value": 3.4,  "unit": "mm", "label": "M3 bolt clearance hole (JIS B 1001 class 2)", "status": "standard", "basis": "Class 1: 3.2 / class 2: 3.4 / class 3: 3.6", "process": ["laser", "fdm"]},
+    "usb_cut_w":    {"value": 13.0, "unit": "mm", "label": "USB-C cutout width (set by the thickness of the cable plug)", "status": "rule of thumb", "basis": "Overmold width 12.35 (footprint per the USB-C spec) + margin. Test with the thickest cable you have", "process": ["laser", "fdm"]}
+  }
+}
