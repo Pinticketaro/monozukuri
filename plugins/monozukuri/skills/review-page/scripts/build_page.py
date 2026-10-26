@@ -102,6 +102,8 @@ MSG = {
         "publish": "公開に使う一覧: review/publish_{ver}.json（初めての公開や新しい URL のときは review/publish_all.json）",
         "rebuilt": "review/index.html を作り直しました",
         "usage": "--manifest か --rebuild を指定してください",
+        "open_local": "!! PC のページに未対応のフィードバックが {n}件あります（review/feedback_local.json）。この版に反映したか確かめてください：",
+        "open_artifact": "公開中のページのフィードバックは ArtifactData で読んで確かめてください（review/artifact.json）",
     },
     "en": {
         "title": "{project} review board",
@@ -116,6 +118,8 @@ MSG = {
         "publish": "Files to publish: review/publish_{ver}.json (for a first publish or a new URL: review/publish_all.json)",
         "rebuilt": "Rebuilt review/index.html",
         "usage": "Specify --manifest or --rebuild",
+        "open_local": "!! The local page has {n} open feedback item(s) (review/feedback_local.json). Check that this version addresses them:",
+        "open_artifact": "Read the published page's feedback with ArtifactData too (review/artifact.json)",
     },
 }
 
@@ -288,6 +292,24 @@ def add_version(root, man, cli_lang=None):
     write_all(rv, root)
     print(t["built"].format(n=len(board["versions"]), k=len(files)))
     print(t["publish"].format(ver=ver))
+    warn_open_feedback(rv, t)
+
+
+def warn_open_feedback(rv, t):
+    """版を足すたびに、まだ対応していないフィードバックを知らせる（書かれた後に版を作って見落とさないように）"""
+    lp = os.path.join(rv, "feedback_local.json")
+    if os.path.exists(lp):
+        try:
+            fb = json.load(open(lp, encoding="utf-8")).get("feedback", {})
+        except (json.JSONDecodeError, OSError):
+            fb = {}
+        opened = [f for f in fb.values() if (f.get("status") or "open") == "open"]
+        if opened:
+            print(t["open_local"].format(n=len(opened)))
+            for f in sorted(opened, key=lambda f: f.get("createdAt", "")):
+                print(f"   - {f.get('version', '')} {f.get('kind', '')}: {str(f.get('text', ''))[:60]}")
+    if os.path.exists(os.path.join(rv, "artifact.json")):
+        print(t["open_artifact"])
 
 
 def render(rv, board):

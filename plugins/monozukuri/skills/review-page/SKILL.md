@@ -51,6 +51,7 @@ metadata:
 
 ### 2. 前の版へのフィードバックを読む（2回目以降）
 確認ページへの書き込みは、Claude には自動では届かない（見張る仕組みはない）。ユーザーに「フィードバックを読んで」と頼まれたとき、または次の版を作るときに読む。
+- **版を作る直前（`build_page.py` の前）にもう一度読む**。前に読んだ後に書かれたものを見落とさないため。`build_page.py` は PC のページの未対応のフィードバックを表示するので、出たら反映したか確かめる。公開中のページと PC のページの両方を使っているときは、両方を読む。
 - Artifact 版（`review/artifact.json` がある）：`ArtifactData` で `list`（collection `feedback`）を読む。ArtifactData は ToolSearch で読み込む。
 - ローカル版（`review/feedback_local.json` がある）：そのファイルを読む。形は Artifact 版と同じ（`feedback`・`answers`・`decisions`）。
 - 未対応（status が open）を、種類（直したい／良い／質問）と対象ごとにまとめてユーザーに短く示し、この版で何を変えるかを決める。
