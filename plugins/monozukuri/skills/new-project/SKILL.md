@@ -115,6 +115,8 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 - 3Dプリントする部品は、サポートが要りそうな下向きの面（水平から `overhang_deg`＝45° より浅い面）が自動で notes に出る。中身・既製品・レーザーの板など刷らない部品は、部品の6つめに `{"print": False}` を付けて外す。印刷の向きを変えるときは `{"up": "-z"}` など（寸法ファイルの `meta.print_up` でもよい）。`--process laser` のプロジェクトでは調べない。
 - わからない寸法は仮の値で進め、寸法ファイルの label に「仮」（英語のプロジェクトは「provisional」）と書き、ユーザーに実測をお願いする項目として報告に入れる。
 
+（案を2つ以上並べて試すときは、版を枝分かれさせる：`params_v04a.json`・`params_v04b.json`、`meta.parent` に分けた元。手順は review-page スキルの「案を分ける」。）
+
 ### 4. 1回目の画像を作って見る
 ```bash
 python3 tools/mock.py v01        # CadQuery があれば out/v01/step/ に STEP も出る

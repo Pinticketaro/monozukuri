@@ -214,13 +214,13 @@ def project_meta(proj):
     """いちばん新しい寸法ファイル（params/params_vNN.json）の meta。読めなければ {}"""
     vs = []
     for f in glob.glob(os.path.join(proj, "params", "params_v*.json")):
-        m = re.search(r"params_v(\d+)\.json$", f)
+        m = re.search(r"params_v(\d+)([a-z]*)\.json$", f)          # 枝分かれの案（v04a など）も数える
         if m:
-            vs.append((int(m.group(1)), f))
+            vs.append((int(m.group(1)), m.group(2), f))
     if not vs:
         return {}
     try:
-        meta = json.load(open(max(vs)[1], encoding="utf-8")).get("meta", {})
+        meta = json.load(open(max(vs)[2], encoding="utf-8")).get("meta", {})
     except (OSError, ValueError, AttributeError):
         return {}
     return meta if isinstance(meta, dict) else {}

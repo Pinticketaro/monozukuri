@@ -138,6 +138,14 @@ python3 <scripts>/serve_review.py <プロジェクト>        # 裏で動かす�
 - ユーザーへの報告は短く：この版で見てほしい所と、決めてほしいこと。リンクはカードに出るので本文に貼らない。
 - 報告の最後に1行で伝える：「ページへの書き込みは私には自動で届きません。書き終わったら『フィードバックを読んで』と頼んでください」（英語なら "I don't see what is written on the page automatically. When you're done, ask me to read the feedback."）。
 
+## 案を分ける（枝分かれ）
+2つ以上の案を並べて試したいとき（「ファンを外と内の両方で見たい」など）は、同じ版から案を分ける。
+- 名前は版の番号に英小文字を付ける：`v03` から `v04a`・`v04b`。寸法ファイルを `params_v04a.json`・`params_v04b.json` として作り、どちらも `meta.parent` に分けた元（`"v03"`）を書く。
+- それぞれ mock → 描画 → `build_page.py`（manifest の `prev` は分けた元の `v03`）。ページでは同じ番号の案が点線の枠でまとまり、「別の案」から行き来できる。
+- 案どうしを比べる図は、片方の版の manifest の `compare` に `{"before": "out/v04a/preview.png", "after": "out/v04b/preview.png", "caption": "A案と B案"}` で入れる。
+- 「どちらの案にしますか」を options の問いにして選んでもらう（案の画像を `img` に付けると選びやすい）。
+- 選んだ案から続けるときは、次の版（`v05`）の `meta.parent` にその案（`"v04b"`）を書く。選ばなかった案は消さずに残し、決定事項に「v04b を採用（理由）」と書く。
+
 ## 決まり
 - 段階（stage）は4つの関所に合わせる：モック／試し片／部分試作／モデル（Fusion）／試作品（英語のプロジェクトは Mock／Coupons／Partial prototype／Model (Fusion)／Prototype）。試し片や部分試作の写真も版として載せてよい（images に写真を入れる）。
 - 1つの版で変える条件はなるべく1つ。複数変えるなら、変えたことを全部 `changes` に書く。

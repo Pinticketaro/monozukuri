@@ -43,6 +43,9 @@ header.top{padding-block:22px 18px;margin-bottom:18px;border-bottom:1px solid va
 .vers{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
 .vers button{font:500 13px var(--f-mono);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:4px;padding:3px 10px;cursor:pointer}
 .vers button[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#meta a{color:var(--accent)}
+.vers .alts{display:inline-flex;gap:4px;padding:2px;border:1px dashed var(--line);border-radius:6px}
+.vers .alts button{border-style:solid}
 .vers button:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
 @media (min-width:1100px){.layout{grid-template-columns:minmax(0,1fr) 360px}.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);align-self:start;max-height:calc(100vh - 24px);overflow:auto}}
@@ -209,7 +212,7 @@ const I18N = {
     kind: {fix:"直したい", good:"良い", ask:"質問"},
     status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
     yesno: {yes: "はい", no: "いいえ"},
-    prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：",
+    prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：", altsLabel: "別の案", altsGroup: "{n} の案",
     hero: "外観", spin: "回して見る", close: "閉じる", newVer: "新しい版ができました", loadNew: "読み込む",
     changes: "この版で変えたこと",
     questions: "決めてほしいこと",
@@ -266,7 +269,7 @@ const I18N = {
     kind: {fix:"Fix", good:"Good", ask:"Question"},
     status: {open:"Open", applied:"Applied", answered:"Answered", declined:"Declined"},
     yesno: {yes: "Yes", no: "No"},
-    prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ",
+    prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ", altsLabel: "Alternatives", altsGroup: "alternatives of {n}",
     hero: "Main view", spin: "View in 3D", close: "Close", newVer: "A new version is ready", loadNew: "Load",
     changes: "Changed in this version",
     questions: "Questions to decide",
@@ -353,14 +356,25 @@ function pickFromHash(){
 
 function fmt(v, unit){ if (v === null || v === undefined) return "—"; return esc(v) + (typeof v === "number" && unit ? `<span style="color:var(--muted)"> ${esc(unit)}</span>` : ""); }
 
+// 版の番号（v04a → 4）と、同じ番号の別の案
+function verNum(ver){ const m = /^v(\d+)/.exec(ver || ""); return m ? Number(m[1]) : -1; }
+function alts(v){ return vers.filter(x => x !== v && verNum(x.version) === verNum(v.version)); }
+
 function renderHeader(){
   $("#meta").innerHTML = [
     cur.stage ? `<span class="chip stage">${esc(cur.stage)}</span>` : "",
     `<span class="num">${esc(cur.version)}</span>`,
     cur.date ? `<span class="num">${esc(cur.date)}</span>` : "",
-    cur.prev ? `<span>${esc(T.prevLabel)} <span class="num">${esc(cur.prev)}</span></span>` : ""
+    cur.prev ? `<span>${esc(T.prevLabel)} <span class="num">${esc(cur.prev)}</span></span>` : "",
+    alts(cur).length ? `<span>${esc(T.altsLabel)} ${alts(cur).map(v => `<a href="#${esc(v.version)}" class="num">${esc(v.version)}</a>`).join(" ")}</span>` : ""
   ].join("");
-  $("#vers").innerHTML = vers.map(v => `<button type="button" data-v="${esc(v.version)}" aria-current="${v === cur}">${esc(v.version)}</button>`).join("");
+  // 版の並び。同じ番号の案（v04a・v04b：枝分かれ）は点線の枠でまとめる
+  const btn = v => `<button type="button" data-v="${esc(v.version)}" aria-current="${v === cur}">${esc(v.version)}</button>`;
+  const groups = [];
+  vers.forEach(v => { const n = verNum(v.version), g = groups[groups.length - 1]; if (g && g.n === n) g.list.push(v); else groups.push({n, list: [v]}); });
+  $("#vers").innerHTML = groups.map(g => g.list.length > 1
+    ? `<span class="alts" role="group" aria-label="${esc(T.altsGroup.replace("{n}", "v" + String(g.n).padStart(2, "0")))}">${g.list.map(btn).join("")}</span>`
+    : btn(g.list[0])).join("");
   $("#vers").querySelectorAll("button").forEach(b => b.onclick = () => { cur = vers.find(v => v.version === b.dataset.v); history.replaceState(null, "", "#" + cur.version); renderAll(); });
 }
 

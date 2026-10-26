@@ -65,13 +65,23 @@ def lang_from_argv():
     return None
 
 
+# 版の名前：v03 のような番号。同じ版から分けた案は v04a・v04b のように英小文字を付ける（枝分かれ）
+VER_RE = r"v\d+[a-z]*"
+
+
+def ver_key(v):
+    """並べる順：番号、次に案の文字（v03 < v04a < v04b < v05）"""
+    m = re.fullmatch(r"v(\d+)([a-z]*)", v)
+    return (int(m.group(1)), m.group(2)) if m else (0, v)
+
+
 def versions():
     vs = []
     for f in glob.glob(os.path.join(PARAMS, "params_v*.json")):
-        m = re.search(r"params_(v\d+)\.json$", f)
+        m = re.search(r"params_(" + VER_RE + r")\.json$", f)
         if m:
             vs.append(m.group(1))
-    return sorted(vs, key=lambda v: int(v[1:]))
+    return sorted(vs, key=ver_key)
 
 
 def latest():
@@ -84,7 +94,7 @@ def latest():
 def version_from_argv():
     """コマンドの引数に v03 のような版があればそれ、なければ最新。"""
     for a in sys.argv[1:]:
-        if re.fullmatch(r"v\d+", a):
+        if re.fullmatch(VER_RE, a):
             return a
     return latest()
 
@@ -106,9 +116,22 @@ def load(ver=None, lang=None):
 
 
 def prev_version(ver):
-    vs = versions()
-    i = vs.index(ver) if ver in vs else len(vs)
-    return vs[i - 1] if i > 0 else None
+    """前の版（親）。寸法ファイルの meta.parent があればそれ。無ければ1つ前の番号の版
+    （その番号に案が複数あるとき＝枝分かれの後は、いちばん後の案。続ける案は meta.parent に書く）"""
+    path = os.path.join(PARAMS, f"params_{ver}.json")
+    if os.path.exists(path):
+        parent = json.load(open(path, encoding="utf-8")).get("meta", {}).get("parent")
+        if parent:
+            return parent
+    n = ver_key(ver)[0]
+    older = [v for v in versions() if ver_key(v)[0] < n]
+    return older[-1] if older else None
+
+
+def siblings(ver):
+    """同じ番号の別の案（v04a に対する v04b など）"""
+    n = ver_key(ver)[0]
+    return [v for v in versions() if ver_key(v)[0] == n and v != ver]
 
 
 def out_dir(ver, *sub):
