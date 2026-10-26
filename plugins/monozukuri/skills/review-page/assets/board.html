@@ -343,6 +343,12 @@ function renderExpList(){
 let downloadsApi;            // undefined：確かめ中／null：使えない
 (async () => {
   try { downloadsApi = window.claude ? await window.claude.use("downloads") : null; } catch (e) { downloadsApi = null; }
+  // 普通のブラウザ（PC で serve_review.py から開いたときなど）では、ふつうのダウンロードで保存する
+  if (!downloadsApi && !window.claude) downloadsApi = {save: async ({filename, data}) => {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(data); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    return {status: "saved"};
+  }};
   showExpState();
 })();
 function showExpState(){
@@ -428,7 +434,9 @@ async function openViewer(btn){
     gl.scene.traverse(o => { if (o.isMesh && o.material.transparent) o.material.depthWrite = false; });
     s.add(gl.scene);
     const box = new THREE.Box3().setFromObject(gl.scene), c = box.getCenter(new THREE.Vector3()), R = box.getSize(new THREE.Vector3()).length();
-    cam.position.set(c.x - 0.45 * R, c.y + 0.55 * R, c.z + 0.85 * R); ctl.target.copy(c); cam.near = R / 200; cam.far = R * 20; cam.updateProjectionMatrix();
+    // 全体（対角 R の球）が縦の画角 30° に入る距離から見る
+    const dist = 0.5 * R / Math.sin(THREE.MathUtils.degToRad(15)) * 1.05;
+    cam.position.copy(c).addScaledVector(new THREE.Vector3(-0.45, 0.55, 0.85).normalize(), dist); ctl.target.copy(c); cam.near = R / 200; cam.far = R * 20; cam.updateProjectionMatrix();
     d.position.set(c.x - R, c.y + 2 * R, c.z + R);
     const size = () => { const w = canvas.clientWidth, h = canvas.clientHeight; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
     new ResizeObserver(size).observe(canvas); size();
@@ -574,11 +582,48 @@ function renderAll(){
 window.addEventListener("hashchange", renderAll);
 renderAll();
 
+// ---- ローカルモード：PC で serve_review.py から開いたとき（Artifact の db が無い）。
+// フィードバック・答え・決定を、ページを配っているサーバー（review/feedback_local.json）に保存する。db と同じ使い方ができる形にする
+function isLocalHost(){ return ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname); }
+async function localStore(){
+  if (!isLocalHost()) return null;
+  let store;
+  try { const r = await fetch("feedback", {cache: "no-store"}); if (!r.ok) return null; store = await r.json(); } catch (e) { return null; }
+  const subs = {};
+  const snap = name => ({docs: Object.entries(store[name] || {}).map(([id, v]) => ({id, data: () => v}))});
+  const emit = () => { for (const n in subs) subs[n].forEach(cb => cb(snap(n))); };
+  const post = async body => {
+    const r = await fetch("feedback", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    if (!r.ok) throw {code: "local_" + r.status};
+    store = await r.json(); emit();
+  };
+  // Claude がファイルに書いた返信・決定は、ページに戻ったときに読み直す
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible") return;
+    try { const r = await fetch("feedback", {cache: "no-store"}); if (r.ok){ store = await r.json(); emit(); } } catch (e) {}
+  });
+  const db = {collection: name => ({
+    onSnapshot(cb){ (subs[name] ??= []).push(cb); cb(snap(name)); return () => {}; },
+    add: doc => post({collection: name, doc}),
+    doc: id => ({set: doc => post({collection: name, id, doc}), delete: () => post({collection: name, id, delete: true})}),
+  })};
+  const user = {can: async () => true, id: async () => "local",
+    profiles: async ids => Object.fromEntries(ids.map(i => [i, {name: i === "local" ? "このPC" : ""}]))};
+  return {db, user};
+}
+
 // ---- フィードバックの保存（db）。使えない画面では読み取りだけにする
 (async () => {
   const c = window.claude;
-  const db = c ? await c.use("db") : null;
-  const user = c ? await c.use("user") : null;
+  let db = c ? await c.use("db") : null;
+  let user = c ? await c.use("user") : null;
+  if (!db){
+    const local = await localStore();
+    if (local){
+      ({db, user} = local);
+      $("#fbnote").textContent = "このPCで開いた確認ページです。書いたことは review/feedback_local.json に残ります。書き終わったら Claude に「フィードバックを読んで」と頼んでください。";
+    }
+  }
   if (!db){
     dbState = "none"; renderQuestions();
     $("#fbnote").textContent = "この画面ではフィードバックを読み書きできません。コメント機能で書き込んでください。";

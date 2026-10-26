@@ -5,6 +5,8 @@ out/**/*.glb
 # 公開用に縮小した画像は残す（ページの履歴になる）
 # 道具を新しくしたときの控え（scaffold.py --update-tools）
 tools/.backup-*/
+# 確認ページをローカルで開いているサーバーの場所（serve_review.py）
+review/.serve.json
 # スライサーの出力
 *.gcode
 # 一時ファイル

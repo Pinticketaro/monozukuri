@@ -1,6 +1,7 @@
 # フィードバックの形と扱い方
 
 確認ページは、閲覧者が書いたフィードバックをアーティファクトのデータベース（`db` 機能）に保存する。Claude は `ArtifactData` ツールで読み書きする（ToolSearch で `select:ArtifactData` を読み込む）。
+PC で `serve_review.py` から開いたページ（ローカル版）は、同じ形のデータを `review/feedback_local.json` に保存する（末尾の「ローカル版」）。
 
 ## 保存場所
 - コレクション：`feedback`（1件＝1ドキュメント、ID はページが自動で付ける）
@@ -81,3 +82,18 @@ ArtifactData  action: "batch", url: ..., writes: [
 - `doc_id` は `<問いを出した版>~q<番号>`。`choice` は答えの ID、`note` は1文の理由、`version` はそれを反映した版。
 - 決めた内容は、プロジェクトの `docs/決定事項.md` にも1行足す。答えのドキュメントは消さない。
 - 決定を取り消すときは、その `decisions` のドキュメントを `delete` する。
+
+---
+
+# ローカル版（`review/feedback_local.json`）
+
+`serve_review.py` で PC に開いたページは、Artifact の db の代わりにこのファイルへ保存する。コレクションごとに、ドキュメントの ID をキーにした形。
+```json
+{"feedback":  {"20261026-164113-b29e82": {"version": "v02", "target": "all", "kind": "fix", "text": "…", "author": "local", "createdAt": "…", "status": "open"}},
+ "answers":   {"v02~q1~local": {"version": "v02", "q": 1, "question": "…", "choice": "yes", "label": "はい", "author": "local", "updatedAt": "…"}},
+ "decisions": {"v02~q1": {"choice": "yes", "note": "…", "version": "v03"}}}
+```
+- 各フィールドの意味は上の表と同じ。書いた人は `local`（このPC）。
+- 読む：ファイルを読み、Artifact 版と同じようにまとめて示す。
+- 閉じる・決める：Claude が同じファイルの該当ドキュメントに `status`・`resolvedIn`・`reply` を書き足す。決定は `decisions` に足す。ページを開き直す（タブに戻る）と見える。
+- ページから書けるのは `feedback` と `answers` だけ（`decisions` は Claude だけが書く）。サーバーが動いている間に書き換えるときは、読み直してから書く（ページが同時に書いた分を消さない）。
