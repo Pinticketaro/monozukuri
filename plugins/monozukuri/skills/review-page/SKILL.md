@@ -70,8 +70,9 @@ python3 <scripts>/build_page.py --root <プロジェクト> --manifest out/vNN/m
 
 ### 5. 公開する
 Artifact ツールで公開する。`root` はプロジェクトのフォルダ、`file_path` は `review/index.html`、`files` は一覧ファイルの `files` をそのまま渡す。
-- **初回**：`files` は `publish_all.json`。`capabilities: {"db": {}, "user": {"scopes": ["profile"]}, "downloads": true}`、`icon: "ruler"`、`description` は1文。公開後、URL を `review/artifact.json` に `{"url": "..."}` で保存する。続けて `ArtifactData` で `feedback` を1回 `list` して、読めることを確かめる（空でよい）。
-- **2回目以降**：`url` に既存の URL、`files` は `publish_vNN.json`（増えたファイルだけ。残りはそのまま残る）。`icon` は省く。`capabilities` も省くが、0.2 以前に作ったページで「書き出す」を使えるようにするときは、一度だけ上の3つをそろえて渡す（一部だけ渡すと、渡さなかったものが外れる）。
+**毎回**（初回も2回目以降も）`capabilities: {"db": {}, "user": {"scopes": ["profile"]}, "downloads": true}` を3つそろえて渡す。省いたり一部だけ渡したりしない（省くと前の宣言のままになり、古いページでは「書き出す」が使えない。一部だけ渡すと、渡さなかったものが外れる）。
+- **初回**：`files` は `publish_all.json`。`icon: "ruler"`、`description` は1文。公開後、URL を `review/artifact.json` に `{"url": "..."}` で保存する。続けて `ArtifactData` で `feedback` を1回 `list` して、読めることを確かめる（空でよい）。
+- **2回目以降**：`url` に既存の URL、`files` は `publish_vNN.json`（増えたファイルだけ。残りはそのまま残る）。`icon` は省く。
 - 作業ディレクトリかスクラッチパッドの外にあるプロジェクトは公開できないので、その場合は作業ディレクトリにコピーしてから行う。
 
 ### 書き出し（ページの「書き出す」）

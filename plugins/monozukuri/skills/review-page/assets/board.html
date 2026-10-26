@@ -310,6 +310,7 @@ function wireMain(){
     document.querySelectorAll('input[name="fmt"]').forEach(r => r.onchange = renderExpList);
     renderExpList();
     $("#expgo").onclick = exportZip;
+    showExpState();
   }
 }
 
@@ -337,11 +338,24 @@ function renderExpList(){
   $("#explist").innerHTML = expItems().map(it => `<label><input type="checkbox" id="exp-${esc(cur.version)}-${esc(it.id)}" data-id="${esc(it.id)}" checked>
     <span>${esc(it.name)} <span class="file">${esc(it.file)}</span></span></label>`).join("");
 }
-let downloadsApi;
+// 保存（downloads）が使えるかは開いたときに1回だけ確かめる。使えない画面ではボタンを押せない表示にして理由を出す
+let downloadsApi;            // undefined：確かめ中／null：使えない
+(async () => {
+  try { downloadsApi = window.claude ? await window.claude.use("downloads") : null; } catch (e) { downloadsApi = null; }
+  showExpState();
+})();
+function showExpState(){
+  const st = $("#expstatus"), go = $("#expgo");
+  if (!go) return;
+  if (downloadsApi === undefined){ go.disabled = true; st.textContent = "保存できるか確かめています…"; return; }
+  go.disabled = !downloadsApi;
+  st.textContent = downloadsApi ? "" : window.claude
+    ? "このページでは保存が使えないので書き出せません（公開のときに保存が有効になっていないか、許可されていません）"
+    : "この画面では保存できません。claude.ai でページを開いてください";
+}
 async function exportZip(){
   const st = $("#expstatus"), go = $("#expgo");
-  if (downloadsApi === undefined) downloadsApi = window.claude ? await window.claude.use("downloads") : null;
-  if (!downloadsApi){ st.textContent = "この画面では保存できません。claude.ai でページを開いてください"; return; }
+  if (!downloadsApi){ showExpState(); return; }
   const ids = new Set([...document.querySelectorAll("#explist input:checked")].map(c => c.dataset.id));
   const items = expItems().filter(it => ids.has(it.id));
   if (!items.length){ st.textContent = "書き出す部品を選んでください"; return; }
