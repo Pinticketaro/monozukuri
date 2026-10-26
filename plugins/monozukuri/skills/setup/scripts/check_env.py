@@ -1,6 +1,7 @@
 """monozukuri の環境チェック。足りないものと、テスト描画の結果を表で出す。
 結果は ~/.cache/monozukuri/env.json にも保存する（日本語フォントの場所、three.js の場所）。
-使い方: python3 check_env.py [--no-render]
+使い方: python3 check_env.py [--no-render] [--lang ja|en]
+  言葉（表・メッセージ・テスト描画）は --lang、無ければ環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 """
 import importlib
 import json
@@ -17,11 +18,45 @@ RENDER = os.path.join(PLUGIN, "skills", "review-page", "scripts", "render_model.
 CJK_FONTS = ["Noto Sans CJK JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "IPAexGothic",
              "Noto Sans JP", "Source Han Sans JP", "Noto Sans CJK TC", "Noto Sans CJK SC", "Noto Sans CJK KR"]
 
+
+def resolve_lang(explicit=None, data=None):
+    for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
+        if v in ("ja", "en"):
+            return v
+    return "ja"
+
+
+def lang_arg(argv):
+    """--lang en / --lang=en を拾う（無ければ None）"""
+    for i, a in enumerate(argv):
+        if a == "--lang" and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith("--lang="):
+            return a.split("=", 1)[1]
+    return None
+
+
+LANG = resolve_lang(lang_arg(sys.argv[1:]))
+
+
+def L(ja, en):
+    return en if LANG == "en" else ja
+
+
 rows = []
 
 
 def row(name, ok, note=""):
-    rows.append((name, "OK" if ok else ("任意" if ok is None else "NG"), note))
+    rows.append((name, "OK" if ok else (L("任意", "opt") if ok is None else "NG"), note))
+
+
+def same_python(path):
+    """path の Python が今の Python と同じ環境か。仮想環境は実体（realpath）が元の Python と同じなので、sys.prefix で比べる"""
+    try:
+        r = subprocess.run([path, "-c", "import sys; print(sys.prefix)"], capture_output=True, text=True, timeout=30)
+        return r.returncode == 0 and os.path.realpath(r.stdout.strip()) == os.path.realpath(sys.prefix)
+    except Exception:
+        return os.path.realpath(path) == os.path.realpath(sys.executable)
 
 
 def main():
@@ -31,20 +66,23 @@ def main():
     except Exception:
         pass
     row("Python", sys.version_info[:2] >= (3, 10), f"{sys.version.split()[0]}  {sys.executable}")
-    for mod, label, required in [("numpy", "numpy", True), ("shapely", "shapely（2Dの形）", True),
-                                 ("matplotlib", "matplotlib（断面・平面図）", True),
-                                 ("manifold3d", "manifold3d（モックの立体）", True),
-                                 ("trimesh", "trimesh（STL/OBJ/STEPの読み込み）", True),
-                                 ("networkx", "networkx（断面・平面図で輪郭をたどる）", True),
-                                 ("PIL", "Pillow（画像の比較）", True),
-                                 ("playwright", "playwright（外観の描画）", True),
-                                 ("cascadio", "cascadio（STEPの読み込み）", False),
-                                 ("cadquery", "cadquery（モックの STEP 書き出し。無いと STL だけ）", False)]:
+    for mod, label, required in [("numpy", "numpy", True),
+                                 ("shapely", L("shapely（2Dの形）", "shapely (2D shapes)"), True),
+                                 ("matplotlib", L("matplotlib（断面・平面図）", "matplotlib (sections, plan views)"), True),
+                                 ("manifold3d", L("manifold3d（モックの立体）", "manifold3d (mock solids)"), True),
+                                 ("trimesh", L("trimesh（STL/OBJ/STEPの読み込み）", "trimesh (reading STL/OBJ/STEP)"), True),
+                                 ("networkx", L("networkx（断面・平面図で輪郭をたどる）",
+                                                "networkx (tracing outlines for sections, plan views)"), True),
+                                 ("PIL", L("Pillow（画像の比較）", "Pillow (image comparison)"), True),
+                                 ("playwright", L("playwright（外観の描画）", "playwright (rendering the 3D views)"), True),
+                                 ("cascadio", L("cascadio（STEPの読み込み）", "cascadio (reading STEP)"), False),
+                                 ("cadquery", L("cadquery（モックの STEP 書き出し。無いと STL だけ）",
+                                                "cadquery (STEP export of mocks; without it, STL only)"), False)]:
         try:
             m = importlib.import_module(mod)
             row(label, True, getattr(m, "__version__", ""))
         except Exception:
-            row(label, False if required else None, "未インストール")
+            row(label, False if required else None, L("未インストール", "not installed"))
 
     env = {"python": sys.executable, "three_dir": None, "cjk_font": None, "cjk_font_path": None}
     three = os.path.join(CACHE, "three", "node_modules", "three")
@@ -52,7 +90,7 @@ def main():
         env["three_dir"] = three
         row("three.js", True, three)
     else:
-        row("three.js", False, "setup.sh を実行")
+        row("three.js", False, L("setup.sh を実行", "run setup.sh"))
 
     try:
         from matplotlib import font_manager
@@ -66,9 +104,12 @@ def main():
             if n in names:
                 env["cjk_font"], env["cjk_font_path"] = n, names[n]
                 break
-        row("日本語フォント", env["cjk_font"] is not None, env["cjk_font"] or "見つからない（図の日本語が□になる）")
+        # 英語のときは図に日本語が出ないので、無くても任意
+        found = env["cjk_font"] is not None
+        row(L("日本語フォント", "Japanese font"), found if found or LANG == "ja" else None,
+            env["cjk_font"] or L("見つからない（図の日本語が□になる）", "not found (Japanese text in figures shows as boxes)"))
     except Exception as e:
-        row("日本語フォント", False, str(e))
+        row(L("日本語フォント", "Japanese font"), False, str(e))
 
     os.makedirs(CACHE, exist_ok=True)
     json.dump(env, open(os.path.join(CACHE, "env.json"), "w"), ensure_ascii=False, indent=2)
@@ -90,22 +131,31 @@ def main():
                 hull([[-30, -20, 8], [30, -20, 8], [-30, -6, 8], [30, -6, 8], [-30, -6, 16], [30, -6, 16]]),   # 手前の斜面
             ]).export(stl)
             out = os.path.join(tmp, "test.png")
-            r = subprocess.run([sys.executable, RENDER, f"{stl}:#7a9a88", "--out", out, "--title", "テスト描画"],
-                               capture_output=True, text=True, timeout=180)
+            cmd = [sys.executable, RENDER, f"{stl}:#7a9a88", "--out", out, "--title", L("テスト描画", "Test render")]
+            # render_model.py が --lang を受けるときだけ渡す（古い版でも動くように）
+            h = subprocess.run([sys.executable, RENDER, "--help"], capture_output=True, text=True, timeout=60)
+            if "--lang" in h.stdout:
+                cmd += ["--lang", LANG]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=180,
+                               env=dict(os.environ, MONOZUKURI_LANG=LANG))
             ok = r.returncode == 0 and os.path.getsize(out) > 10000
-            row("テスト描画", ok, out if ok else (r.stderr.strip().splitlines() or ["失敗"])[-1])
+            row(L("テスト描画", "Test render"), ok, out if ok else (r.stderr.strip().splitlines() or [L("失敗", "failed")])[-1])
         except Exception as e:
-            row("テスト描画", False, str(e))
+            row(L("テスト描画", "Test render"), False, str(e))
 
     w = max(len(r[0]) for r in rows)
     for name, st, note in rows:
         print(f"{st:3}  {name.ljust(w)}  {note}")
     bad = [r for r in rows if r[1] == "NG"]
-    print("\n準備できています" if not bad else f"\n{len(bad)}件の不足があります")
+    if not bad:
+        print(L("\n準備できています", "\nReady"))
+    else:
+        print(L(f"\n{len(bad)}件の不足があります", f"\n{len(bad)} item is missing" if len(bad) == 1 else f"\n{len(bad)} items are missing"))
     import shutil
     sys_py = shutil.which("python3")
-    if not sys_py or os.path.realpath(sys_py) != os.path.realpath(sys.executable):
-        print(f"monozukuri のスクリプトは、python3 の代わりに次の Python で実行してください：\n  {sys.executable}")
+    if not sys_py or not same_python(sys_py):
+        print(L(f"monozukuri のスクリプトは、python3 の代わりに次の Python で実行してください：\n  {sys.executable}",
+                f"Run the monozukuri scripts with this Python instead of python3:\n  {sys.executable}"))
     sys.exit(1 if bad else 0)
 
 
