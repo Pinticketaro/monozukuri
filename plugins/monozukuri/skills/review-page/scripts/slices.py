@@ -8,6 +8,7 @@
   python3 slices.py --scene scene.json --section section.png --at y=50      （Y=50mm の面で切る）
   python3 slices.py --scene scene.json --section section.png --at x=80 --zoom 0,40
     --zoom=a,b … 断面の横方向を a〜b mm だけ拡大して描く（負の値があるので = でつなぐ）
+    --zoom=a,b,c,d … 横方向 a〜b mm、高さ c〜d mm を拡大して描く（溝や段差など小さな所を見るとき）
 座標はモデルのまま（単位mm、up=z を前提。up=y のモデルは scene.json に "up": "y"）。
 言葉（見出し・凡例）は --lang ja|en、無ければ scene.json の "lang"、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 """
@@ -208,8 +209,10 @@ def section(sc, parts, out, at, zoom, lang="ja"):
     ax.set_axisbelow(True)
     ax.grid(True, color="#dde3de", lw=0.6)
     if zoom:
-        a, b = map(float, zoom.split(","))
-        ax.set_xlim(a, b)
+        z = [float(v) for v in zoom.split(",")]
+        ax.set_xlim(z[0], z[1])
+        if len(z) >= 4:
+            ax.set_ylim(z[2], z[3])
     ax.set_xlabel(("Y" if axis == "x" else "X") + " (mm)")
     ax.set_ylabel("Z (mm)")
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=10, frameon=False)
