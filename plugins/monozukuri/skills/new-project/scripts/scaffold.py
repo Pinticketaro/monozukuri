@@ -112,7 +112,7 @@ def update_tools(proj, force):
         # プロジェクトで手を加えたファイル。足した定義が新しい版にすべてあれば上書きしてよい
         mine, theirs = top_defs(dst), top_defs(src)
         if f.endswith(".py") and mine is not None and theirs is not None and mine <= theirs:
-            olds = [d[f]["defs"] for d in known.values() if f in d]
+            olds = [d[f]["defs"] for v, d in known.items() if f in d and v != new_ver]   # 今の版より前の版と比べる
             added = sorted(mine - set(olds[-1])) if olds else []
             plan.append((f, "更新（手を加えた所" + (f"：{', '.join(added)}" if added else "") + " は新しい版にあります）"))
             continue
@@ -214,7 +214,8 @@ def create(a):
     if os.path.isdir(dest) and os.listdir(dest):
         sys.exit(f"{dest} には既にファイルがあります。空のフォルダか新しい名前を指定してください")
     keep = PROCESSES[a.process]
-    shutil.copytree(TEMPLATE, dest, dirs_exist_ok=True)
+    junk = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+    shutil.copytree(TEMPLATE, dest, dirs_exist_ok=True, ignore=junk)
     for f in SHARED_FILES:
         shutil.copy(os.path.join(SHARED, f), os.path.join(dest, "tools", f))
     open(os.path.join(dest, "tools", VERSION_FILE), "w", encoding="utf-8").write(plugin_version() + "\n")
@@ -224,7 +225,7 @@ def create(a):
     base = json.load(open(pp, encoding="utf-8"))
     var = os.path.join(VARIANTS, a.process)
     if os.path.isdir(var):
-        shutil.copytree(var, dest, dirs_exist_ok=True)
+        shutil.copytree(var, dest, dirs_exist_ok=True, ignore=junk)
     d = json.load(open(pp, encoding="utf-8"))
     d["meta"]["process"] = a.process
     d["fab"] = {k: v for k, v in base["fab"].items() if set(v.get("process", ["laser", "fdm"])) & keep}
