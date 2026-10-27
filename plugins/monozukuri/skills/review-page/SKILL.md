@@ -12,7 +12,7 @@ description: >
   and publishes one review page per project where viewers leave feedback that Claude reads back
   (as an Artifact, or locally in the browser with serve_review.py where Artifacts are not available).
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # 確認ページ（確認ボード）
