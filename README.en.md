@@ -25,6 +25,16 @@ If you do not use the marketplace, download [monozukuri.plugin](https://github.c
 
 Commands that start with `/plugin` work only in Claude Code. They do not work in the Claude app's input box.
 
+### On Windows
+
+- **We recommend the Claude app.** Rendering and other processing run in Claude's cloud workspace (Linux), so the steps are the same as on a Mac. Ask "Set up the mock environment" in each new conversation.
+- **To run on your own PC, Claude Code in WSL (Linux inside Windows) is the most reliable.** Keep projects in a WSL folder (under `~/`).
+- **To use Claude Code directly on Windows**, install the following (not fully tested yet; please report problems in an Issue):
+  - [Git for Windows](https://git-scm.com/downloads/win) (it includes Git Bash, which Claude Code uses to run commands; setup does not run without it)
+  - Python 3.10 or later (from python.org; tick "Add python.exe to PATH") and Node.js
+  - If `python3` does not work, tell Claude "use python instead of python3"
+- Keep projects in a short path that OneDrive does not sync (for example `C:\work\`). Syncing and very long paths can make writes fail.
+
 ## First time only
 
 1. **Start a new conversation**: plugins load when a conversation starts. A conversation that was already open before you added the plugin cannot use it.
@@ -89,6 +99,25 @@ For details, see [plugins/monozukuri/README.en.md](plugins/monozukuri/README.en.
 
 - **Published numbers are initial values.** Replace kerf, sheet thickness, clearance and insert holes with values measured on coupons before you go on to the final build. The bundled technical requirements mark each number by source as measured, guideline, standard or rule of thumb, but all of them assume you check them on your own machine.
 - **Some materials must not be laser cut.** Ask "Can I laser cut this material?" and Claude checks it. What is allowed also differs by lab (and by machine), so follow your own lab's rules first.
+
+## Guarding against AI mistakes
+
+AI can misread dimensions, mix up units, or write plausible numbers that no source supports. monozukuri is built so that such mistakes surface before the final build.
+
+**What monozukuri does**
+- **Dimensions live only in the parameter file.** Mocks, coupons, dimension sheets and Fusion parameters are all generated from it, so nothing is copied by hand.
+- **Each value carries a status and a basis.** Fabrication values are marked initial, measured and so on, with their source or how they were measured. Unchecked values are shown as provisional or initial.
+- **Unit checkpoint.** Every time a model is loaded, its overall size is printed in mm, with a warning if it looks wrong.
+- **Claude checks its own renders.** After drawing a mock, Claude looks at the image to confirm it matches the request.
+- **People review it.** Reviewers comment on the review page, and the next version reflects their feedback.
+- **Physical checks.** Coupons and partial prototypes confirm real dimensions and fits before the final build.
+- **You can go back.** Every version is kept and recorded in Git.
+
+**What we ask of you**
+- Measure the parts that go inside, and any off-the-shelf parts, with calipers and give Claude the numbers.
+- If a value looks off, ask "What is this value based on?" Claude shows its basis and sources.
+- Run at least one coupon or partial prototype before the final build.
+- A person makes the final call on material safety and lab rules. Your lab's rules come before any AI answer.
 
 ## What monozukuri does not do
 

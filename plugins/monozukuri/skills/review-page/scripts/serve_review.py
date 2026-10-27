@@ -31,7 +31,7 @@ import os
 import secrets
 import signal
 import socketserver
-import subprocess
+import webbrowser
 import sys
 import threading
 
@@ -100,18 +100,31 @@ def save_store(path, d):
 
 
 def alive(pid):
+    if os.name == "nt":
+        # Windows の os.kill(pid, 0) はプロセスを終わらせてしまうので、OpenProcess で確かめる
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenProcess(0x1000, False, int(pid))  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        ok = k32.GetExitCodeProcess(h, ctypes.byref(code))
+        k32.CloseHandle(h)
+        return bool(ok) and code.value == 259  # STILL_ACTIVE
     try:
         os.kill(pid, 0)
         return True
-    except (OSError, TypeError):
+    except (OSError, TypeError, ValueError):
         return False
 
 
 def open_browser(url, lang="ja"):
-    cmd = {"darwin": ["open", url]}.get(sys.platform, ["xdg-open", url])
+    # Windows・macOS・Linux で共通に既定のブラウザを開く
     try:
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
+        opened = webbrowser.open(url)
+    except Exception:
+        opened = False
+    if not opened:
         print(MSG[lang]["open_manually"].format(url=url))
 
 
@@ -195,7 +208,7 @@ def main():
     lang = resolve_lang(a.lang, board_lang(rv))
     m = MSG[lang]
     state = os.path.join(rv, STATE)
-    st = json.load(open(state)) if os.path.exists(state) else {}
+    st = json.load(open(state, encoding="utf-8")) if os.path.exists(state) else {}
 
     if a.stop:
         if st.get("pid") and alive(st["pid"]):
@@ -217,7 +230,7 @@ def main():
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", a.port), make_handler(rv))
     url = f"http://127.0.0.1:{httpd.server_address[1]}/index.html"
-    json.dump({"pid": os.getpid(), "url": url}, open(state, "w"))
+    json.dump({"pid": os.getpid(), "url": url}, open(state, "w", encoding="utf-8"))
     print(m["page"].format(url=url), flush=True)
     print(m["store"].format(path=os.path.join(rv, STORE)), flush=True)
     print(m["stop_hint"].format(cmd=sys.argv[0], project=a.project), flush=True)
@@ -234,7 +247,7 @@ def main():
     finally:
         httpd.server_close()
         try:
-            if json.load(open(state)).get("pid") == os.getpid():
+            if json.load(open(state, encoding="utf-8")).get("pid") == os.getpid():
                 os.remove(state)
         except (FileNotFoundError, json.JSONDecodeError):
             pass

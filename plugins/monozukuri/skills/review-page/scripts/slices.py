@@ -54,7 +54,7 @@ def help_lang(argv):
 
 def setup_font():
     try:
-        env = json.load(open(os.path.expanduser("~/.cache/monozukuri/env.json")))
+        env = json.load(open(os.path.expanduser("~/.cache/monozukuri/env.json"), encoding="utf-8"))
         if env.get("cjk_font_path"):
             font_manager.fontManager.addfont(env["cjk_font_path"])
             plt.rcParams["font.family"] = env["cjk_font"]
