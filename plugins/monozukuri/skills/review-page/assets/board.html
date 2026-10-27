@@ -160,6 +160,18 @@ dialog .lbclose{position:fixed;top:max(12px,env(safe-area-inset-top,0px));right:
 dialog::backdrop{background:rgba(10,14,12,.82)}
 dialog img{display:block;max-width:100%;max-height:88vh;height:auto;border-radius:4px}
 dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
+/* 文字の資料（.md・.txt・.csv）を読む窓。中を押しても閉じない（余白・×・Esc で閉じる） */
+dialog.docdlg{cursor:auto;width:min(96vw,980px)}
+.docview{background:var(--surface);color:var(--fg);border-radius:var(--r);padding:16px 20px;max-height:calc(100dvh - 136px);overflow:auto;font-size:14px}
+.docview .dochead{font:500 12px var(--f-mono);color:var(--muted);margin-bottom:8px;overflow-wrap:anywhere}
+.docview h2{font-size:19px;margin:4px 0 10px} .docview h3{font-size:16px;margin:16px 0 8px} .docview h4{font-size:14px;margin:14px 0 6px}
+.docview p{color:inherit;margin:8px 0;font-size:inherit}
+.docview ul,.docview ol{margin:8px 0;padding-left:1.4em}
+.docview .tablewrap{margin:10px 0} .docview td{white-space:normal;vertical-align:top} .docview th,.docview td{min-width:7em}
+.docview pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 var(--f-mono);margin:8px 0;background:var(--sunken);padding:10px 12px;border-radius:4px}
+.docview code{font-family:var(--f-mono);font-size:.92em;background:var(--sunken);padding:0 4px;border-radius:3px;overflow-wrap:anywhere}
+.docview blockquote{margin:8px 0;padding-left:10px;border-left:3px solid var(--line);color:var(--muted)}
+.docview a{color:var(--accent);overflow-wrap:anywhere}
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important}}
 </style>
 
@@ -204,6 +216,7 @@ dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
   </div>
 </div>
 <dialog id="lb"><button type="button" class="lbclose" id="lbclose" data-i18n-aria="close">×</button><img id="lbimg" alt=""><p id="lbcap"></p></dialog>
+<dialog id="doc" class="docdlg" aria-labelledby="docname"><button type="button" class="lbclose" id="docclose" data-i18n-aria="close">×</button><div class="docview"><div class="dochead" id="docname"></div><div id="docbody"></div></div></dialog>
 
 <script>
 const BOARD = /*__BOARD__*/null;
@@ -340,6 +353,104 @@ document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = tr(el
 document.getElementById("lb").addEventListener("click", e => e.currentTarget.close());
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// 文字の資料（.md・.txt・.csv）は、ページの中で UTF-8 として読んで見せる。
+// ファイルをそのまま開くと、配信のしかたによってはブラウザが別の文字コードで読み、文字化けする
+const TEXT_REF = /\.(md|markdown|txt|csv)$/i;
+document.addEventListener("click", e => {
+  const a = e.target.closest?.("a[href]"), h = a?.getAttribute("href");
+  if (!h || /^[a-z][a-z0-9+.-]*:/i.test(h) || !TEXT_REF.test(h.split(/[?#]/)[0])) return;
+  e.preventDefault();
+  openText(h);
+});
+document.getElementById("doc").addEventListener("click", e => {
+  if (e.target === e.currentTarget || e.target.id === "docclose") e.currentTarget.close();
+});
+async function openText(href){
+  let txt;
+  try {
+    const r = await fetch(href, {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    txt = await r.text();          // text() はいつも UTF-8 で読む
+  } catch (err) {
+    window.open(href, "_blank", "noopener");   // 読めないとき（file:// で開いたときなど）は、そのまま開く
+    return;
+  }
+  const path = href.split(/[?#]/)[0];
+  $("#docname").textContent = decodeURIComponent(path);
+  $("#docbody").innerHTML = /\.csv$/i.test(path) ? csvHtml(txt)
+    : /\.(md|markdown)$/i.test(path) ? mdHtml(txt, path.slice(0, path.lastIndexOf("/") + 1)) : `<pre>${esc(txt)}</pre>`;
+  const d = $("#doc");
+  if (!d.open) d.showModal();
+  d.querySelector(".docview").scrollTop = 0;
+}
+// 小さな Markdown の読み方：見出し・表・箇条書き・コード・引用・段落と、文中の `コード`・**太字**・リンク・URL
+function mdInline(s, base){
+  const link = (u, t) => /^(https?:|#|\/)/i.test(u) || !/^[a-z][a-z0-9+.-]*:/i.test(u)
+    ? `<a href="${/^(https?:|#|\/)/i.test(u) ? u : base + u}" target="_blank" rel="noopener">${t}</a>` : t;
+  return s.split(/(`[^`]+`)/).map((p, i) => {
+    if (i % 2) return `<code>${esc(p.slice(1, -1))}</code>`;
+    return esc(p).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => link(u, t))
+      .replace(/(^|[\s（(])(https?:\/\/[^\s<）)]+)/g, (m, pre, u) => pre + link(u, u));
+  }).join("");
+}
+function mdHtml(src, base){
+  const L = src.replace(/\r\n?/g, "\n").split("\n"), out = [], inl = s => mdInline(s, base);
+  const cells = s => s.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+  const LI = /^\s*([-*+]|\d+[.)])\s+/, BLOCK = /^(```|#{1,6}\s|>|\s*\||\s*([-*+]|\d+[.)])\s+|\s*(-{3,}|\*{3,})\s*$)/;
+  let i = 0;
+  while (i < L.length){
+    const l = L[i];
+    if (!l.trim()){ i++; continue; }
+    if (/^```/.test(l)){
+      const b = [];
+      for (i++; i < L.length && !/^```/.test(L[i]); i++) b.push(L[i]);
+      i++; out.push(`<pre>${esc(b.join("\n"))}</pre>`); continue;
+    }
+    let m = l.match(/^(#{1,6})\s+(.*)$/);
+    if (m){ const n = Math.min(m[1].length + 1, 4); out.push(`<h${n}>${inl(m[2])}</h${n}>`); i++; continue; }
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(l)){ out.push("<hr>"); i++; continue; }
+    if (/^\s*\|/.test(l) && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(L[i + 1] || "")){
+      const head = cells(l), rows = [];
+      for (i += 2; i < L.length && /^\s*\|/.test(L[i]); i++) rows.push(cells(L[i]));
+      out.push(`<div class="tablewrap"><table><thead><tr>${head.map(c => `<th>${inl(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inl(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+      continue;
+    }
+    if (LI.test(l)){
+      const ol = /\d/.test(l.match(LI)[1]), items = [];
+      for (; i < L.length && LI.test(L[i]); i++)
+        items.push(inl(L[i].replace(LI, "")).replace(/^\[ \]\s*/, "☐ ").replace(/^\[[xX]\]\s*/, "☑ "));
+      out.push(`<${ol ? "ol" : "ul"}>${items.map(t => `<li>${t}</li>`).join("")}</${ol ? "ol" : "ul"}>`);
+      continue;
+    }
+    if (/^>/.test(l)){
+      const b = [];
+      for (; i < L.length && /^>/.test(L[i]); i++) b.push(inl(L[i].replace(/^>\s?/, "")));
+      out.push(`<blockquote>${b.join("<br>")}</blockquote>`); continue;
+    }
+    const b = [];
+    for (; i < L.length && L[i].trim() && !BLOCK.test(L[i]); i++) b.push(inl(L[i]));
+    if (!b.length){ b.push(inl(L[i])); i++; }
+    out.push(`<p>${b.join("<br>")}</p>`);
+  }
+  return out.join("");
+}
+function csvHtml(src){
+  const rows = [];
+  let row = [], f = "", q = false;
+  for (let i = 0; i < src.length; i++){
+    const c = src[i];
+    if (q){ if (c !== '"') f += c; else if (src[i + 1] === '"'){ f += '"'; i++; } else q = false; }
+    else if (c === '"') q = true;
+    else if (c === ","){ row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r"){ if (c === "\r" && src[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f || row.length){ row.push(f); rows.push(row); }
+  const [head = [], ...body] = rows.filter(r => r.some(x => x.trim()));
+  return `<div class="tablewrap"><table><thead><tr>${head.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${body.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
 const vers = BOARD.versions;
 let cur = vers[vers.length - 1];
 let feedback = [];         // db から

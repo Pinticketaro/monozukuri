@@ -129,6 +129,11 @@ def make_handler(rv):
             self.send_header("Cache-Control", "no-store")     # 作り直したページ・Claude の返信がすぐ見えるように
             super().end_headers()
 
+        def guess_type(self, path):
+            # 文字のファイル（資料の .md・.txt・.csv など）は UTF-8 と伝える。伝えないとブラウザが別の文字コードで読み、文字化けする
+            t = super().guess_type(path)
+            return t + "; charset=utf-8" if t.startswith("text/") and "charset" not in t else t
+
         def send_json(self, code, obj):
             body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
             self.send_response(code)
