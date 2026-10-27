@@ -44,14 +44,16 @@ Commands that start with `/plugin` work only in Claude Code. They do not work in
 
 Ask in plain words and the matching skill runs. In Claude Code you can also call them by name: `/monozukuri:setup`, `/monozukuri:new-project`, `/monozukuri:review-page`.
 
-There are 4 stages (gates) before the final build. The goal is to get the final build, which costs time and material, right in one go.
+To avoid failing at the final build, you check things first on screen and with small tests. Claude helps you through 4 steps.
 
-| Stage | Ask | What happens |
+| Step | What you do | What you get back |
 | --- | --- | --- |
-| 1. Mock and review page | "I want to make a ...", "Make a review page for this version", "Read the feedback" | Settle the shape and size with a rough mock. People look at it on the review page, and their comments go into the next version. This is the loop you repeat most |
-| 2. Coupons | "Make coupons", "I want to measure the kerf" | Measure the kerf, fits and insert holes of your own machine with small test pieces (coupons). Put the measured values back in the params file |
-| 3. Partial prototype | "I only want to test this part" | Print or cut only the hard parts |
-| 4. Final build and handoff | "Export the parameters for Fusion" | Hand off to a person for modeling, with STEP and a list of Fusion parameters |
+| 1. Describe | Say what you want to make, like "a stand for my phone". If something goes inside, give its size too | A rough 3D shape and a review page where you can turn it around |
+| 2. Look and fix | Look at the review page and ask "a little lower" or "move the hole right". Others can look and leave comments | The next, corrected version, compared with the previous one |
+| 3. Test small | Ask "Make coupons" and print or cut only the parts that fit together. Tell Claude what you measured | Sizes that fit exactly on your own machine (reusable for your next projects) |
+| 4. Make it | Print or cut the final part with the checked sizes. To finish it in CAD, ask "Export it for Fusion" | 3D data for the final build; for CAD, a list of dimensions and a STEP file |
+
+The usual way is to repeat steps 1 and 2 until the shape is settled, then go to step 3. In the checklists and skills, steps 1 and 2 are called the "mock", and step 3 "coupons" and "partial prototypes".
 
 If you are not sure, ask "What should I do next?". Claude checks the project checklist and tells you.
 
