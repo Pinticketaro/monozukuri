@@ -169,6 +169,8 @@ new-project の参照資料（`skills/new-project/references/`）にまとめて
 - `slices.py`：平面図（部品の断面と、真上から見た外形の重ね合わせ。`--plan-z` で切る高さ）と断面図
 - `compare.py`：前後の画像を並べ、変わった所を赤で強調
 - `params_diff.py`：寸法ファイルの差分
+- `make_version.py`：1つの版を1回で作る（モック → 外観・平面図・断面 → 寸法の差 → 確認ページ。manifest は文だけ書けば、残りの欄を埋める。出力は要約だけ）
+- `status.py`：プロジェクトのいまの状態を30行ほどで出す（新しい会話で続きから始めるとき）
 - `build_page.py`：確認ページに版を追加
 - `serve_review.py`：確認ページを PC のブラウザで開く（フィードバックは `review/feedback_local.json`）
 - `scaffold.py`：雛形の作成（`--process`、`--lang`）、既存プロジェクトの道具の更新（`--update-tools`）
