@@ -9,7 +9,8 @@ description: >
   3D mock images and feedback before a human models the final form. Also used for "試し片を作って",
   "カーフを測りたい", "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーで切っていい？",
   "道具を新しくして", "プラグインを更新したので道具を更新して", "サポートが要る所を調べて",
-  "このプロジェクトを英語にして", "日本語に戻して", "make coupons", "measure the kerf",
+  "このプロジェクトを英語にして", "日本語に戻して", "部品の棚を作って", "棚に上げて", "棚の寸法を入れて",
+  "実測を棚に残して", "make coupons", "measure the kerf",
   "decide the fits and tolerances", "what pilot hole for heat-set inserts", "can I laser cut this material?",
   "update the tools", "I updated the plugin, update the tools", "find where support is needed",
   "switch the project to English", "switch the project to Japanese".
@@ -70,15 +71,33 @@ metadata:
 4. ページの画面の言葉は `review/board.json` の `lang` に従う（`build_page.py` が scene.json の `lang` から入れる）。前の版の画像や文はその版の言語のまま残る。
 - 文書のファイルは改名しない。いまあるほうの名前のファイルに書き足す（`docs/決定事項.md` があればそこへ）。訳して名前を変えるのは、ユーザーが望んだときだけ。
 
+## 部品の棚（機械・材料・既製品の寸法）
+プロジェクトをまたいで使う値を置く個人の棚。場所は `~/.monozukuri/shelf/`（環境変数 `MONOZUKURI_SHELF` で変えられる）。道具は `scripts/shelf.py`（`--help` で使い方）。棚は任意で、無くても今までの手順はそのまま動く。
+- `parts/<キー>/`：確かめた既製品の寸法（`part.json`。形は寸法ファイルの `params` と同じ）と図面・データシート（`refs/`）
+- `machines/<キー>.json`：3Dプリンター（造形範囲・ノズル・Cura の機械の名前）とレーザー
+- `materials/<キー>.json`：材料と、機械ごとの実測値（試し片で測った kerf・板厚・クリアランスなど）
+- 棚が無いときは、ユーザーに確かめてから `shelf.py init` で作る（Cura の3Dプリンターを造形範囲つきで取り込み、ラボのレーザーを仮の項目で入れる。git で履歴を残す）。わからない値は `null` で `notes` に「要確認」と書く
+- 棚の JSON は手で直してよい（直したら棚のフォルダで git commit）
+
+| コマンド | すること |
+|---|---|
+| `shelf.py list [parts\|machines\|materials]` | 1行ずつ短く出す |
+| `shelf.py show <キー>` | 1つを出す |
+| `shelf.py add-part <キー> --from <プロジェクト> --keys a,b,… [--title …]` | プロジェクトの寸法ファイルから、確かめた寸法と図面を棚に上げる。仮・根拠なしの寸法は上げずに名前を出す。`--keys` を省くと候補を出す |
+| `shelf.py use <部品> <プロジェクト> [--prefix pi_]` | 棚の寸法をいちばん新しい寸法ファイルの `params` に足し、図面を `refs/` に写して `refs/資料.md` に行を足す。basis は「部品の棚：<部品>（元の根拠）」。同じキーがあれば何も変えずに止まる |
+| `shelf.py record <プロジェクト> [--machine …] [--material …]` | 寸法ファイルの `fab` で status が「実測」の値を、材料の実測に足す。省くと寸法ファイルの `meta`（`printer`・`laser`・`materials`）から決める |
+| `shelf.py fab <機械> <材料>…` | その組み合わせの実測値（無ければ「実測なし」） |
+
 ## 手順
 
 ### 1. 決めることを集める
 依頼文・添付（スケッチ、写真、寸法メモ）から読み取り、足りないものだけを、下の「聞き方」に沿って選択式の画面でまとめて聞く。
+先に `python3 scripts/shelf.py list` で棚を見て、棚にある機械・材料・部品を選択肢に使う（棚が無ければ今までどおりの選択肢で聞き、「部品の棚を作りますか」を1問足してよい）。
 - 名前と、何を作るか（1行）：依頼文から決められないときだけ聞く（自由入力になるので「その他」で受ける）
 - **作り方**（いつも聞く。依頼文で明らかなら確かめるだけ）：「3Dプリントだけ」／「レーザーだけ」／「両方（例：板はレーザー、枠は3Dプリント）」。ここから `--process` を決める（`fdm`／`laser`／`both`）
-- プリンタの造形範囲：「220×220（Ender-3 など）」／「256×256（Bambu Lab など）」／「300×300」。レーザーの加工範囲（分かれば）
-- 中に入れる物・組み合わせる既製品の大きさ：よくある大きさを選択肢にする（例：350ml／500ml／250ml 缶）。実物があれば実測をお願いする
-- 使う材料：フィラメントなら「PLA」／「PETG」／「TPU」、板なら「アクリル 3mm」／「シナベニヤ 4mm」など。レーザーで切る材料は `references/fab-safety.md` に照らし、「全面禁止」なら別の材料を提案、「ラボ次第」なら所属ラボのリストで確かめるよう伝える
+- 使うプリンター：棚の機械を選択肢にする（例「Ender-3 S1 Pro（220×220×270）」）。棚が無ければ造形範囲で聞く：「220×220（Ender-3 など）」／「256×256（Bambu Lab など）」／「300×300」。レーザーも棚にあれば選ぶ（加工範囲は分かれば）
+- 中に入れる物・組み合わせる既製品の大きさ：棚に部品があればそれを選択肢の先頭にする（`shelf.py use` で入れる。図面を探し直さない）。無ければよくある大きさを選択肢にする（例：350ml／500ml／250ml 缶）。実物があれば実測をお願いする
+- 使う材料：棚の材料（実測があるもの）を先に出す。無ければフィラメントなら「PLA」／「PETG」／「TPU」、板なら「アクリル 3mm」／「シナベニヤ 4mm」など。レーザーで切る材料は `references/fab-safety.md` に照らし、「全面禁止」なら別の材料を提案、「ラボ次第」なら所属ラボのリストで確かめるよう伝える
 - 置き場所：「このPCのフォルダ」／「GitHub のリポジトリ」／「この作業環境だけ」
 - 言語：会話の言語で決める（上の「言語」）。迷うときだけ「日本語」／「English」で聞く。ここから `--lang` を決める（`ja`／`en`）
 
@@ -92,8 +111,10 @@ metadata:
 ### 2. 雛形を作る
 ```bash
 python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<1行>" \
-  --methods "<作り方>" --process <laser|fdm|both> --bed 220x220 [--origin "<原点と向き>"] [--lang <ja|en>] [--git]
+  --methods "<作り方>" --process <laser|fdm|both> --bed 220x220 [--origin "<原点と向き>"] [--lang <ja|en>] [--git] \
+  [--printer <棚の機械>] [--laser <棚の機械>] [--material <棚の材料> ...]
 ```
+- 棚の機械を選んだら `--printer`・`--laser`、材料を `--material`（複数可。キーは `shelf.py list` のもの）で渡し、`--bed` は省く。造形範囲（`bed_*`）は機械から入り、その機械と材料の実測が棚にあれば、`fab` のその値が最初から「実測」になる（basis に出典）。寸法ファイルの `meta` に `printer`・`laser`・`materials` として残り、あとの `shelf.py record` が使う。棚に無い材料は初期値のまま。
 - `--process` で、寸法ファイルの `fab` がその作り方で使う項目だけになる（3Dプリントだけならカーフ・板厚は入らない）。チェックリスト・引き継ぎ・試し片の案内も、関係しない作り方の項目が外れる。省くと `both`。
 - `--lang en` で英語のプロジェクトになる（`meta.lang`、文書とそのファイル名、寸法ファイル、例の mock.py が英語）。`--name`・`--summary`・`--methods`・`--origin` もその言語で書く。省くと `MONOZUKURI_LANG`、無ければ日本語。
 - `--methods` は自由な説明として文書に残る（例「本体：3Dプリント（PETG）／ふた：アクリル3mm」）。
@@ -107,6 +128,8 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 - 寸法は寸法ファイルだけに書き、項目ごとに `label` を付ける。
 - **寸法ごとに根拠を残す**：`params` の項目にも `basis`（どこから来た値か）を書く。図面・データシートなら名前とページ（例「公式図面 Raspberry Pi 4 mechanical drawing p.1」）、実測なら「実測（measurements/実測.md）」、決めた値なら「決定事項（v03）」。資料のファイルか URL があれば `ref` に書く（`"ref": "refs/rpi4-mechanical.pdf"`）。
 - **資料は `refs/` に置く**：調べて見つけたデータシート・図面（PDF）、ユーザーから届いた写真・寸法メモ、実測の写真を保存し、`refs/資料.md` の表に出典（URL・ページ）・取った日・使った寸法を書く。ライセンスなどで置けないものは URL だけ書く。
+- **棚にある部品は棚から入れる**：`python3 scripts/shelf.py use <部品> <プロジェクト> --prefix <前に付ける文字>`。寸法・根拠・図面がそろって入る。`mock.py` では `P.<前に付ける文字><キー>` で読む。
+- **図面で確かめた既製品の寸法は棚に上げる**：次のプロジェクトで図面を探し直さないように、ユーザーに確かめてから `shelf.py add-part <部品> --from <プロジェクト> --keys …`。既製品そのものの寸法だけを選ぶ（ケースの設計で決めた値は上げない）。
 - **記憶だけの値を事実のように書かない**：調べずに入れた値は `basis` に「仮（記憶・要確認）」と書き、報告で確かめる先（公式の図面・実物）を伝える。`dims_sheet.py` は根拠の無い寸法を一覧にし、確認ページの「寸法と根拠」でも「根拠なし」と出る。
 - 寸法ファイルは `params`（形の寸法）と `fab`（加工の値：実板厚 `t_*`・`kerf`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算／経験則。英語のプロジェクトは initial／measured／guideline／standard／calculated／rule of thumb）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
 - 細部は作らない。形・大きさ・比率・配置がわかる粗さにとどめる（`references/conventions.md`）。
@@ -133,7 +156,8 @@ python3 tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --sec
 python3 tools/coupons.py v01
 ```
 - `out/coupons/` に、寸法ファイルの `fab` にある作り方の分だけ、レーザー用 SVG（カーフ四角・スロットのコーム・差し込む細板）、3Dプリント用 STL（はめあい片・インサート穴片）と、手順と番号表 `coupons.md` ができる。
-- ユーザーが切って・刷って測った値を `measurements/試し片記録.csv`（英語のプロジェクトは `measurements/coupon_log.csv`）に書き、寸法ファイルの `fab` を書き換えて status を「実測」（英語のプロジェクトは `measured`）にする（版を上げる）。
+- ユーザーが切って・刷って測った値を `measurements/試し片記録.csv`（英語のプロジェクトは `measurements/coupon_log.csv`）に書き、寸法ファイルの `fab` を書き換えて status を「実測」（英語のプロジェクトは `measured`）にする（版を上げる）。basis に測った日（YYYY-MM-DD）と条件を書く。
+- 測った値は棚に残す：`python3 scripts/shelf.py record <プロジェクト>`（`meta` に機械・材料が無い古いプロジェクトは `--machine <棚の機械> --material <材料>`。レーザーの値と3Dプリントの値は機械ごとに分けて2回）。次のプロジェクトでは `scaffold.py --printer … --material …` で最初から入る。
 - 次は部分試作（ケースの一角：USB切り欠き・ネジボス1つ・中身の角）。mock.py で該当部分を切り出すか、モデル化後に Fusion で切り出す。
 - 段階ごとの確認は雛形の `docs/チェックリスト.md`（英語のプロジェクトは `docs/checklist.md`）。
 

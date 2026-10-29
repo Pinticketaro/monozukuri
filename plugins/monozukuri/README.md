@@ -22,6 +22,7 @@ English: [README.en.md](README.en.md)
 - レーザー：板厚を実測し、カーフ四角でカーフ（X・Y 別）、スロットのコームで入って抜けない幅を決める。
 - 3Dプリント：本番と同じフィラメント・設定で、はめあい片から `clr_fit`・`clr_slide`、インサート穴片から `insert_hole` を決める。
 - 測った値は `measurements/試し片記録.csv` に3回以上書き、寸法ファイルの `fab` を書き換えて status を「実測」にする。
+- 測った値は部品の棚に残す（`shelf.py record`）。次のプロジェクトでは、同じ機械・材料の値が最初から「実測」で入る。
 
 ### 3. 部分試作
 - 難しい所だけ刷る・切る。写真や結果は「試作品」の版として確認ページに載せられる。
@@ -108,6 +109,18 @@ review/                    確認ページの情報（URL など）
   - `status` は「初期値」「実測」「指針」「規格」「計算」「経験則」のどれか（英語のプロジェクトは initial・measured・guideline・standard・calculated・rule of thumb）。
   - 本番の前に、カーフ・板厚・クリアランス・インサート穴は「実測」にする。確認ページにも「初期値」のまま残っている値が出る。
 
+## 部品の棚
+
+プロジェクトをまたいで使う値を置く個人の棚（`~/.monozukuri/shelf/`。環境変数 `MONOZUKURI_SHELF` で変えられる）。プラグインには何も同梱しない。棚は任意で、無くても今までどおり動く。
+
+| 置くもの | 中身 | 使い方 |
+|---|---|---|
+| 部品 `parts/<キー>/` | 確かめた既製品の寸法（寸法ファイルの `params` と同じ形）と図面・データシート | `shelf.py add-part` で確かめた寸法を上げ（仮の寸法は上げない）、`shelf.py use` で次のプロジェクトに入れる（basis は「部品の棚：…」、図面は `refs/` に写る） |
+| 機械 `machines/<キー>.json` | 3Dプリンター（造形範囲・ノズル・Cura の機械の名前）とレーザー | `shelf.py init` が Cura の機械から取り込む。`scaffold.py --printer` で造形範囲が入る |
+| 材料 `materials/<キー>.json` | 機械ごとの実測値（kerf・板厚・クリアランスなど。新しいものを使い、古いものも残す） | `shelf.py record` で試し片の実測を残し、`scaffold.py --printer … --laser … --material …` で最初から「実測」として入る |
+
+棚は git で履歴を残す（道具で変えるたびにコミット）。
+
 ## モックと STEP
 
 モックの形は `tools/geom.py` で書く（角丸の長方形・円・多角形を押し出し、足す・引く・重なり。筒 `tube`、円錐台 `cone`、回転体 `revolve`、ストラップを通す耳 `lug_with_slot`、Z まわりの回転）。同じ定義から次の2つが出る。
@@ -173,7 +186,8 @@ new-project の参照資料（`skills/new-project/references/`）にまとめて
 - `status.py`：プロジェクトのいまの状態を30行ほどで出す（新しい会話で続きから始めるとき）
 - `build_page.py`：確認ページに版を追加
 - `serve_review.py`：確認ページを PC のブラウザで開く（フィードバックは `review/feedback_local.json`）
-- `scaffold.py`：雛形の作成（`--process`、`--lang`）、既存プロジェクトの道具の更新（`--update-tools`）
+- `scaffold.py`：雛形の作成（`--process`、`--lang`、棚の `--printer`・`--laser`・`--material`）、既存プロジェクトの道具の更新（`--update-tools`）
+- `shelf.py`：部品の棚（`init`・`list`・`show`・`add-part`・`use`・`record`・`fab`）
 - 雛形の `tools/geom.py`：形の定義（STL と STEP の両方に出せる）
 - 雛形の `tools/coupons.py`：試し片（レーザー SVG、3Dプリント STL、手順書）
 - 雛形の `tools/dims_sheet.py`：寸法表と Fusion 用パラメータ一覧

@@ -3,8 +3,12 @@
   python3 scaffold.py --dest <作るフォルダ> --name "名前" --summary "1行の説明"
                       [--origin "外形の左下、X右・Y奥・Z上"] [--methods "上下の板：CO2レーザー／枠：3Dプリント（PLA）"]
                       [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
+                      [--printer <棚の機械>] [--laser <棚の機械>] [--material <棚の材料> ...]
   python3 scaffold.py --update-tools <プロジェクトのフォルダ> [--force] [--lang ja|en]
 --dest がすでにあって中身があるときは止まる（上書きしない）。
+--printer・--laser・--material は部品の棚（shelf.py。~/.monozukuri/shelf/）の機械と材料。造形範囲（bed_*）を機械から入れ、
+  その機械と材料の実測が棚にあれば、fab のその値を「実測」にして basis に出典を書く。寸法ファイルの meta に
+  printer・laser・materials として残る。棚が無いとき・指定しないときは今までどおり（初期値）。
 --process は作り方（laser＝レーザー、fdm＝3Dプリント、both＝両方。既定 both）。寸法ファイルの fab を、その作り方で
   使う項目だけにし、チェックリストなどの関係しない項目を外す。fdm のときは、例の形を3Dプリントの缶ケースにする。
 --lang は言語（ja＝日本語、en＝英語。既定は環境変数 MONOZUKURI_LANG、無ければ ja）。文書・寸法ファイル・例の mock.py を
@@ -32,8 +36,13 @@ Usage
                       [--origin "Bottom-left of the outline. X right, Y back, Z up"]
                       [--methods "Top and bottom plates: CO2 laser / frame: 3D print (PLA)"]
                       [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
+                      [--printer <shelf machine>] [--laser <shelf machine>] [--material <shelf material> ...]
   python3 scaffold.py --update-tools <project folder> [--force] [--lang ja|en]
 Stops if --dest already exists and has files (never overwrites).
+--printer, --laser and --material are machines and materials on the parts shelf (shelf.py, ~/.monozukuri/shelf/).
+  The bed size (bed_*) comes from the machine, and fab values measured on the shelf for that machine and material
+  become "measured" with their source in basis. Stored in meta as printer, laser and materials.
+  Without a shelf or these options, nothing changes (initial values).
 --process is how the parts are made (laser = laser cutting, fdm = 3D printing, both = both; default both).
   Keeps only the fab values that process uses and removes checklist items that do not apply.
   With fdm, the example shape is a 3D printed can case.
@@ -107,6 +116,19 @@ MSG = {
         "m_update": "プロジェクト",
         "h_update": "既存のプロジェクトの tools/ を新しくする",
         "h_force": "--update-tools で、手を加えたファイルも上書きする",
+        "h_printer": "部品の棚の3Dプリンター（shelf.py list machines）。造形範囲と、棚の実測値を入れる",
+        "h_laser": "部品の棚のレーザー。棚の実測値（カーフ・板厚など）を入れる",
+        "h_material": "部品の棚の材料（複数可。, 区切りでも）。その機械での実測があれば fab に入れる",
+        "no_shelf": "部品の棚がありません（{path}）。--printer・--laser・--material は使わずに作ります",
+        "no_machine": "部品の棚に機械「{key}」がありません。ある機械：{have}",
+        "wrong_kind": "機械「{key}」は {kind} です（{opt} には {want} の機械を指定する）",
+        "no_material": "  棚に無い材料：{key}（実測なし。初期値のまま）",
+        "bed_basis": "部品の棚の機械：{key}（{title}）",
+        "fab_status": "実測",
+        "fab_basis": "実測（{src}・{date}）。部品の棚：materials/{mat}（{machine}）",
+        "from_shelf": "  棚から：{key} = {value}{unit}（実測：{src}・{date}。{mat}・{machine}）",
+        "bed_shelf": "  棚から：造形範囲 {bed} mm（{key}）",
+        "no_measured": "  棚の実測：{mat}（{machine}）には無い（初期値のまま）",
     },
     "en": {
         "no_template": "Template not found: {path}",
@@ -155,6 +177,19 @@ MSG = {
         "m_update": "PROJECT",
         "h_update": "Update tools/ of an existing project",
         "h_force": "With --update-tools, also overwrite tool files changed in the project",
+        "h_printer": "3D printer on the parts shelf (shelf.py list machines). Sets the bed size and measured values",
+        "h_laser": "Laser on the parts shelf. Sets measured values (kerf, sheet thickness, ...)",
+        "h_material": "Material on the parts shelf (repeat or comma-separate). Measured values for the machine go into fab",
+        "no_shelf": "No parts shelf ({path}). Creating without --printer, --laser and --material",
+        "no_machine": "Machine \"{key}\" is not on the parts shelf. Machines: {have}",
+        "wrong_kind": "Machine \"{key}\" is {kind} ({opt} needs a {want} machine)",
+        "no_material": "  Material not on the shelf: {key} (no measurements; initial values kept)",
+        "bed_basis": "Parts shelf machine: {key} ({title})",
+        "fab_status": "measured",
+        "fab_basis": "Measured ({src}, {date}). Parts shelf: materials/{mat} ({machine})",
+        "from_shelf": "  From the shelf: {key} = {value}{unit} (measured: {src}, {date}; {mat}, {machine})",
+        "bed_shelf": "  From the shelf: bed {bed} mm ({key})",
+        "no_measured": "  Shelf: nothing measured for {mat} ({machine}); initial values kept",
     },
 }
 
@@ -374,11 +409,92 @@ def keep_process_blocks(text, keep):
     return re.sub(r"\n{3,}", "\n\n", "\n".join(out))
 
 
+def shelf_lookup(a, T):
+    """--printer・--laser・--material を部品の棚（shelf.py）で引く。指定が無い・棚が無いときは None"""
+    mats = [x.strip() for v in (a.material or []) for x in v.split(",") if x.strip()]
+    if not (a.printer or a.laser or mats):
+        return None
+    sys.path.insert(0, HERE)
+    import shelf
+    if not os.path.isdir(shelf.shelf_dir()):
+        print(T["no_shelf"].format(path=shelf.shelf_dir()))
+        return None
+    machines = {}
+    for opt, key, want in (("--printer", a.printer, "fdm"), ("--laser", a.laser, "laser")):
+        if not key:
+            continue
+        m = shelf.get("machines", key)
+        if m is None:
+            sys.exit(T["no_machine"].format(key=key, have=", ".join(shelf.keys_of("machines")) or "-"))
+        if m.get("kind") != want:
+            sys.exit(T["wrong_kind"].format(key=key, kind=m.get("kind"), opt=opt, want=want))
+        machines[want] = (key, m)
+    return {"shelf": shelf, "machines": machines, "materials": mats}
+
+
+def apply_shelf(d, plan, T, bed_given):
+    """棚の機械と材料を寸法ファイルに入れる：meta、造形範囲（bed_*）、実測のある fab の値"""
+    shelf, machines, mats = plan["shelf"], plan["machines"], plan["materials"]
+    lines = []
+    for role, meta_key in (("fdm", "printer"), ("laser", "laser")):
+        if role in machines:
+            d["meta"][meta_key] = machines[role][0]
+    if mats:
+        d["meta"]["materials"] = mats
+    if "fdm" in machines and not bed_given:
+        key, m = machines["fdm"]
+        bed = m.get("bed") or []
+        for i, k in enumerate(("bed_x", "bed_y", "bed_z")):
+            if k in d["params"] and i < len(bed) and bed[i] is not None:
+                d["params"][k]["value"] = bed[i]
+                d["params"][k]["basis"] = T["bed_basis"].format(key=key, title=m.get("title", key))
+        if bed and None not in bed:
+            lines.append(T["bed_shelf"].format(bed="×".join(str(v) for v in bed), key=key))
+    # 「同上」の根拠は、上の項目を書き換えると意味が変わるので、書き換えた項目の下の「同上」は元の文にする
+    orig, prev = {}, ""
+    for k, f in d["fab"].items():
+        orig[k] = prev if f.get("basis") in ("同上", "Same as above") else f.get("basis", "")
+        prev = orig[k]
+    done = set()
+    for mat in mats:
+        md = shelf.get("materials", mat)
+        if md is None:
+            lines.append(T["no_material"].format(key=mat))
+            continue
+        roles = {"sheet": ["laser"], "filament": ["fdm"]}.get(md.get("kind"), ["laser", "fdm"])
+        for role in roles:
+            if role not in machines:
+                continue
+            mkey = machines[role][0]
+            vals = shelf.fab_values(mkey, [mat]).get(mat, {})
+            hit = 0
+            for k, e in vals.items():
+                f = d["fab"].get(k)
+                if f is None or k in done or role not in f.get("process", ["laser", "fdm"]):
+                    continue
+                f["value"] = e.get("value")
+                f["status"] = T["fab_status"]
+                f["basis"] = T["fab_basis"].format(src=e.get("from", ""), date=e.get("date", ""), mat=mat, machine=mkey)
+                done.add(k)
+                hit += 1
+                lines.append(T["from_shelf"].format(key=k, value=e.get("value"), unit=e.get("unit", ""),
+                                                    src=e.get("from", ""), date=e.get("date", ""), mat=mat, machine=mkey))
+            if not hit:
+                lines.append(T["no_measured"].format(mat=mat, machine=mkey))
+    keys = list(d["fab"])
+    for i, k in enumerate(keys[1:], 1):
+        if k not in done and d["fab"][k].get("basis") in ("同上", "Same as above") and keys[i - 1] in done:
+            d["fab"][k]["basis"] = orig[k]
+            done.add(k)                          # その下の「同上」も同じく
+    return lines
+
+
 def create(a, lang):
     T = MSG[lang]
     dest = os.path.abspath(a.dest)
     if os.path.isdir(dest) and os.listdir(dest):
         sys.exit(T["dest_nonempty"].format(dest=dest))
+    plan = shelf_lookup(a, T)                    # 棚の機械・材料（作る前に確かめる。無い機械なら止まる）
     lang_dir = os.path.join(LANGS, lang)
     lang_params = os.path.join(lang_dir, "params", "params_v01.json")
     if not os.path.exists(lang_params):
@@ -401,6 +517,7 @@ def create(a, lang):
     d["meta"]["process"] = a.process
     d["meta"]["lang"] = lang
     d["fab"] = {k: v for k, v in base["fab"].items() if set(v.get("process", ["laser", "fdm"])) & keep}
+    shelf_lines = apply_shelf(d, plan, T, bool(a.bed)) if plan else []
     if a.bed:
         bx, by = (float(x) for x in a.bed.lower().split("x"))
         d["params"]["bed_x"]["value"], d["params"]["bed_y"]["value"] = bx, by
@@ -430,6 +547,8 @@ def create(a, lang):
             git("commit", "-q", "-m", T["commit"].format(name=a.name))
         except subprocess.CalledProcessError:
             print(T["commit_fail"])
+    for ln in shelf_lines:
+        print(ln)
     print(dest)
 
 
@@ -469,6 +588,9 @@ def main():
     ap.add_argument("--bed", default=None, help=H["h_bed"])
     ap.add_argument("--lang", default=None, choices=list(LANG_CODES), help=H["h_lang"])
     ap.add_argument("--git", action="store_true", help=H["h_git"])
+    ap.add_argument("--printer", help=H["h_printer"])
+    ap.add_argument("--laser", help=H["h_laser"])
+    ap.add_argument("--material", action="append", help=H["h_material"])
     ap.add_argument("--update-tools", metavar=H["m_update"], help=H["h_update"])
     ap.add_argument("--force", action="store_true", help=H["h_force"])
     ap.add_argument("--record-tool-versions", action="store_true", help=argparse.SUPPRESS)
