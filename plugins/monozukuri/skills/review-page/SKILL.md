@@ -23,6 +23,8 @@ metadata:
 スクリプトはこのスキルの `scripts/`、ページのひな形は `assets/board.html`（ページの決まりに合わせて作ってあるので手で書き直さない）。
 環境が足りないとき（import エラー、three.js がない）は先に monozukuri の setup スキルを実行する。PC（mac）では、コマンドの `python3` を setup が示した Python（`~/.monozukuri/venv/bin/python`）に読み替える。
 
+日本語の文（manifest の文・問い・LOG.md・決定事項・会話の返事）は、new-project スキルの `references/ai-words-ja.md`（AI ワード辞書）に従う。
+
 ## 聞き方（選択式の画面）
 番号で選ぶ問いの画面（AskUserQuestion）が使えるとき（Claude Code・Claude アプリ）は、足りない情報と決めてほしいことをこれで聞く。問いの候補（mock の notes の yesno／options）は、ページに載せるのと同じ形でこの画面でも聞ける。
 - 1回に4問まで、1問に2〜4択。「その他」（自由入力）は画面が自動で付けるので、選択肢に入れない。
