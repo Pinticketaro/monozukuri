@@ -23,14 +23,14 @@
   "fab": {
     "t_top":        {"value": 3.0,  "unit": "mm", "label": "上板の板厚", "status": "初期値", "basis": "呼び寸法。アクリルは3mmで±0.7mm（ミスミ）ずれうるので、シートごとにノギスで実測して置き換える", "process": ["laser"]},
     "t_bottom":     {"value": 3.0,  "unit": "mm", "label": "底板の板厚", "status": "初期値", "basis": "同上", "process": ["laser"]},
-    "kerf":         {"value": 0.15, "unit": "mm", "label": "レーザーのカーフ（切断溝の全幅 k。オフセットは k/2）", "status": "初期値", "basis": "3mmアクリル・CO2の公開値 0.125（Ponoko実測）〜0.18（CutLaserCut指針）の中間。試し片で実測する", "process": ["laser"]},
-    "clr_fit":      {"value": 0.2,  "unit": "mm", "label": "3Dプリントの一般クリアランス（片側）", "status": "初期値", "basis": "大学ラボ表 Ultimaker S7 の一般値。Ender-3 の値は出典なし。±0.1の3段の試し片で決める", "process": ["fdm"]},
+    "kerf":         {"value": 0.15, "unit": "mm", "label": "レーザーのカーフ（全幅 k。オフセットは k/2）", "status": "初期値", "basis": "3mmアクリル・CO2の公開値 0.125（Ponoko実測）〜0.18（CutLaserCut指針）の中間。テストピースで実測する", "process": ["laser"]},
+    "clr_fit":      {"value": 0.2,  "unit": "mm", "label": "3Dプリントの一般クリアランス（片側）", "status": "初期値", "basis": "大学ラボ表 Ultimaker S7 の一般値。Ender-3 の値は出典なし。±0.1の3段のテストピースで決める", "process": ["fdm"]},
     "clr_slide":    {"value": 0.3,  "unit": "mm", "label": "3Dプリントの着脱・すべりのクリアランス（片側）", "status": "初期値", "basis": "同上", "process": ["fdm"]},
     "hole_comp":    {"value": 0.2,  "unit": "mm", "label": "垂直穴の拡大補正（CAD側。スライサーで補正するなら 0）", "status": "初期値", "basis": "Pollen AM の経験則（4mm穴を4.2mmで描く）。補正はCADかスライサーの一方だけ", "process": ["fdm"]},
-    "insert_hole":  {"value": 4.0,  "unit": "mm", "label": "M3ヒートインサートの下穴径", "status": "初期値", "basis": "CNC Kitchen・ruthex 4.0／UW 約4.3。4.0〜4.4の試し片で決める", "process": ["fdm"]},
+    "insert_hole":  {"value": 4.0,  "unit": "mm", "label": "M3ヒートインサートの下穴径", "status": "初期値", "basis": "CNC Kitchen・ruthex 4.0／UW 約4.3。4.0〜4.4のテストピースで決める", "process": ["fdm"]},
     "insert_depth": {"value": 4.0,  "unit": "mm", "label": "M3ショートインサートの下穴深さ（長さ3.0＋1）", "status": "指針", "basis": "CNC Kitchen：止まり穴はインサート長＋1mm", "process": ["fdm"]},
     "boss_d":       {"value": 7.2,  "unit": "mm", "label": "インサートのボス外径（穴径＋2×最小壁1.6）", "status": "計算", "basis": "CNC Kitchen の最小壁", "process": ["fdm"]},
-    "overhang_deg": {"value": 45,   "unit": "°",  "label": "サポートなしで刷れる張り出し角（水平からの角度。これより浅い下向きの面はサポートが要る）", "status": "経験則", "basis": "FDM の一般的な目安（45°ルール）。プリンタ・材料・冷却・層の高さで変わるので、張り出しの試し刷りで確かめる", "process": ["fdm"]},
+    "overhang_deg": {"value": 45,   "unit": "°",  "label": "サポートなしで印刷できるオーバーハング角（水平からの角度。これより浅い下向きの面はサポートが要る）", "status": "経験則", "basis": "FDM の一般的な目安（45°ルール）。プリンタ・材料・冷却・層の高さで変わるので、オーバーハングのテストプリントで確かめる", "process": ["fdm"]},
     "screw_clear":  {"value": 3.4,  "unit": "mm", "label": "M3ボルト穴（JIS B 1001 2級）", "status": "規格", "basis": "1級3.2／2級3.4／3級3.6", "process": ["laser", "fdm"]},
     "usb_cut_w":    {"value": 13.0, "unit": "mm", "label": "USB-C切り欠きの幅（ケーブル側の太さで決める）", "status": "経験則", "basis": "オーバーモールド幅12.35（USB-C仕様準拠のフットプリント）＋余裕。手持ちでいちばん太いケーブルで試す", "process": ["laser", "fdm"]}
   }

@@ -3,7 +3,7 @@
 寸法ファイルは params/params_vNN.json。1つの版の寸法はこのファイルだけに書く（ほかのスクリプトに数値を直接書かない）。
   params … 形の寸法（モックで決める）
   fab    … 加工の値（カーフ・実板厚・クリアランス・インサート穴など）。status が「初期値」のものは
-           試し片（tools/coupons.py）で測って「実測」に置き換える
+           テストピース（tools/coupons.py）で測って「実測」に置き換える
   P = load("v03").P      → P.outer_w のように値だけで使える
   load().labels          → 項目名（寸法表・差分に使う）
   load().lang            → 表示の言語（"ja" か "en"。寸法ファイルの meta.lang、無ければ環境変数 MONOZUKURI_LANG、無ければ "ja"）
@@ -104,7 +104,7 @@ def load(ver=None, lang=None):
     ver = ver or latest()
     path = os.path.join(PARAMS, f"params_{ver}.json")
     d = json.load(open(path, encoding="utf-8"))
-    # params（形の寸法）と fab（試し片で決める加工の値：カーフ・実板厚・クリアランスなど）を1つにまとめて使う
+    # params（形の寸法）と fab（テストピースで決める加工の値：カーフ・実板厚・クリアランスなど）を1つにまとめて使う
     items = {**d.get("params", {}), **d.get("fab", {})}
     vals = {k: (v["value"] if isinstance(v, dict) and "value" in v else v) for k, v in items.items()}
     labels = {k: (v.get("label", k) if isinstance(v, dict) else k) for k, v in items.items()}
@@ -190,14 +190,14 @@ def overhang_notes(name, mesh, deg, up="z", lang="ja"):
     where = "、".join(f"高さ{r['z']:.0f}mm（X{r['x']:+.0f}・Y{r['y']:+.0f}付近）約{r['area']:.0f}mm²"
                      for r in regs[:3]) + (f" ほか{len(regs) - 3}か所" if len(regs) > 3 else "")
     face = "下向きの面" + (f"（印刷の向き {up}）" if up != "z" else "")
-    return [f"{name}の{face}にサポートが要りそう：{where}（水平から{flat:.0f}°。張り出し{deg:g}°より浅い）"]
+    return [f"{name}の{face}にサポートが要りそう：{where}（水平から{flat:.0f}°。オーバーハング{deg:g}°より浅い）"]
 
 
 def run_mock(build):
     """mock.py の build() を受け取り、部品ごとの STL・scene.json・STEP を書き出す。
     build(prm) は (部品のリスト, 注意のリスト) を返す。部品は (表示名, 形, 色, 不透明度, 英字のキー) か、
     6つめにオプションの dict を付けたもの：{"print": False}（3Dプリントしない部品：中身・既製品・レーザーの板など。
-    張り出しを調べない）、{"up": "-z"}（印刷の向き。z・-z・x・-x・y・-y。既定は z＝モデルの上がそのまま上）。
+    オーバーハングを調べない）、{"up": "-z"}（印刷の向き。z・-z・x・-x・y・-y。既定は z＝モデルの上がそのまま上）。
     印刷の向きは寸法ファイルの meta に "print_up": {"キー": "-z"} と書いてもよい（こちらが優先）。
     寸法ファイルの meta.process が laser でなければ、3Dプリントする部品のサポートが要りそうな面を調べて注意に足す
     （しきい値は fab の overhang_deg、無ければ 45°）。
@@ -219,7 +219,7 @@ def run_mock(build):
         scene["parts"].append({"file": f"parts/{fn}", "name": name, "key": key, "color": color, "opacity": opacity,
                                "roughness": 0.3 if opacity < 1 else 0.8})
 
-    # 3Dプリントの張り出し（サポートが要りそうな面）
+    # 3Dプリントのオーバーハング（サポートが要りそうな面）
     if prm.meta.get("process") != "laser":
         deg = float(getattr(prm.P, "overhang_deg", 45))
         ups = prm.meta.get("print_up", {})

@@ -7,7 +7,7 @@
   版の流れ（どの版から作ったか・続けなかった案）、最新の版の要点、確認ページの場所、
   未対応のフィードバック（PC のページ。公開中のページは ArtifactData で読む）、
   最新の版の問いと答え・決定、答えはあるが決まっていない前の版の問い、
-  仮の寸法・根拠の無い寸法・試し片で測る値（初期値）、LOG.md の最後の版の「次に試す」、決定事項の数と最後の行。
+  仮の寸法・根拠の無い寸法・テストピースで測る値（初期値）、LOG.md の最後の版の「次に試す」、決定事項の数と最後の行。
 読むファイル（どれも無くてよい）: params/params_v*.json、review/board.json、review/feedback_local.json、
   review/artifact.json、review/.serve.json、LOG.md、docs/決定事項.md（英語のプロジェクトは docs/decisions.md）
 """
@@ -174,7 +174,7 @@ def main():
         L.append("答えはあるが決定していない問い（前の版）:")
         L += pend[:6] + ([f"  ほか {len(pend) - 6}件"] if len(pend) > 6 else [])
 
-    # 寸法ファイル：仮・根拠なし・試し片で測る値
+    # 寸法ファイル：仮・根拠なし・テストピースで測る値
     if params:
         tent, nob, init = [], [], []
         for sec in ("params", "fab"):
@@ -188,14 +188,14 @@ def main():
                     tent.append(f"{k} {it.get('value')}{it.get('unit', '')}")
                 if sec == "fab" and it.get("status") in INITIAL:
                     init.append(k)
-        L.append(f"寸法ファイル {lp}: 仮 {len(tent)}・根拠なし {len(nob)}・試し片で測る値 {len(init)}")
+        L.append(f"寸法ファイル {lp}: 仮 {len(tent)}・根拠なし {len(nob)}・テストピースで測る値 {len(init)}")
         cap = lambda xs: "、".join(xs[:12]) + (f" ほか{len(xs) - 12}" if len(xs) > 12 else "")
         if tent:
             L.append("  仮: " + cap(tent))
         if nob:
             L.append("  根拠なし: " + cap(nob))
         if init:
-            L.append("  試し片で測る値（初期値）: " + cap(init))
+            L.append("  テストピースで測る値（初期値）: " + cap(init))
 
     # LOG.md の最後の版の節と、決定事項
     log = os.path.join(root, "LOG.md")

@@ -372,7 +372,7 @@ def cmd_init(a):
     if not os.path.exists(p):
         save(p, {"title": "ラボのレーザー", "kind": "laser", "where": "ラボ", "model": None, "bed": None, "materials": None,
                  "notes": ["仮の項目。機種（model）・加工範囲（bed：[X, Y] mm）・加工できる材料と厚み（materials）は要確認",
-                           "materials の形：[{\"material\": \"MDF\", \"max_t\": 6}]（ラボの切ってよい材料のリストに合わせる）"]})
+                           "materials の形：[{\"material\": \"MDF\", \"max_t\": 6}]（ラボのカットしてよい材料のリストに合わせる）"]})
         added.append(LAB_LASER)
         print(f"  機械 {LAB_LASER}：ラボのレーザー（仮。機種・加工範囲・材料は要確認）")
     if not os.path.isdir(os.path.join(s, ".git")):
@@ -667,7 +667,7 @@ def cmd_record(a):
     mats_meta = [m for m in (meta.get("materials") or []) if isinstance(m, str)]
     measured = {k: it for k, it in (d.get("fab") or {}).items() if isinstance(it, dict) and it.get("status") in MEASURED}
     if not measured:
-        print(f"{os.path.basename(pf)} の fab に「実測」の値がありません（試し片で測ったら status を「実測」にする）")
+        print(f"{os.path.basename(pf)} の fab に「実測」の値がありません（テストピースで測ったら status を「実測」にする）")
         return
     done, skipped, known = {}, [], []
     for k, it in measured.items():

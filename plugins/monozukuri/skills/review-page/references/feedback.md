@@ -84,7 +84,7 @@ ArtifactData  action: "list", url: ..., collection: "answers"
 ```
 ArtifactData  action: "batch", url: ..., writes: [
   {op: "set", collection: "decisions", doc_id: "v03~q2",
-   data: {"choice": "b", "note": "継ぎ目を隠すほうを取る（はめあいは試し片で確かめる）", "version": "v04"}}]
+   data: {"choice": "b", "note": "継ぎ目を隠すほうを取る（はめあいはテストピースで確かめる）", "version": "v04"}}]
 ```
 - `doc_id` は `<問いを出した版>~q<番号>`。`choice` は答えの ID、`note` は1文の理由（プロジェクトの言語で書く）、`version` はそれを反映した版。
 - 決めた内容は、プロジェクトの `docs/決定事項.md`（英語のプロジェクトは `docs/decisions.md`）にも1行足す。答えのドキュメントは消さない。

@@ -1,11 +1,11 @@
-"""立体モデルを切って、平面図（上から見た各部品の輪郭の重ね合わせ）と断面図を描く。
+"""立体モデルの断面から、平面図（上から見た各部品の輪郭の重ね合わせ）と断面図を描く。
 部品ごとに色を分けるので、穴ずれ・はみ出し・すき間がひと目でわかる。
-平面図は、断面（濃い線）の下に、真上から見た外形（薄い面）を重ねる。切る高さに無い耳や出っ張りも外形で見える。
+平面図は、断面（濃い線）の下に、真上から見た外形（薄い面）を重ねる。断面の高さに無い耳や出っ張りも外形で見える。
 
 使い方
-  python3 slices.py --scene scene.json --plan plan.png                 （各部品の高さの中央で切る）
-  python3 slices.py --scene scene.json --plan plan.png --plan-z 45,80  （高さ 45mm と 80mm で切る）
-  python3 slices.py --scene scene.json --section section.png --at y=50      （Y=50mm の面で切る）
+  python3 slices.py --scene scene.json --plan plan.png                 （各部品の高さの中央の断面）
+  python3 slices.py --scene scene.json --plan plan.png --plan-z 45,80  （高さ 45mm と 80mm の断面）
+  python3 slices.py --scene scene.json --section section.png --at y=50      （Y=50mm の断面）
   python3 slices.py --scene scene.json --section section.png --at x=80 --zoom 0,40
     --zoom=a,b … 断面の横方向を a〜b mm だけ拡大して描く（負の値があるので = でつなぐ）
     --zoom=a,b,c,d … 横方向 a〜b mm、高さ c〜d mm を拡大して描く（溝や段差など小さな所を見るとき）
@@ -145,7 +145,7 @@ SEC_STYLES = ["-", "--", ":", "-."]
 
 
 def plan(sc, parts, out, zs=None, lang="ja"):
-    """zs：切る高さのリスト（mm）。None なら各部品の高さの中央"""
+    """zs：断面の高さのリスト（mm）。None なら各部品の高さの中央"""
     ja = lang == "ja"
     fig, ax = plt.subplots(figsize=(14, 8))
     handles = []
@@ -195,7 +195,7 @@ def section(sc, parts, out, at, zoom, lang="ja"):
     val = float(val)
     normal = {"x": [1, 0, 0], "y": [0, 1, 0]}[axis]
     origin = [val if axis == "x" else 0, val if axis == "y" else 0, 0]
-    horiz = 1 if axis == "x" else 0          # 断面図の横軸：xで切ったらY、yで切ったらX
+    horiz = 1 if axis == "x" else 0          # 断面図の横軸：xの断面ならY、yの断面ならX
     fig, ax = plt.subplots(figsize=(14, 5))
     handles = []
     for name, color, m in parts:
@@ -228,7 +228,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scene", required=True)
     ap.add_argument("--plan")
-    ap.add_argument("--plan-z", help="平面図で切る高さ（mm、カンマ区切り）。例: 45,80。省くと各部品の高さの中央" if ja
+    ap.add_argument("--plan-z", help="平面図の断面の高さ（mm、カンマ区切り）。例: 45,80。省くと各部品の高さの中央" if ja
                     else "heights to cut the plan at (mm, comma-separated), e.g. 45,80. Default: mid-height of each part")
     ap.add_argument("--section")
     ap.add_argument("--at", default=None, help="x=値 または y=値（既定：Yの中央）" if ja else "x=value or y=value (default: middle of Y)")

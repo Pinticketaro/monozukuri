@@ -15,7 +15,7 @@ manifest（out/vNN/manifest.json）は文だけ書けばよい：stage・summary
   images（外観・平面図・断面。manifest に書いた画像は外観の後に入る。並びを自分で決めるときは
           out/vNN/preview.png なども含めて全部書く）・
   compare（前の版の外観と重ねる）・params_diff・model・parts・step・
-  notes（寸法ファイルの fab に「初期値」があれば「本番の前に試し片で測る値：…」）・project（初回だけ）
+  notes（寸法ファイルの fab に「初期値」があれば「本番の前にテストピースで測る値：…」）・project（初回だけ）
 """
 import argparse
 import datetime
@@ -30,7 +30,7 @@ from status import load, params_versions, parent_of, ver_key  # noqa: E402
 
 CAP = {
     "ja": {"preview": "外観", "plan": "平面図", "section": "断面", "fig": "図", "stage": "モック",
-           "measure": "本番の前に試し片で測る値："},
+           "measure": "本番の前にテストピースで測る値："},
     "en": {"preview": "Exterior", "plan": "Plan", "section": "Section", "fig": "Figures", "stage": "Mock",
            "measure": "Measure with coupons before the final build: "},
 }

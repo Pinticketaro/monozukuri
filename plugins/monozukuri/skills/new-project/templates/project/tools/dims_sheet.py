@@ -27,9 +27,9 @@ TXT = {
         "refs_h": "## 資料",
         "refs_intro": "寸法の根拠にした図面・データシート・写真・実測の記録（`refs/`）。一覧は `{index}`。",
         "ref_link": "資料",
-        "fab_h": "## 加工の値（試し片で決める値を含む）",
+        "fab_h": "## 加工の値（テストピースで決める値を含む）",
         "fab_intro": "Fusion ではユーザーパラメータに同じ名前（キー）で入れる。状態が「初期値」のものは、"
-                     "製作の前に試し片で実測して置き換える（`tools/coupons.py`、`measurements/試し片記録.csv`）。",
+                     "製作の前にテストピースで実測して置き換える（`tools/coupons.py`、`measurements/試し片記録.csv`）。",
         "fab_cols": ["| 項目 | 値 | 単位 | キー | 状態 | 根拠 | 前の版から |", "|---|---:|---|---|---|---|---|"],
         "todo": "**まだ実測していない値：** ",
         "notes_h": "## モックで見つかった注意点",
@@ -66,7 +66,7 @@ TXT = {
 
 
 def not_measured(status):
-    """まだ試し片で測っていない値か（状態が「初期値」、英語の寸法ファイルでは "initial"）"""
+    """まだテストピースで測っていない値か（状態が「初期値」、英語の寸法ファイルでは "initial"）"""
     s = str(status)
     return s.startswith("初期値") or s.lower().startswith("initial")
 
