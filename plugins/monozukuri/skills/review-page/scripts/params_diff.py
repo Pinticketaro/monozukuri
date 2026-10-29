@@ -1,7 +1,7 @@
-"""2つの版の寸法ファイル（params_vNN.json）を比べて、変わった値の一覧を出す。
+"""2つの版のパラメータファイル（params_vNN.json）を比べて、変わった値の一覧を出す。
 使い方: python3 params_diff.py params_v02.json params_v03.json [--json out.json]
 
-寸法ファイルの形（monozukuri の雛形）
+パラメータファイルの形（monozukuri のテンプレート）
   {"meta": {...}, "params": {"outer_w": {"value": 160, "unit": "mm", "label": "外形の幅"}, ...}}
 値だけの形 {"outer_w": 160, ...} や、入れ子の JSON でも比べられる（キーを a.b.c とつなげる）。
 表示の言葉は --lang ja|en、無ければ新しい版の meta.lang、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
@@ -33,7 +33,7 @@ def help_lang(argv):
 
 
 def meta_lang(d):
-    """寸法ファイルの meta.lang（無ければ None）"""
+    """パラメータファイルの meta.lang（無ければ None）"""
     meta = d.get("meta") if isinstance(d, dict) else None
     return meta.get("lang") if isinstance(meta, dict) else None
 
@@ -41,7 +41,7 @@ def meta_lang(d):
 def flatten(d, prefix=""):
     out = {}
     if isinstance(d, dict) and ("params" in d or "fab" in d) and not prefix:
-        d = {**d.get("params", {}), **d.get("fab", {})}     # monozukuri の寸法ファイル（形の寸法＋加工の値）
+        d = {**d.get("params", {}), **d.get("fab", {})}     # monozukuri のパラメータファイル（形の寸法＋加工パラメータ）
     for k, v in d.items():
         key = f"{prefix}{k}"
         if isinstance(v, dict) and "value" in v:

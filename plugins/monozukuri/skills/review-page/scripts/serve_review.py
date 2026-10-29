@@ -1,9 +1,9 @@
 """確認ページを PC で開く（Artifact を公開できない環境、たとえば Claude Code 用）。
-プロジェクトの review/ を localhost の空いているポートで配り、ブラウザで開く。
-three.js や 3D モデルの読み込みは file:// では動かないので、ローカルのサーバーで配る。
+プロジェクトの review/ を localhost の空いているポートで配信し、ブラウザで開く。
+three.js や 3D モデルの読み込みは file:// では動かないので、ローカルのサーバーで配信する。
 
 使い方
-  python3 serve_review.py <プロジェクト>             … 配ってブラウザを開く（止めるまで動き続ける。裏で動かす）
+  python3 serve_review.py <プロジェクト>             … 配信してブラウザを開く（止めるまで動き続ける。バックグラウンドで実行する）
   python3 serve_review.py <プロジェクト> --no-open   … ブラウザを開かない
   python3 serve_review.py <プロジェクト> --stop      … 動いているサーバーを止める
 すでに同じプロジェクトのサーバーが動いていれば、新しく立てずにそのページを開く。
@@ -147,7 +147,7 @@ def make_handler(rv):
                 with lock:
                     return self.send_json(200, load_store(store_path))
             if self.path.split("?")[0] == "/stamp":
-                # ページが数秒ごとに見る小さな印。ページ（新しい版）とフィードバックのファイルが変わったかだけを返す
+                # ページが数秒ごとに見るスタンプ。ページ（新しい版）とフィードバックのファイルが変わったかだけを返す
                 mt = lambda f: os.stat(os.path.join(rv, f)).st_mtime_ns if os.path.exists(os.path.join(rv, f)) else 0
                 return self.send_json(200, {"board": mt("index.html"), "store": mt(STORE)})
             if os.path.basename(self.path.split("?")[0]) in (STORE, STATE):

@@ -1,6 +1,6 @@
-"""形の定義を1回書けば、STL（メッシュ）と STEP（ソリッド）の両方を出せる小さな道具。
+"""形の定義を1回書けば、STL（メッシュ）と STEP（ソリッド）の両方を出せる小さなツール。
 
-  - STL  … manifold3d で作る。速く、いつでも使える（描画・断面・確認ページ用）
+  - STL  … manifold3d で作る。速く、いつでも使える（レンダリング・断面・確認ページ用）
   - STEP … CadQuery（OpenCascade）で作る。面・円弧・円柱を持つソリッドなので、Fusion などで開いて
            押し出し・フィレット・穴などの編集ができる。モデル化の出発点に使う
            （CadQuery が入っていないときは STEP を飛ばす。setup スキルの `setup.sh --with-cad` で入る）
@@ -10,14 +10,14 @@
     outer = RRect(180, 110, r=8)                      # 角丸の長方形（中心 0,0）
     plate = slab(outer, z0=0, t=3, holes=[Circle(3.4, cx=85, cy=50)])
     frame = slab(outer, 3, 16, holes=[RRect(162, 92, r=2)])
-    left  = frame & box(-100, -60, 0, 100, 120, 40)    # & は重なり（共通部分）、+ は足す、- は引く
-    part  = plate.translate(0, 0, 10).rotate_z(30)     # 移動、Z軸まわりに30°回す
+    left  = frame & box(-100, -60, 0, 100, 120, 40)    # & は交差（共通部分）、+ は結合、- は切り取り
+    part  = plate.translate(0, 0, 10).rotate_z(30)     # 移動、Z軸まわりに30°回転
 
     # 回転体・筒の部品
     cup   = tube(0, 0, 72, 68, 0, 90) + cyl(0, 0, 72, 0, 2)          # 筒（外径72・内径68・高さ90）＋底
     neck  = cone(0, 0, 66, 54, 110, 12)                               # 円錐台（下φ66 → 上φ54）
-    knob  = revolve([(0, 0), (10, 0), (10, 4), (6, 8), (0, 8)], z0=90)  # (半径, 高さ) の点列を Z 軸まわりに回す
-    ear   = lug_with_slot(r=36, angle=0, w=28, out=11, h=14, z0=72, slot_w=21, slot_t=3)  # ストラップを通す耳
+    knob  = revolve([(0, 0), (10, 0), (10, 4), (6, 8), (0, 8)], z0=90)  # (半径, 高さ) の点列を Z 軸まわりに回転
+    ear   = lug_with_slot(r=36, angle=0, w=28, out=11, h=14, z0=72, slot_w=21, slot_t=3)  # ストラップホール付きのラグ
 
 輪郭は「角丸の長方形」「円」「多角形」の3種類。STEP では角丸は本物の円弧、円は本物の円、
 円柱・円錐・回転体は本物の曲面になる（点の並びで近似しないので、Fusion で寸法を測ったり
@@ -146,13 +146,13 @@ class Solid:
     def __and__(self, o):
         return Solid("inter", self, o)
 
-    __xor__ = __and__          # manifold3d と同じ書き方（^ ＝ 重なり）も使える
+    __xor__ = __and__          # manifold3d と同じ書き方（^ ＝ 交差）も使える
 
     def translate(self, x=0.0, y=0.0, z=0.0):
         return Solid("move", self, (float(x), float(y), float(z)))
 
     def rotate_z(self, deg, cx=0.0, cy=0.0):
-        """Z軸（中心 cx, cy）まわりに deg 度回す（反時計回りが正）"""
+        """Z軸（中心 cx, cy）まわりに deg 度回転する（反時計回りが正）"""
         return Solid("rotz", self, (float(deg), float(cx), float(cy)))
 
     # メッシュ（manifold3d）
@@ -210,7 +210,7 @@ class Solid:
                 self._cq = cq.Workplane("XY").add(cq.Solid.makeCone(d0 / 2, d1 / 2, h, cq.Vector(cx, cy, z0)))
             elif self.op == "revolve":
                 pts, z0, cx, cy = a
-                # XZ の作業面では、点の (x, y) が (半径, 高さ) になる。その面の縦軸（＝Z軸）まわりに回す
+                # XZ のワークプレーンでは、点の (x, y) が (半径, 高さ) になる。その面の縦軸（＝Z軸）まわりに回転する
                 s = cq.Workplane("XZ").polyline(pts).close().revolve(360, (0, 0, 0), (0, 1, 0))
                 self._cq = s.translate((cx, cy, z0))
             elif self.op == "box":
@@ -256,19 +256,19 @@ def tube(cx, cy, d_out, d_in, z0, h):
 
 
 def revolve(profile_pts, z0=0.0, cx=0.0, cy=0.0):
-    """回転体：(半径, 高さ) の点列（閉じなくてよい。半径は 0 以上）を Z 軸まわりに1周回す。
+    """回転体：(半径, 高さ) の点列（閉じなくてよい。半径は 0 以上）を Z 軸まわりに1周回転する。
     缶の肩・ノブ・ボトルのような形に使う。z0 だけ持ち上げ、中心を (cx, cy) に置く"""
     pts = [(max(0.0, float(r)), float(z)) for r, z in profile_pts]
     return Solid("revolve", pts, float(z0), float(cx), float(cy))
 
 
 def lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t, slot_at=None, embed=2.0, cx=0.0, cy=0.0):
-    """ストラップを通す耳：筒の外面（半径 r）から外へ出る板状の出っ張りに、上下に貫通する長穴を開ける。
-      angle   … 耳の向き（度。0＝+X、90＝+Y）
-      w, out, h … 耳の幅（周方向）、筒の外面から出る量、高さ（Z）。z0 は耳の下端
+    """ストラップホール付きのラグ：筒の外面（半径 r）から外へ出る板状の突起に、上下に貫通する長穴（ストラップホール）を開ける。
+      angle   … ラグの向き（度。0＝+X、90＝+Y）
+      w, out, h … ラグの幅（周方向）、筒の外面から出る量、高さ（Z）。z0 はラグの下端
       slot_w, slot_t … 長穴の長さ（周方向＝ストラップの幅＋すきま）と幅（半径方向＝ストラップの厚み＋すきま）
       slot_at … 長穴の中心の、筒の外面からの距離（既定は out の真ん中）
-      embed   … 筒とつながるよう、外面より内側へ食い込ませる量（筒の壁の厚さ以下にする）
+      embed   … 筒とつながるよう、外面より内側へ埋め込む量（筒の壁の厚さ以下にする）
     中心 (cx, cy) の筒に付ける。筒の内側へはみ出さないよう、embed は壁の厚さ以下にする"""
     at = out / 2 if slot_at is None else slot_at
     blk = box(r - embed, -w / 2, z0, out + embed, w, h)
@@ -279,7 +279,7 @@ def lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t, slot_at=None, embed=2
     return lug.translate(cx, cy, 0) if (cx or cy) else lug
 
 
-# ---------------------------------------------------------------- 書き出し
+# ---------------------------------------------------------------- エクスポート
 def to_trimesh(solid):
     g = solid.mf().to_mesh()
     return trimesh.Trimesh(np.asarray(g.vert_properties)[:, :3], np.asarray(g.tri_verts), process=False)
@@ -311,7 +311,7 @@ def export_assembly(parts, path):
 
 
 def check_step(solid, path, tol=0.05):
-    """書き出した STEP を読み直して、メッシュと大きさ（mm）がそろっているか確かめる（単位の関所）。
+    """エクスポートした STEP を読み直して、メッシュと大きさ（mm）がそろっているか確かめる（単位チェック）。
     戻り値：(合っているか, STEPの大きさ, メッシュの大きさ)"""
     import cadquery as cq
     bb = cq.importers.importStep(path).val().BoundingBox()

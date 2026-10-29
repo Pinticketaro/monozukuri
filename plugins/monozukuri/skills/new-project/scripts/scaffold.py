@@ -1,21 +1,21 @@
-"""新しいものづくりプロジェクトの雛形を作る。既存のプロジェクトの道具（tools/）を新しくする。
+"""新しいものづくりプロジェクトをテンプレートから作る。既存のプロジェクトのツール（tools/）を更新する。
 使い方
   python3 scaffold.py --dest <作るフォルダ> --name "名前" --summary "1行の説明"
                       [--origin "外形の左下、X右・Y奥・Z上"] [--methods "上下の板：CO2レーザー／枠：3Dプリント（PLA）"]
                       [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
-                      [--printer <棚の機械>] [--laser <棚の機械>] [--material <棚の材料> ...]
+                      [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
   python3 scaffold.py --update-tools <プロジェクトのフォルダ> [--force] [--lang ja|en]
 --dest がすでにあって中身があるときは止まる（上書きしない）。
---printer・--laser・--material は部品の棚（shelf.py。~/.monozukuri/shelf/）の機械と材料。造形範囲（bed_*）を機械から入れ、
-  その機械と材料の実測が棚にあれば、fab のその値を「実測」にして basis に出典を書く。寸法ファイルの meta に
-  printer・laser・materials として残る。棚が無いとき・指定しないときは今までどおり（初期値）。
---process は作り方（laser＝レーザー、fdm＝3Dプリント、both＝両方。既定 both）。寸法ファイルの fab を、その作り方で
+--printer・--laser・--material はライブラリ（shelf.py。~/.monozukuri/shelf/）の機材と材料。造形範囲（bed_*）をプリンターから入れ、
+  その機材と材料の実測がライブラリにあれば、fab のその値を「実測」にして basis に出典を書く。パラメータファイルの meta に
+  printer・laser・materials として残る。ライブラリが無いとき・指定しないときは今までどおり（初期値）。
+--process は加工方法（laser＝レーザー、fdm＝3Dプリント、both＝両方。既定 both）。パラメータファイルの fab を、その加工方法で
   使う項目だけにし、チェックリストなどの関係しない項目を外す。fdm のときは、例の形を3Dプリントの缶ケースにする。
---lang は言語（ja＝日本語、en＝英語。既定は環境変数 MONOZUKURI_LANG、無ければ ja）。文書・寸法ファイル・例の mock.py を
-  その言語で作り、寸法ファイルの meta.lang に記録する。en では文書のファイル名も英語になる（docs/checklist.md など）。
---update-tools は、プラグインが持ち主の道具（geom.py・common.py・描画のスクリプトなど）だけを新しくする。
-  mock.py は上書きせず、新しい雛形を tools/mock.py.new として置く。元のファイルは tools/.backup-<日時>/ に残す。
-  mock.py.new と表示の言語は、いちばん新しい寸法ファイルの meta.lang（無ければ ja）。--lang を付けると表示だけその言語。
+--lang は言語（ja＝日本語、en＝英語。既定は環境変数 MONOZUKURI_LANG、無ければ ja）。文書・パラメータファイル・例の mock.py を
+  その言語で作り、パラメータファイルの meta.lang に記録する。en では文書のファイル名も英語になる（docs/checklist.md など）。
+--update-tools は、プラグインが管理するツール（geom.py・common.py・レンダリングのスクリプトなど）だけを更新する。
+  mock.py は上書きせず、新しいテンプレートを tools/mock.py.new として置く。元のファイルは tools/.backup-<日時>/ に残す。
+  mock.py.new と表示の言語は、いちばん新しいパラメータファイルの meta.lang（無ければ ja）。--lang を付けると表示だけその言語。
 """
 import argparse
 import ast
@@ -55,48 +55,48 @@ Stops if --dest already exists and has files (never overwrites).
 """
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE = os.path.join(HERE, "..", "templates", "project")    # 言語によらないもの（道具・.gitattributes など）
-LANGS = os.path.join(HERE, "..", "templates", "lang")          # 言語ごとの文書・寸法ファイル・例の mock.py（lang/<ja|en>/）
-VARIANTS = os.path.join(HERE, "..", "templates", "variants")   # 作り方ごとの例（variants/<作り方>/<言語>/。params と mock.py の build() を差し替える）
+TEMPLATE = os.path.join(HERE, "..", "templates", "project")    # 言語によらないもの（ツール・.gitattributes など）
+LANGS = os.path.join(HERE, "..", "templates", "lang")          # 言語ごとの文書・パラメータファイル・例の mock.py（lang/<ja|en>/）
+VARIANTS = os.path.join(HERE, "..", "templates", "variants")   # 加工方法ごとの例（variants/<加工方法>/<言語>/。params と mock.py の build() を差し替える）
 PROCESSES = {"laser": {"laser"}, "fdm": {"fdm"}, "both": {"laser", "fdm"}}
 LANG_CODES = ("ja", "en")
 SHARED = os.path.join(HERE, "..", "..", "review-page", "scripts")
 SHARED_FILES = ["render_model.py", "slices.py", "compare.py", "params_diff.py"]
-# プラグインが持ち主の道具（--update-tools で上書きする）。mock.py は利用者の build() があるので入れない
+# プラグインが管理するツール（--update-tools で上書きする）。mock.py は利用者の build() があるので入れない
 OWNED = {f: os.path.join(TEMPLATE, "tools", f)
          for f in ["geom.py", "common.py", "coupons.py", "dims_sheet.py", "requirements.txt"]}
 OWNED.update({f: os.path.join(SHARED, f) for f in SHARED_FILES})
-KNOWN = os.path.join(HERE, "tool_versions.json")       # これまでの版の道具の中身（sha256）と定義の名前。版を出すときに足す
+KNOWN = os.path.join(HERE, "tool_versions.json")       # これまでの版のツールの中身（sha256）と定義の名前。版を出すときに足す
 VERSION_FILE = ".monozukuri-version"
 
 # 表示の言葉（日本語・英語）
 MSG = {
     "ja": {
-        "no_template": "雛形がありません：{path}",
+        "no_template": "テンプレートがありません：{path}",
         "dest_nonempty": "{dest} には既にファイルがあります。空のフォルダか新しい名前を指定してください",
         "methods_tbd": "（未定）",
         "origin": "外形の中心が X=0・Y=0、底面が Z=0。X右・Y奥・Z上",
-        "commit": "雛形：{name}（monozukuri）",
+        "commit": "テンプレートから作成：{name}（monozukuri）",
         "commit_fail": "!! コミットできませんでした（git の user.name / user.email を設定してから再実行）",
         "no_tools": "{tools} がありません。プロジェクトのフォルダを指定してください",
         "estimated": "{v}（推定）",
         "unknown": "不明",
-        "start": "道具を新しくします：{old} → {new}（{tools}）",
+        "start": "ツールを更新します：{old} → {new}（{tools}）",
         "added": "追加",
         "upd_known": "更新（{v} の中身）",
         "upd_mine": "更新（手を加えた所{names} は新しい版にあります）",
         "names": "：{names}",
         "lost": "新しい版に無い定義：{names}",
-        "differs": "雛形のどの版とも中身が違います",
+        "differs": "テンプレートのどの版とも中身が違います",
         "blocked": "\n!! プロジェクトで手を加えたファイルがあるので、何も上書きせずに止めました",
         "item": "   {f}：{why}",
         "blocked_hint": "   手を加えた所を残したいときは、新しい版に写してから再実行してください。"
                         "上書きしてよいときは --force を付けます（元のファイルは tools/.backup-<日時>/ に残ります）",
-        "forced": "上書き（--force。手を加えた所は控えにだけ残ります）",
+        "forced": "上書き（--force。手を加えた所はバックアップにだけ残ります）",
         "done": "  {f}：{how}",
-        "up_to_date": "  道具はすでに新しい版です",
+        "up_to_date": "  ツールはすでに新しい版です",
         "backup": "  元のファイル：tools/.backup-{stamp}/",
-        "mock_new": "\nmock.py はそのままです（build() があるため）。新しい雛形を tools/mock.py.new に置きました",
+        "mock_new": "\nmock.py はそのままです（build() があるため）。新しいテンプレートを tools/mock.py.new に置きました",
         "mock_same": "  build() の外は同じです。差し替えは要りません",
         "mock_diff": "  build() の外の違い（{n}行。新しい枠組みを使うときは、mock.py.new の build() を今の build() に置き換えて使う）：",
         "run_mock": "   ※ 新しい mock.py は main() を持たず、最後で common.run_mock(build) を呼びます。今の mock.py の"
@@ -104,31 +104,31 @@ MSG = {
                     "サポートが要る面の確認などの新しい機能が使えます",
         "more": "   …ほか {n}行",
         "build_cut": "def build(prm):  # （省略：プロジェクトの形）",
-        "gi_comment": "# 道具を新しくしたときの控え（scaffold.py --update-tools）",
+        "gi_comment": "# ツールを更新したときのバックアップ（scaffold.py --update-tools）",
         "recorded": "\n記録しました：tools/{vf} = {v}",
         "known_recorded": "{path} に {v} を記録しました",
-        "need_args": "--dest と --name（新しく作る）か、--update-tools（道具を新しくする）を指定してください",
-        "h_process": "作り方：laser（レーザー）、fdm（3Dプリント）、both（両方。既定）",
-        "h_bed": "プリンタの造形範囲 例 220x220",
+        "need_args": "--dest と --name（新しく作る）か、--update-tools（ツールを更新する）を指定してください",
+        "h_process": "加工方法：laser（レーザー）、fdm（3Dプリント）、both（両方。既定）",
+        "h_bed": "プリンターの造形範囲 例 220x220",
         "h_lang": "言語：ja（日本語）、en（英語）。既定は環境変数 MONOZUKURI_LANG、無ければ ja。"
                   "--update-tools ではプロジェクトの meta.lang に従い、--lang は表示だけを変える",
         "h_git": "git init と最初のコミットまで行う",
         "m_update": "プロジェクト",
         "h_update": "既存のプロジェクトの tools/ を新しくする",
         "h_force": "--update-tools で、手を加えたファイルも上書きする",
-        "h_printer": "部品の棚の3Dプリンター（shelf.py list machines）。造形範囲と、棚の実測値を入れる",
-        "h_laser": "部品の棚のレーザー。棚の実測値（カーフ・板厚など）を入れる",
-        "h_material": "部品の棚の材料（複数可。, 区切りでも）。その機械での実測があれば fab に入れる",
-        "no_shelf": "部品の棚がありません（{path}）。--printer・--laser・--material は使わずに作ります",
-        "no_machine": "部品の棚に機械「{key}」がありません。ある機械：{have}",
-        "wrong_kind": "機械「{key}」は {kind} です（{opt} には {want} の機械を指定する）",
-        "no_material": "  棚に無い材料：{key}（実測なし。初期値のまま）",
-        "bed_basis": "部品の棚の機械：{key}（{title}）",
+        "h_printer": "ライブラリの3Dプリンター（shelf.py list machines）。造形範囲と、ライブラリの実測値を入れる",
+        "h_laser": "ライブラリのレーザー加工機。ライブラリの実測値（カーフ・板厚など）を入れる",
+        "h_material": "ライブラリの材料（複数可。, 区切りでも）。その機材での実測があれば fab に入れる",
+        "no_shelf": "ライブラリがありません（{path}）。--printer・--laser・--material は使わずに作ります",
+        "no_machine": "ライブラリに機材「{key}」がありません。ある機材：{have}",
+        "wrong_kind": "機材「{key}」は {kind} です（{opt} には {want} の機材を指定する）",
+        "no_material": "  ライブラリに無い材料：{key}（実測なし。初期値のまま）",
+        "bed_basis": "ライブラリのプリンター：{key}（{title}）",
         "fab_status": "実測",
-        "fab_basis": "実測（{src}・{date}）。部品の棚：materials/{mat}（{machine}）",
-        "from_shelf": "  棚から：{key} = {value}{unit}（実測：{src}・{date}。{mat}・{machine}）",
-        "bed_shelf": "  棚から：造形範囲 {bed} mm（{key}）",
-        "no_measured": "  棚の実測：{mat}（{machine}）には無い（初期値のまま）",
+        "fab_basis": "実測（{src}・{date}）。ライブラリ：materials/{mat}（{machine}）",
+        "from_shelf": "  ライブラリから：{key} = {value}{unit}（実測：{src}・{date}。{mat}・{machine}）",
+        "bed_shelf": "  ライブラリから：造形範囲 {bed} mm（{key}）",
+        "no_measured": "  ライブラリの実測：{mat}（{machine}）には無い（初期値のまま）",
     },
     "en": {
         "no_template": "Template not found: {path}",
@@ -195,7 +195,7 @@ MSG = {
 
 
 def resolve_lang(explicit=None, data=None):
-    """言語を決める：引数の指定 > データ（寸法ファイルの meta.lang など）> 環境変数 MONOZUKURI_LANG > ja"""
+    """言語を決める：引数の指定 > データ（パラメータファイルの meta.lang など）> 環境変数 MONOZUKURI_LANG > ja"""
     for v in (explicit, data, os.environ.get("MONOZUKURI_LANG")):
         if v in LANG_CODES:
             return v
@@ -246,10 +246,10 @@ def without_build(path, lang="ja"):
 
 
 def project_meta(proj):
-    """いちばん新しい寸法ファイル（params/params_vNN.json）の meta。読めなければ {}"""
+    """いちばん新しいパラメータファイル（params/params_vNN.json）の meta。読めなければ {}"""
     vs = []
     for f in glob.glob(os.path.join(proj, "params", "params_v*.json")):
-        m = re.search(r"params_v(\d+)([a-z]*)\.json$", f)          # 枝分かれの案（v04a など）も数える
+        m = re.search(r"params_v(\d+)([a-z]*)\.json$", f)          # ブランチの案（v04a など）も数える
         if m:
             vs.append((int(m.group(1)), m.group(2), f))
     if not vs:
@@ -262,7 +262,7 @@ def project_meta(proj):
 
 
 def mock_template(lang, process):
-    """プロジェクトの言語・作り方に合う mock.py の雛形。作り方ごとの例があればそれ、無ければ言語の例（箱）"""
+    """プロジェクトの言語・加工方法に合う mock.py のテンプレート。加工方法ごとの例があればそれ、無ければ言語の例（箱）"""
     for p in (os.path.join(VARIANTS, process, lang, "tools", "mock.py"),
               os.path.join(LANGS, lang, "tools", "mock.py"),
               os.path.join(LANGS, "ja", "tools", "mock.py")):
@@ -274,7 +274,7 @@ def mock_template(lang, process):
 def update_tools(proj, force, lang_flag=None):
     proj = os.path.abspath(proj)
     tools = os.path.join(proj, "tools")
-    # プロジェクトの言語と作り方：いちばん新しい寸法ファイルの meta.lang（無ければ ja）と meta.process（無ければ both）
+    # プロジェクトの言語と加工方法：いちばん新しいパラメータファイルの meta.lang（無ければ ja）と meta.process（無ければ both）
     meta = project_meta(proj)
     proj_lang = meta.get("lang") if meta.get("lang") in LANG_CODES else "ja"
     process = meta.get("process") if meta.get("process") in PROCESSES else "both"
@@ -344,7 +344,7 @@ def update_tools(proj, force, lang_flag=None):
     elif os.path.isdir(backup):
         print(T["backup"].format(stamp=stamp))
 
-    # mock.py は上書きしない。プロジェクトの言語・作り方の新しい雛形を mock.py.new として置き、build() の外の違いを見せる
+    # mock.py は上書きしない。プロジェクトの言語・加工方法の新しいテンプレートを mock.py.new として置き、build() の外の違いを見せる
     new_mock = mock_template(proj_lang, process)
     mine = os.path.join(tools, "mock.py")
     if new_mock and (not os.path.exists(mine) or sha(mine) != sha(new_mock)):
@@ -376,7 +376,7 @@ def update_tools(proj, force, lang_flag=None):
 
 
 def dump_params(d, path):
-    """寸法ファイルを、params・fab は1項目1行で書き出す（雛形と同じ読みやすい形）"""
+    """パラメータファイルを、params・fab は1項目1行で書く（テンプレートと同じ読みやすい形）"""
     out, secs = ["{"], list(d.items())
     for si, (sec, val) in enumerate(secs):
         comma = "," if si < len(secs) - 1 else ""
@@ -394,7 +394,7 @@ def dump_params(d, path):
 
 
 def keep_process_blocks(text, keep):
-    """<!-- laser --> 〜 <!-- /laser -->（fdm も同じ）の区間を、作り方に入っていなければ外す。印の行は消す"""
+    """<!-- laser --> 〜 <!-- /laser -->（fdm も同じ）の区間を、加工方法に入っていなければ外す。印の行は消す"""
     out, skip = [], []
     for ln in text.split("\n"):
         m = re.fullmatch(r"\s*<!-- (/?)(laser|fdm) -->\s*", ln)
@@ -410,7 +410,7 @@ def keep_process_blocks(text, keep):
 
 
 def shelf_lookup(a, T):
-    """--printer・--laser・--material を部品の棚（shelf.py）で引く。指定が無い・棚が無いときは None"""
+    """--printer・--laser・--material をライブラリ（shelf.py）で引く。指定が無い・ライブラリが無いときは None"""
     mats = [x.strip() for v in (a.material or []) for x in v.split(",") if x.strip()]
     if not (a.printer or a.laser or mats):
         return None
@@ -433,7 +433,7 @@ def shelf_lookup(a, T):
 
 
 def apply_shelf(d, plan, T, bed_given):
-    """棚の機械と材料を寸法ファイルに入れる：meta、造形範囲（bed_*）、実測のある fab の値"""
+    """ライブラリの機材と材料をパラメータファイルに入れる：meta、造形範囲（bed_*）、実測のある fab の値"""
     shelf, machines, mats = plan["shelf"], plan["machines"], plan["materials"]
     lines = []
     for role, meta_key in (("fdm", "printer"), ("laser", "laser")):
@@ -494,7 +494,7 @@ def create(a, lang):
     dest = os.path.abspath(a.dest)
     if os.path.isdir(dest) and os.listdir(dest):
         sys.exit(T["dest_nonempty"].format(dest=dest))
-    plan = shelf_lookup(a, T)                    # 棚の機械・材料（作る前に確かめる。無い機械なら止まる）
+    plan = shelf_lookup(a, T)                    # ライブラリの機材・材料（作る前に確かめる。無い機材なら止まる）
     lang_dir = os.path.join(LANGS, lang)
     lang_params = os.path.join(lang_dir, "params", "params_v01.json")
     if not os.path.exists(lang_params):
@@ -502,12 +502,12 @@ def create(a, lang):
     keep = PROCESSES[a.process]
     junk = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
     shutil.copytree(TEMPLATE, dest, dirs_exist_ok=True, ignore=junk)
-    shutil.copytree(lang_dir, dest, dirs_exist_ok=True, ignore=junk)       # 言語ごとの文書・寸法ファイル・例の mock.py を重ねる
+    shutil.copytree(lang_dir, dest, dirs_exist_ok=True, ignore=junk)       # 言語ごとの文書・パラメータファイル・例の mock.py を重ねる
     for f in SHARED_FILES:
         shutil.copy(os.path.join(SHARED, f), os.path.join(dest, "tools", f))
     open(os.path.join(dest, "tools", VERSION_FILE), "w", encoding="utf-8").write(plugin_version() + "\n")
 
-    # 寸法ファイル：例の形（fdm は3Dプリントの例）＋作り方で使う fab だけ。fab はその言語の雛形の寸法ファイルから取る
+    # パラメータファイル：例の形（fdm は3Dプリントの例）＋加工方法で使う fab だけ。fab はその言語のテンプレートのパラメータファイルから取る
     pp = os.path.join(dest, "params", "params_v01.json")
     base = json.load(open(lang_params, encoding="utf-8"))
     var = os.path.join(VARIANTS, a.process, lang)
@@ -553,7 +553,7 @@ def create(a, lang):
 
 
 def record_tool_versions(lang="ja"):
-    """版を出すときに実行する：今の道具の中身を tool_versions.json に足す（--update-tools が古い版を見分けるため）。
+    """版を出すときに実行する：今のツールの中身を tool_versions.json に足す（--update-tools が古い版を見分けるため）。
     mock.py は日本語の箱の例（lang/ja/tools/mock.py）だけを記録する"""
     known = known_versions()
     v = plugin_version()

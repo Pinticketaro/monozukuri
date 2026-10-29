@@ -7,4 +7,4 @@ networkx        # 断面・平面図（trimesh の section が使う） / sectio
 pillow>=10.0
 playwright>=1.40
 cascadio        # STEP を読むとき / for reading STEP
-cadquery        # モックを STEP でも書き出すとき（無ければ STL だけ） / for writing the mock as STEP too (STL only without it)
+cadquery        # モックを STEP でもエクスポートするとき（無ければ STL だけ） / for writing the mock as STEP too (STL only without it)

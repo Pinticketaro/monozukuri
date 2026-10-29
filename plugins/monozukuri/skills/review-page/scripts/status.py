@@ -4,7 +4,7 @@
   python3 status.py <プロジェクト>
 
 出すもの
-  版の流れ（どの版から作ったか・続けなかった案）、最新の版の要点、確認ページの場所、
+  バージョン履歴（どの版から作ったか・続けなかった案）、最新の版の要点、確認ページの場所、
   未対応のフィードバック（PC のページ。公開中のページは ArtifactData で読む）、
   最新の版の問いと答え・決定、答えはあるが決まっていない前の版の問い、
   仮の寸法・根拠の無い寸法・テストピースで測る値（初期値）、LOG.md の最後の版の「次に試す」、決定事項の数と最後の行。
@@ -44,7 +44,7 @@ def params_versions(root):
 
 
 def parent_of(root, ver, order):
-    """寸法ファイルの meta.parent、無ければ番号が1つ前の版（同じ番号の案どうしはつながない）"""
+    """パラメータファイルの meta.parent、無ければ番号が1つ前の版（同じ番号の案どうしはつながない）"""
     meta = (load(os.path.join(root, "params", f"params_{ver}.json"), {}) or {}).get("meta", {})
     if meta.get("parent"):
         return meta["parent"]
@@ -120,7 +120,7 @@ def main():
         L.append(f"最新の版: {latest}（{b.get('stage', '')}・{b.get('date', '')}）{short(b.get('summary'), 100)}")
     extra = [v for v in pvers if v not in bvers]
     if extra:
-        L.append("寸法ファイルだけあって、まだページに載せていない版: " + "・".join(extra))
+        L.append("パラメータファイルだけあって、まだページに載せていない版: " + "・".join(extra))
 
     # 確認ページ
     art = load(os.path.join(rv, "artifact.json"), {}) or {}
@@ -174,7 +174,7 @@ def main():
         L.append("答えはあるが決定していない問い（前の版）:")
         L += pend[:6] + ([f"  ほか {len(pend) - 6}件"] if len(pend) > 6 else [])
 
-    # 寸法ファイル：仮・根拠なし・テストピースで測る値
+    # パラメータファイル：仮・根拠なし・テストピースで測る値
     if params:
         tent, nob, init = [], [], []
         for sec in ("params", "fab"):
@@ -188,7 +188,7 @@ def main():
                     tent.append(f"{k} {it.get('value')}{it.get('unit', '')}")
                 if sec == "fab" and it.get("status") in INITIAL:
                     init.append(k)
-        L.append(f"寸法ファイル {lp}: 仮 {len(tent)}・根拠なし {len(nob)}・テストピースで測る値 {len(init)}")
+        L.append(f"パラメータファイル {lp}: 仮 {len(tent)}・根拠なし {len(nob)}・テストピースで測る値 {len(init)}")
         cap = lambda xs: "、".join(xs[:12]) + (f" ほか{len(xs) - 12}" if len(xs) > 12 else "")
         if tent:
             L.append("  仮: " + cap(tent))

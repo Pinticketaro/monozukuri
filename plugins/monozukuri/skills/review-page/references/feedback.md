@@ -5,7 +5,7 @@ PC で `serve_review.py` から開いたページ（ローカル版）は、同�
 
 ## 言語（日本語・英語）
 - `kind`・`status`・`target`・`choice` の値と、ドキュメントの ID の形は言語によらない（英語のプロジェクトでも `fix`・`open`・`yes` など同じ）。ページは表示名だけをページの言語（`review/board.json` の `lang`）で出す。言語を切り替えても、前に書かれたデータはそのまま読める。
-- Claude が書く文（`reply`、`decisions` の `note`）は、プロジェクトの言語（寸法ファイルの `meta.lang`。無ければ日本語）で書く。
+- Claude が書く文（`reply`、`decisions` の `note`）は、プロジェクトの言語（パラメータファイルの `meta.lang`。無ければ日本語）で書く。
 - 閲覧者の本文（`text`）は書かれた言語のまま扱う。ユーザーへのまとめはユーザーの言語で書き、本文を引くときは原文を添える。
 - 英語のプロジェクトでは、決定を足す文書は `docs/decisions.md`（日本語のプロジェクトは `docs/決定事項.md`）。
 
@@ -39,7 +39,7 @@ ArtifactData  action: "list", url: <review/artifact.json の url>, collection: "
 
 ## まとめ方（ユーザーへの提示）
 - 「直したい」を対象ごとに束ね、同じ指摘が複数あれば数を添える。
-- 次の版で変える候補を、寸法ファイルのどの項目をどう変えるかの形で示す（例：`frame_h 16 → 14`）。
+- 次の版で変える候補を、パラメータファイルのどの項目をどう変えるかの形で示す（例：`frame_h 16 → 14`）。
 - 「質問」には答えを用意し、反映時に `reply` に書く。
 - 「良い」は変えない所の確認として扱う（次の版で崩さない）。
 
@@ -84,7 +84,7 @@ ArtifactData  action: "list", url: ..., collection: "answers"
 ```
 ArtifactData  action: "batch", url: ..., writes: [
   {op: "set", collection: "decisions", doc_id: "v03~q2",
-   data: {"choice": "b", "note": "継ぎ目を隠すほうを取る（はめあいはテストピースで確かめる）", "version": "v04"}}]
+   data: {"choice": "b", "note": "分割面を隠すほうを取る（はめあいはテストピースで確かめる）", "version": "v04"}}]
 ```
 - `doc_id` は `<問いを出した版>~q<番号>`。`choice` は答えの ID、`note` は1文の理由（プロジェクトの言語で書く）、`version` はそれを反映した版。
 - 決めた内容は、プロジェクトの `docs/決定事項.md`（英語のプロジェクトは `docs/decisions.md`）にも1行足す。答えのドキュメントは消さない。

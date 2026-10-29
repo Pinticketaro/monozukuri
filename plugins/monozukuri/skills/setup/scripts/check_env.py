@@ -1,7 +1,7 @@
-"""monozukuri の環境チェック。足りないものと、テスト描画の結果を表で出す。
+"""monozukuri の環境チェック。足りないものと、テストレンダリングの結果を表で出す。
 結果は ~/.cache/monozukuri/env.json にも保存する（日本語フォントの場所、three.js の場所）。
 使い方: python3 check_env.py [--no-render] [--lang ja|en]
-  言葉（表・メッセージ・テスト描画）は --lang、無ければ環境変数 MONOZUKURI_LANG、どれも無ければ ja。
+  言葉（表・メッセージ・テストレンダリング）は --lang、無ければ環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 """
 import importlib
 import json
@@ -74,9 +74,9 @@ def main():
                                  ("networkx", L("networkx（断面・平面図で輪郭をたどる）",
                                                 "networkx (tracing outlines for sections, plan views)"), True),
                                  ("PIL", L("Pillow（画像の比較）", "Pillow (image comparison)"), True),
-                                 ("playwright", L("playwright（外観の描画）", "playwright (rendering the 3D views)"), True),
+                                 ("playwright", L("playwright（外観のレンダリング）", "playwright (rendering the 3D views)"), True),
                                  ("cascadio", L("cascadio（STEPの読み込み）", "cascadio (reading STEP)"), False),
-                                 ("cadquery", L("cadquery（モックの STEP 書き出し。無いと STL だけ）",
+                                 ("cadquery", L("cadquery（モックの STEP エクスポート。無いと STL だけ）",
                                                 "cadquery (STEP export of mocks; without it, STL only)"), False)]:
         try:
             m = importlib.import_module(mod)
@@ -120,7 +120,7 @@ def main():
             import trimesh
             tmp = tempfile.mkdtemp()
             stl = os.path.join(tmp, "steps.stl")
-            # 段差・斜面・面取りのある形（影と、右横の図の明暗を確かめる）
+            # 段差・斜面・面取りのある形（影と、右側面の図の明暗を確かめる）
             T = trimesh.transformations.translation_matrix
             hull = lambda pts: trimesh.convex.convex_hull(np.array(pts, dtype=float))
             trimesh.util.concatenate([
@@ -131,7 +131,7 @@ def main():
                 hull([[-30, -20, 8], [30, -20, 8], [-30, -6, 8], [30, -6, 8], [-30, -6, 16], [30, -6, 16]]),   # 手前の斜面
             ]).export(stl)
             out = os.path.join(tmp, "test.png")
-            cmd = [sys.executable, RENDER, f"{stl}:#7a9a88", "--out", out, "--title", L("テスト描画", "Test render")]
+            cmd = [sys.executable, RENDER, f"{stl}:#7a9a88", "--out", out, "--title", L("テストレンダリング", "Test render")]
             # render_model.py が --lang を受けるときだけ渡す（古い版でも動くように）
             h = subprocess.run([sys.executable, RENDER, "--help"], capture_output=True, text=True, timeout=60)
             if "--lang" in h.stdout:
@@ -139,9 +139,9 @@ def main():
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=180,
                                env=dict(os.environ, MONOZUKURI_LANG=LANG))
             ok = r.returncode == 0 and os.path.getsize(out) > 10000
-            row(L("テスト描画", "Test render"), ok, out if ok else (r.stderr.strip().splitlines() or [L("失敗", "failed")])[-1])
+            row(L("テストレンダリング", "Test render"), ok, out if ok else (r.stderr.strip().splitlines() or [L("失敗", "failed")])[-1])
         except Exception as e:
-            row(L("テスト描画", "Test render"), False, str(e))
+            row(L("テストレンダリング", "Test render"), False, str(e))
 
     w = max(len(r[0]) for r in rows)
     for name, st, note in rows:

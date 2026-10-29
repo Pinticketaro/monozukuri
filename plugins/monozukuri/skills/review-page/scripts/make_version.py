@@ -5,17 +5,17 @@
   python3 make_version.py <プロジェクト> vNN                  … 全部（manifest が無ければ画像まで）
   python3 make_version.py <プロジェクト> vNN --page-only      … 画像は作り直さず、manifest を埋めてページだけ
   python3 make_version.py <プロジェクト> vNN --no-page        … 画像まで
-  python3 make_version.py <プロジェクト> vNN --tool tools/model.py   … mock.py の代わりに使う道具（none で飛ばす。人が作ったモデルは
+  python3 make_version.py <プロジェクト> vNN --tool tools/model.py   … mock.py の代わりに使うツール（none で飛ばす。人が作ったモデルは
                                                                      out/vNN/scene.json を先に書いて --tool none）
   ほか: --views iso,top,side（render_model.py へ）、--at x=値（slices.py の断面の位置）
 
 manifest（out/vNN/manifest.json）は文だけ書けばよい：stage・summary・changes・questions（notes・compare は任意）。
 空いている欄はこのスクリプトが埋めて書き戻す：
-  version・prev（寸法ファイルの meta.parent、無ければ前の番号の版）・date・
+  version・prev（パラメータファイルの meta.parent、無ければ前の番号の版）・date・
   images（外観・平面図・断面。manifest に書いた画像は外観の後に入る。並びを自分で決めるときは
           out/vNN/preview.png なども含めて全部書く）・
   compare（前の版の外観と重ねる）・params_diff・model・parts・step・
-  notes（寸法ファイルの fab に「初期値」があれば「本番の前にテストピースで測る値：…」）・project（初回だけ）
+  notes（パラメータファイルの fab に「初期値」があれば「本番の前にテストピースで測る値：…」）・project（初回だけ）
 """
 import argparse
 import datetime

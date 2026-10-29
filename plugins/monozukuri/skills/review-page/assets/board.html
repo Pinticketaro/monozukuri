@@ -6,7 +6,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <style>
-/* 作業台のカッティングマット：緑がかった無彩色の地に10mm方眼。版ごとの「見る→書く」を1画面で回す縦長レイアウト（広い画面では右にフィードバック欄） */
+/* 作業台のカッティングマット：緑がかった無彩色の地に10mm方眼。版ごとの「見る→書く」を1画面で反復する縦長レイアウト（広い画面では右にフィードバック欄） */
 :root{
   --bg:#f2f4f1; --surface:#ffffff; --sunken:#e8ece7; --fg:#1c2420; --muted:#5b6a62; --line:#d3dbd5;
   --accent:#2c7552; --accent-ink:#ffffff; --grid:rgba(44,117,82,.10);
@@ -233,8 +233,8 @@ const I18N = {
     status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
     yesno: {yes: "はい", no: "いいえ"},
     prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：", altsLabel: "別の案", altsGroup: "{n} の案",
-    treeSum: "版の流れを見る（{n}版）", treeBranches: "・枝分かれ {m}", treeAria: "版の流れ（どの版から作ったか）", treeDead: "続けなかった案",
-    hero: "外観", spin: "回して見る", close: "閉じる", newVer: "新しい版ができました", loadNew: "読み込む",
+    treeSum: "バージョン履歴を見る（{n}版）", treeBranches: "・ブランチ {m}", treeAria: "バージョン履歴（どの版から作ったか）", treeDead: "続けなかった案",
+    hero: "外観", spin: "3Dビュー", close: "閉じる", newVer: "新しい版ができました", loadNew: "読み込む",
     changes: "この版で変えたこと",
     questions: "決めてほしいこと",
     qHint: "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。",
@@ -245,16 +245,16 @@ const I18N = {
     dims: "寸法の変化", thItem: "項目", thBefore: "前", thAfter: "今", thDelta: "差", added: "追加", removed: "削除",
     dimsAll: "寸法と根拠", dimsCount: "{n}項目", noBasis: "根拠が書かれていないもの {n}", noBasisCell: "根拠なし",
     thValue: "値", thBasis: "根拠", openRef: "資料を開く", refsH: "資料（図面・データシート・写真）",
-    exportH: "書き出す", format: "形式",
+    exportH: "エクスポート", format: "形式",
     stlNote: "メッシュ。スライサー・確認用", stepNote: "ソリッド。Fusion などで編集",
     saveZip: "ZIPで保存",
     expNote: "単位は mm、Z が上。部品ごとのファイルを ZIP にまとめて保存します。", noStep: "この版には STEP がありません。",
     notes: "メモ",
     allParts: "全部品を1つにまとめたもの",
     expChecking: "保存できるか確かめています…",
-    expNoDownloads: "このページでは保存が使えないので書き出せません（公開のときに保存が有効になっていないか、許可されていません）",
+    expNoDownloads: "このページでは保存が使えないのでエクスポートできません（公開のときに保存が有効になっていないか、許可されていません）",
     expNoClaude: "この画面では保存できません。claude.ai でページを開いてください",
-    expPick: "書き出す部品を選んでください",
+    expPick: "エクスポートする部品を選んでください",
     expNoZip: "ZIP の部品を読み込めませんでした。ページを開き直してください",
     expBuilding: "作っています…", expDelivered: "渡しました", expSaved: "保存しました",
     expDeclined: "保存をやめました",
@@ -480,7 +480,7 @@ function fmt(v, unit){ if (v === null || v === undefined) return "—"; return e
 function verNum(ver){ const m = /^v(\d+)/.exec(ver || ""); return m ? Number(m[1]) : -1; }
 function alts(v){ return vers.filter(x => x !== v && verNum(x.version) === verNum(v.version)); }
 
-// 版の流れ（ツリー）：どの版から作ったか（prev）を線でつなぐ。案は縦に分かれる。必要なときだけ開く
+// バージョン履歴（ツリー）：どの版から作ったか（prev）を線でつなぐ。案は縦に分かれる。必要なときだけ開く
 let treeOpen = false;
 function renderTree(){
   const box = $("#tree");
@@ -527,7 +527,7 @@ function renderHeader(){
     cur.prev ? `<span>${esc(T.prevLabel)} <span class="num">${esc(cur.prev)}</span></span>` : "",
     alts(cur).length ? `<span>${esc(T.altsLabel)} ${alts(cur).map(v => `<a href="#${esc(v.version)}" class="num">${esc(v.version)}</a>`).join(" ")}</span>` : ""
   ].join("");
-  // 版の並び。同じ番号の案（v04a・v04b：枝分かれ）は点線の枠でまとめる
+  // 版の並び。同じ番号の案（v04a・v04b：ブランチ）は点線の枠でまとめる
   const btn = v => `<button type="button" data-v="${esc(v.version)}" aria-current="${v === cur}">${esc(v.version)}</button>`;
   const groups = [];
   vers.forEach(v => { const n = verNum(v.version), g = groups[groups.length - 1]; if (g && g.n === n) g.list.push(v); else groups.push({n, list: [v]}); });
@@ -640,7 +640,7 @@ function wireMain(){
   }
 }
 
-// ---- 書き出し（STL は 3Dモデルからその場で作る。STEP は載せてあるファイル）
+// ---- エクスポート（STL は 3Dモデルからその場で作る。STEP は載せてあるファイル）
 const glbCache = {};
 function loadGLB(v){
   if (!glbCache[v.model]) glbCache[v.model] = (async () => {
@@ -906,7 +906,7 @@ window.addEventListener("hashchange", renderAll);
 renderAll();
 
 // ---- ローカルモード：PC で serve_review.py から開いたとき（Artifact の db が無い）。
-// フィードバック・答え・決定を、ページを配っているサーバー（review/feedback_local.json）に保存する。db と同じ使い方ができる形にする
+// フィードバック・答え・決定を、ページを配信しているサーバー（review/feedback_local.json）に保存する。db と同じ使い方ができる形にする
 function isLocalHost(){ return ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname); }
 async function localStore(){
   if (!isLocalHost()) return null;
@@ -920,7 +920,7 @@ async function localStore(){
     if (!r.ok) throw {code: "local_" + r.status};
     store = await r.json(); emit();
   };
-  // 見ている間は3秒ごとに小さな印（/stamp）だけを見て、変わったときだけ読み直す。
+  // 見ている間は3秒ごとにスタンプ（/stamp）だけを見て、変わったときだけ読み直す。
   // フィードバック・答え・決定は差し替え、新しい版はページを読み直す（書きかけの文があれば、ボタンを出して待つ）
   let stamp = null;
   const refetch = async () => { try { const r = await fetch("feedback", {cache: "no-store"}); if (r.ok){ store = await r.json(); emit(); } } catch (e) {} };

@@ -26,13 +26,13 @@
     "params_diff": "out/v03/params_diff.json",   ← params_diff.py --json の出力（または一覧そのもの）
     "model": "out/v03/model.glb",                ← render_model.py --glb の出力（任意、11MBまで。base64 のテキストにして載せる）
     "notes": "任意のメモ",
-    "parts": "out/v03/scene.json",               ← 書き出し（STL）で部品名を出すため。scene.json か [{"name","key"}]
+    "parts": "out/v03/scene.json",               ← エクスポート（STL）で部品名を出すため。scene.json か [{"name","key"}]
                                                     scene.json の notes（モックが見つけたこと）も読む：
                                                     {"q": …, "type": "yesno"|"options", "options": […], "why": …} は問いに、
                                                     文字だけのものは「モックが見つけた注意」としてメモに足す（manifest と同じ内容は重ねない）
-    "step": "out/v03/step/index.json"            ← 書き出し（STEP）用。mock.py の index.json か [{"src","name","file"}]
+    "step": "out/v03/step/index.json"            ← エクスポート（STEP）用。mock.py の index.json か [{"src","name","file"}]
   }
-  ページの「書き出す」では、STL は 3Dモデル（GLB）から部品ごとにその場で作り、STEP は載せたファイルを使う。
+  ページの「エクスポート」では、STL は 3Dモデル（GLB）から部品ごとにその場で作り、STEP は載せたファイルを使う。
   どちらも ZIP にまとめて保存する（アーティファクトの保存は .stl / .step を直接扱えないため）。
 
 言語（ページの文言・はい／いいえ・「モックが見つけた注意」・このスクリプトの表示）
@@ -243,7 +243,7 @@ def add_version(root, man, cli_lang=None):
         pd = json.load(open(src_path(pd), encoding="utf-8"))
     entry["params_diff"] = pd or []
 
-    # 寸法と根拠：寸法ファイルの全項目（値・根拠 basis・資料 ref・状態）。manifest の "dims" か params/params_<版>.json
+    # 寸法と根拠：パラメータファイルの全項目（値・根拠 basis・資料 ref・状態）。manifest の "dims" か params/params_<版>.json
     dq = man.get("dims") or os.path.join("params", f"params_{ver}.json")
     dq = dq if os.path.isabs(dq) else os.path.join(root, dq)
     entry["dims"] = []
@@ -287,14 +287,14 @@ def add_version(root, man, cli_lang=None):
             new_files.append(dst)
             entry["model"] = rel(dst)
 
-    # 書き出し用の部品一覧（GLB のノード p<番号>_<キー> と対応）。scene.json か一覧そのもの
+    # エクスポート用の部品一覧（GLB のノード p<番号>_<キー> と対応）。scene.json か一覧そのもの
     parts = man.get("parts")
     if isinstance(parts, str):
         parts = scene.get("parts", [])
     entry["parts"] = [{"name": p.get("name", ""), "key": p.get("key") or os.path.splitext(os.path.basename(p.get("file", "")))[0]}
                       for p in (parts or [])]
 
-    # STEP（書き出し用）。アーティファクトは .step を配信しないので base64 のテキストにして載せる
+    # STEP（エクスポート用）。アーティファクトは .step を配信しないので base64 のテキストにして載せる
     steps = man.get("step")
     if isinstance(steps, str):
         steps = json.load(open(src_path(steps), encoding="utf-8"))

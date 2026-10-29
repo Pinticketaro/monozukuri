@@ -1,22 +1,22 @@
-"""立体モデル（STL / OBJ / 3MF / GLB / STEP）を影付きで描画して1枚のPNGにする。
-モックでも、Fusion などで人が作ったモデルの書き出しでも同じように使える。
+"""立体モデル（STL / OBJ / 3MF / GLB / STEP）をシェーディング付きでレンダリングして1枚のPNGにする。
+モックでも、Fusion などで人が作ってエクスポートしたモデルでも同じように使える。
 
 使い方
   python3 render_model.py --scene scene.json --out preview.png [--glb model.glb]
   python3 render_model.py frame.stl:#d9d4cb plate.stl:#bcd6e4:0.6 --out preview.png --title "v03 外観"
 
-部品の指定は  ファイル[:色[:不透明度[:粗さ[:金属感]]]]  （色は #rrggbb、不透明度 0〜1）
+部品の指定は  ファイル[:色[:不透明度[:粗さ[:メタリック]]]]  （色は #rrggbb、不透明度 0〜1）
 scene.json の形
   {"title": "...", "up": "z", "views": ["iso", "back", "side"],
    "parts": [{"file": "parts/frame.stl", "name": "枠", "color": "#d9d4cb",
               "opacity": 1, "roughness": 0.8, "metalness": 0}]}
   file は scene.json からの相対パス。up はモデルの上方向（Fusion・多くのCADは z）。
-  views に使える名前: iso（斜め上）, back（斜め後ろ）, front（正面）, side（右横）, top（真上）
-  先頭のビューが大きく、残りが下に並ぶ。平行投影（front・side・top）は地面の影を描かず、
-  ビューごとに枠いっぱいに合わせ、隅に縮尺の目安（例「目盛 20mm」）を入れる。
-  --same-scale を付けると、平行投影のビューの縮尺をそろえる（真上と正面の大きさを見比べるとき）。
---glb を付けると、確認ページで回して見るための GLB も書き出す。
-言葉（ビュー名・目盛・表示）は --lang ja|en、無ければ scene.json の "lang"、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
+  views に使える名前: iso（等角）, back（斜め後ろ）, front（正面）, side（右側面）, top（上面）
+  先頭のビューが大きく、残りが下に並ぶ。平行投影（front・side・top）は地面の影をレンダリングせず、
+  ビューごとに枠いっぱいに合わせ、隅にスケールバー（例「スケールバー 20mm」）を入れる。
+  --same-scale を付けると、平行投影のビューの縮尺をそろえる（上面と正面の大きさを見比べるとき）。
+--glb を付けると、確認ページの3Dビュー用の GLB も保存する。
+言葉（ビュー名・スケールバー・表示）は --lang ja|en、無ければ scene.json の "lang"、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 
 前提: setup スキルで trimesh・playwright・three.js を入れておく（STEP は cascadio も）
 """
@@ -56,9 +56,9 @@ Requires: trimesh, playwright and three.js from the setup skill (cascadio for ST
 """
 
 CACHE = os.environ.get("MONOZUKURI_CACHE", os.path.expanduser("~/.cache/monozukuri"))
-VIEW_LABEL = {"ja": {"iso": "斜め上から", "back": "斜め後ろから", "front": "正面から", "side": "右横から", "top": "真上から"},
+VIEW_LABEL = {"ja": {"iso": "等角", "back": "斜め後ろ", "front": "正面", "side": "右側面", "top": "上面"},
               "en": {"iso": "Isometric", "back": "Rear isometric", "front": "Front", "side": "Right side", "top": "Top"}}
-BAR_LABEL = {"ja": "目盛 ${L}mm", "en": "Scale ${L} mm"}       # 縮尺の目安（three.js 側のテンプレート文字列）
+BAR_LABEL = {"ja": "スケールバー ${L}mm", "en": "Scale ${L} mm"}       # 縮尺の目安（three.js 側のテンプレート文字列）
 BG = "#f4f5f2"
 
 
@@ -147,7 +147,7 @@ def report_size(scene, up, lang="ja"):
 
 def build_scene(parts, base, up, lang="ja"):
     scene = trimesh.Scene()
-    # three.js は Y が上。Z上のモデルは X軸まわりに -90° 回して合わせる
+    # three.js は Y が上。Z上のモデルは X軸まわりに -90° 回転して合わせる
     R = np.eye(4)
     if up == "z":
         R = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])
@@ -160,7 +160,7 @@ def build_scene(parts, base, up, lang="ja"):
             baseColorFactor=rgba, roughnessFactor=p.get("roughness", 0.7), metallicFactor=p.get("metalness", 0.0),
             alphaMode="BLEND" if rgba[3] < 1 else "OPAQUE", doubleSided=True)
         m.visual = trimesh.visual.TextureVisuals(material=mat)
-        # 確認ページの「書き出す」が部品を見分けられるよう、ノード名は p<番号>_<キー>（英数字）にする
+        # 確認ページの「エクスポート」が部品を見分けられるよう、ノード名は p<番号>_<キー>（英数字）にする
         key = p.get("key") or os.path.splitext(os.path.basename(f))[0]
         scene.add_geometry(m, node_name=f"p{i}_{key}")
     return scene
@@ -189,7 +189,7 @@ new GLTFLoader().load('./model.glb',(gl)=>{
   gl.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;
     if(o.material.transparent){o.material.depthWrite=false;}}});
   s.add(gl.scene);
-  // 平行投影（真上・正面・横）では面の陰影だけだと穴や段差が見えないので、稜線を重ねる
+  // 平行投影（上面・正面・右側面）では面の陰影だけだと穴や段差が見えないので、稜線を重ねる
   const edges=new THREE.Group(); gl.scene.updateMatrixWorld(true);
   gl.scene.traverse(o=>{if(o.isMesh){const e=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,30),
     new THREE.LineBasicMaterial({color:0x2f3a34,transparent:true,opacity:0.55}));
@@ -202,7 +202,7 @@ new GLTFLoader().load('./model.glb',(gl)=>{
   d.castShadow=true; d.shadow.mapSize.set(4096,4096); const sc=d.shadow.camera;
   sc.left=-R;sc.right=R;sc.top=R;sc.bottom=-R;sc.near=1;sc.far=6*R; d.shadow.bias=-0.0005; s.add(d); s.add(d.target);
   const fill=new THREE.DirectionalLight(0xffffff,0.6); fill.position.set(c.x+0.8*R,c.y+0.4*R,c.z-0.7*R); s.add(fill);
-  // 横からの光：右横の図でも、面の向き（面取り・斜面）で明暗が付くように
+  // 横からの光：右側面の図でも、面の向き（面取り・斜面）で明暗が付くように
   const sideL=new THREE.DirectionalLight(0xffffff,0.7); sideL.position.set(c.x+1.0*R,c.y+0.35*R,c.z+0.25*R); s.add(sideL);
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(20*R,20*R),new THREE.ShadowMaterial({opacity:0.18}));
   ground.rotation.x=-Math.PI/2; ground.position.y=box.min.y-0.01; ground.receiveShadow=true; s.add(ground);
@@ -246,7 +246,7 @@ new GLTFLoader().load('./model.glb',(gl)=>{
       cam.position.copy(c).addScaledVector(dv,dist); cam.lookAt(c);
     }
     edges.visible=!!ortho[v];
-    ground.visible=!ortho[v];          // 真上・正面・横では地面の影を描かない（大きな灰色の形になって読みにくい）
+    ground.visible=!ortho[v];          // 上面・正面・右側面では地面の影をレンダリングしない（大きな灰色の形になって読みにくい）
     r.setViewport(x,y,w,h); r.setScissor(x,y,w,h); r.setScissorTest(true); r.clear(); r.render(s,cam);
   });
   window.DONE=true;
@@ -333,7 +333,7 @@ def render(scene, title, views, out, width=1800, bg=BG, same_scale=False, lang="
             pg.wait_for_function("window.DONE===true || window.ERR", timeout=180000)
             err = pg.evaluate("window.ERR")
             if err:
-                raise SystemExit(f"描画に失敗しました: {err}" if lang == "ja" else f"Rendering failed: {err}")
+                raise SystemExit(f"レンダリングに失敗しました: {err}" if lang == "ja" else f"Rendering failed: {err}")
             os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
             pg.screenshot(path=out)
             br.close()
@@ -344,14 +344,14 @@ def render(scene, title, views, out, width=1800, bg=BG, same_scale=False, lang="
 def main():
     ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser(description=__doc__ if ja else DOC_EN, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("parts", nargs="*", help="ファイル[:色[:不透明度[:粗さ[:金属感]]]]" if ja
+    ap.add_argument("parts", nargs="*", help="ファイル[:色[:不透明度[:粗さ[:メタリック]]]]" if ja
                     else "file[:color[:opacity[:roughness[:metalness]]]]")
     ap.add_argument("--scene", help="scene.json")
     ap.add_argument("--out", required=True)
     ap.add_argument("--title", default="")
     ap.add_argument("--views", default=None, help="カンマ区切り。例: iso,back,side" if ja else "comma-separated, e.g. iso,back,side")
     ap.add_argument("--up", default=None, choices=["z", "y"])
-    ap.add_argument("--glb", help="確認ページ用のGLBも書き出す" if ja else "also write a GLB for the review page")
+    ap.add_argument("--glb", help="確認ページ用のGLBも保存する" if ja else "also write a GLB for the review page")
     ap.add_argument("--width", type=int, default=1800)
     ap.add_argument("--same-scale", action="store_true", help="平行投影のビューの縮尺をそろえる" if ja
                     else "use one scale for the parallel views")

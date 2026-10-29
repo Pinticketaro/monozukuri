@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # monozukuri: モック・プレビュー環境のセットアップ
 # 使い方: bash setup.sh [--no-cad] [--lang ja|en]
-#   既定で cadquery（モックの STEP 書き出し用）も入れる。数分かかる。
+#   既定で cadquery（モックの STEP エクスポート用）も入れる。数分かかる。
 #   --no-cad  … cadquery を入れない（STL だけでよいとき。--with-cad は旧い書き方で、無視される）
 #   --lang    … 表示の言葉（ja / en）。無ければ環境変数 MONOZUKURI_LANG、どれも無ければ ja
 # 何度実行しても安全（入っているものは飛ばす）。
@@ -95,7 +95,7 @@ if [ "$WITH_CAD" = 1 ]; then
   }
 fi
 
-say "ブラウザ（外観画像の描画用 Chromium）" "Browser (Chromium for rendering the view images)"
+say "ブラウザ（外観画像のレンダリング用 Chromium）" "Browser (Chromium for rendering the view images)"
 if "$PY" - <<'EOF' 2>/dev/null
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
