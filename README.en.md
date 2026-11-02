@@ -25,15 +25,26 @@ If you do not use the marketplace, download [monozukuri.plugin](https://github.c
 
 Commands that start with `/plugin` work only in Claude Code. They do not work in the Claude app's input box.
 
+### Supported environments
+
+monozukuri is **made for Mac and Linux**. Its rendering and other scripts are written to run on Mac and Linux.
+
+| How you use it | Supported |
+| --- | --- |
+| Claude app (desktop and web) | Yes, on any OS. Rendering and other processing run in Claude's cloud workspace (Linux) |
+| Claude Code (Mac, Linux) | Yes |
+| Claude Code (WSL on Windows) | Yes (runs as Linux) |
+| Claude Code (Windows without WSL) | Not yet |
+
 ### On Windows
 
-- **We recommend the Claude app.** Rendering and other processing run in Claude's cloud workspace (Linux), so the steps are the same as on a Mac. Ask "Set up the mock environment" in each new conversation.
-- **To run on your own PC, Claude Code in WSL (Linux inside Windows) is the most reliable.** Keep projects in a WSL folder (under `~/`).
-- **To use Claude Code directly on Windows**, install the following (not fully tested yet; please report problems in an Issue):
-  - [Git for Windows](https://git-scm.com/downloads/win) (it includes Git Bash, which Claude Code uses to run commands; setup does not run without it)
-  - Python 3.10 or later (from python.org; tick "Add python.exe to PATH") and Node.js
-  - If `python3` does not work, tell Claude "use python instead of python3"
-- Keep projects in a short path that OneDrive does not sync (for example `C:\work\`). Syncing and very long paths can make writes fail.
+- **We recommend the Claude app.** The steps are the same as on a Mac. Ask "Set up the mock environment" in each new conversation.
+- **To run on your own PC, use Claude Code in WSL (Linux inside Windows).**
+  1. Run `wsl --install` in PowerShell and restart Windows (this installs Ubuntu; it needs administrator rights).
+  2. Inside Ubuntu, install Claude Code, Node.js and a Japanese font (`sudo apt install fonts-noto-cjk`).
+  3. Keep projects in an Ubuntu folder (under `~/`). Windows folders (under `/mnt/c/`) also work, but reading and writing files is slower.
+- **Claude Code directly on Windows (without WSL) is not supported yet.** Setup and rendering are known to stop partway.
+- When the Claude app keeps a project in a folder on your PC, use a short path that OneDrive does not sync (for example `C:\work\`). Syncing and very long paths can make writes fail.
 
 ## First time only
 

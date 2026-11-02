@@ -23,15 +23,26 @@ English: [README.en.md](README.en.md)
 
 `/plugin` で始まるコマンドは Claude Code 専用です。Claude アプリの入力欄では使えません。
 
+### 対応環境
+
+monozukuri は **Mac と Linux 向け** です。レンダリングなどのスクリプトは、Mac と Linux で動くように書いています。
+
+| 使い方 | 使えるか |
+| --- | --- |
+| Claude アプリ（デスクトップ・Web） | どの OS でも使えます。レンダリングなどの処理は、Claude のクラウドの作業環境（Linux）で動きます |
+| Claude Code（Mac・Linux） | 使えます |
+| Claude Code（Windows の WSL） | 使えます（Linux として動きます） |
+| Claude Code（Windows のまま） | まだ使えません |
+
 ### Windows の場合
 
-- **おすすめは Claude アプリで使うことです**。描画などの処理は Claude のクラウドの作業環境（Linux）で動くので、Windows でも Mac と同じ手順で使えます。新しい会話のたびに「モックの環境を整えて」が必要です。
-- **パソコンで直接動かすなら、WSL（Windows の中の Linux）で Claude Code を使うのが確実です**。プロジェクトは WSL 側のフォルダ（`~/` の下）に置いてください。
-- **Windows のまま Claude Code を使う場合**は、次をそろえてください（まだ十分に試せていません。うまく動かないときは Issue で教えてください）。
-  - [Git for Windows](https://git-scm.com/downloads/win)（Claude Code がコマンドを動かすのに使う Git Bash が入っています。無いとセットアップが動きません）
-  - Python 3.10 以上（python.org 版。インストール時に「Add python.exe to PATH」にチェック）と Node.js
-  - `python3` が使えないときは、Claude に「python3 の代わりに python を使って」と伝えてください
-- プロジェクトは、OneDrive で同期しない浅い場所（例：`C:\work\`）に置いてください。同期中のファイルの書き換えや、長すぎるパスで失敗することがあります。
+- **おすすめは Claude アプリで使うことです**。Windows でも Mac と同じ手順で使えます。新しい会話のたびに「モックの環境を整えて」が必要です。
+- **パソコンで直接動かすなら、WSL（Windows の中の Linux）で Claude Code を使ってください**。
+  1. PowerShell で `wsl --install` を実行し、Windows を再起動します（Ubuntu が入ります。管理者の権限が要ります）。
+  2. Ubuntu の中に、Claude Code、Node.js、日本語フォント（`sudo apt install fonts-noto-cjk`）を入れます。
+  3. プロジェクトは Ubuntu 側のフォルダ（`~/` の下）に置きます。Windows のフォルダ（`/mnt/c/` の下）でも動きますが、ファイルの読み書きが遅くなります。
+- **WSL を使わずに、Windows のまま Claude Code で使うことは、まだできません**。セットアップやレンダリングの途中で止まることが分かっています。
+- Claude アプリでプロジェクトを PC のフォルダに置くときは、OneDrive で同期しない浅い場所（例：`C:\work\`）にしてください。同期中のファイルの書き換えや、長すぎるパスで失敗することがあります。
 
 ## 最初に一度だけ
 
