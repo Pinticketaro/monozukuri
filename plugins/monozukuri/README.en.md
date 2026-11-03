@@ -36,17 +36,17 @@ There are 4 stages before the final build. The goal is to get the final build, w
 
 | Skill | Ask | What it does |
 |---|---|---|
-| setup | "Set up the mock environment", "Make rendering work", "Make rendering work on my Mac" | Installs what rendering, sections and comparison need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery, playwright + Chromium, three.js, a Japanese font) and checks it with a test render. On a Mac, it installs into `~/.monozukuri/venv`. Also used when a script stops because something is missing |
-| new-project | "Start a new making project", "Make coupons", "I want to measure the kerf", "What hole size for the insert?", "Can I laser cut this material?", "Update the tools", "Find where support is needed", "Switch this project to English" | Creates the project from the template and draws the first mock. Also answers questions about coupons, fits and whether a material is safe to cut. After a plugin update, updates the tools of an existing project. Sets and switches the project language (Japanese / English) |
-| review-page | "Make a review page for this version", "Compare with the previous version", "Show the model I made in Fusion", "Read the feedback", "Apply the feedback", "Open the review page in the browser", "Just show me the exterior" | Renders mocks or models people made, compares with the previous version, adds the version to the project's review page (same URL) and publishes it (in Claude Code, it opens in your browser). Reads the feedback written there and closes the items that were applied |
+| monozukuri-setup | "Set up the mock environment", "Make rendering work", "Make rendering work on my Mac" | Installs what rendering, sections and comparison need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery, playwright + Chromium, three.js, a Japanese font) and checks it with a test render. On a Mac, it installs into `~/.monozukuri/venv`. Also used when a script stops because something is missing |
+| monozukuri-new-project | "Start a new making project", "Make coupons", "I want to measure the kerf", "What hole size for the insert?", "Can I laser cut this material?", "Update the tools", "Find where support is needed", "Switch this project to English" | Creates the project from the template and draws the first mock. Also answers questions about coupons, fits and whether a material is safe to cut. After a plugin update, updates the tools of an existing project. Sets and switches the project language (Japanese / English) |
+| monozukuri-review-page | "Make a review page for this version", "Compare with the previous version", "Show the model I made in Fusion", "Read the feedback", "Apply the feedback", "Open the review page in the browser", "Just show me the exterior" | Renders mocks or models people made, compares with the previous version, adds the version to the project's review page (same URL) and publishes it (in Claude Code, it opens in your browser). Reads the feedback written there and closes the items that were applied |
 
 Missing information and things to decide are asked on a numbered choice screen (Claude Code, Claude app). The answers are kept in `docs/decisions.md` and `LOG.md`.
 
-In Claude Code you can also call them by name: `/monozukuri:setup`, `/monozukuri:new-project`, `/monozukuri:review-page`.
+In Claude Code you can also call them by name: `/monozukuri:monozukuri-setup`, `/monozukuri:monozukuri-new-project`, `/monozukuri:monozukuri-review-page`.
 
 ## What is in a project
 
-The folder that new-project creates (English project names; see "Language" for the Japanese names).
+The folder that monozukuri-new-project creates (English project names; see "Language" for the Japanese names).
 
 ```
 README.md                  What you are making, how, and the origin and axis rules
@@ -76,11 +76,11 @@ Japanese (`ja`) and English (`en`) are supported. Each project has one language.
 
 - **Where it is stored**: `meta.lang` in the params file (`params/params_vNN.json`). Without it, the project is Japanese. Existing projects keep working in Japanese with no change.
 - **When you start**: the template is created with `scaffold.py --lang ja|en` (if you ask in English, Claude adds `--lang en`). The language is stored in `meta.lang`, and the docs, the params file and the example `mock.py` are written in that language.
-- **When you switch**: ask in the chat, "Switch this project to English" or "Switch back to Japanese". Claude changes `meta.lang` in the params file, and the next mock and review page use that language. The review page has no language switch. The steps are in "Language" in the new-project skill.
+- **When you switch**: ask in the chat, "Switch this project to English" or "Switch back to Japanese". Claude changes `meta.lang` in the params file, and the next mock and review page use that language. The review page has no language switch. The steps are in "Language" in the monozukuri-new-project skill.
 - **What changes to English**: the review page text, the text in the drawings (view names, scale), the dimension sheet and the coupon instructions, the script messages, and the project docs. Part names and the `label` of each dimension stay in the words you wrote in the params file and `mock.py`.
 - **Earlier versions**: the drawings of versions already made stay in the language they were made in.
 - **Updating the tools**: the `mock.py.new` that `scaffold.py --update-tools` puts in place also follows the project language (`meta.lang` of the newest params file).
-- **setup**: setup has no project, so the language comes from the environment variable `MONOZUKURI_LANG` (`ja` / `en`). If you ask in English, Claude adds `MONOZUKURI_LANG=en`. The Japanese font is installed in English too.
+- **monozukuri-setup**: it has no project, so the language comes from the environment variable `MONOZUKURI_LANG` (`ja` / `en`). If you ask in English, Claude adds `MONOZUKURI_LANG=en`. The Japanese font is installed in English too.
 - **Order of precedence**: the script's `--lang ja|en` > the language in the data being processed (`meta.lang` in the params file, `lang` in `scene.json`, the manifest or `review/board.json`) > the environment variable `MONOZUKURI_LANG` > `ja`. The review page language is stored as `lang` in `review/board.json`.
 - **status of fabrication values**: in an English params file it is written in English (`initial`, `measured`, `guideline`, `standard`, `calculated`, and so on).
 
@@ -147,7 +147,7 @@ What people write on the page does not reach Claude automatically. When they are
 
 ## Digital fabrication requirements
 
-They are in the new-project reference files (`skills/new-project/references/`). These files are written in Japanese. Claude reads them and answers in the language you use.
+They are in the monozukuri-new-project reference files (`skills/monozukuri-new-project/references/`). These files are written in Japanese. Claude reads them and answers in the language you use.
 
 - `fab-requirements.md`: requirements for laser cutting, FDM 3D printing, data formats and units, assembly and finishing. Numbers are given as "initial value + confidence + how to measure"
 - `fab-safety.md`: materials that must not be cut (banned everywhere / depends on the lab)
@@ -156,7 +156,7 @@ They are in the new-project reference files (`skills/new-project/references/`). 
 
 ## Requirements
 
-- Python 3.10 or later, and Node.js (to install three.js). The setup skill gets the rest.
+- Python 3.10 or later, and Node.js (to install three.js). The monozukuri-setup skill gets the rest.
 - No external service connections or environment variables are required.
 
 ## Using the scripts directly

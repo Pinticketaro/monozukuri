@@ -1,0 +1,18 @@
+# モックの立体（パラメータファイルから作り直せる）。画像は残す
+out/**/parts/
+out/**/step/
+out/**/*.glb
+# 公開用に縮小した画像は残す（ページの履歴になる）
+# ツールを更新したときのバックアップ（scaffold.py --update-tools）
+tools/.backup-*/
+# 確認ページをローカルで開いているサーバーの場所（serve_review.py）
+review/.serve.json
+review/.serve.log
+# スライサーの出力
+*.gcode
+# 一時ファイル
+__pycache__/
+*.blend1
+*~
+.DS_Store
+Thumbs.db

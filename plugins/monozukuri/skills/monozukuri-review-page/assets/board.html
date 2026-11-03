@@ -1,0 +1,1029 @@
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<style>
+/* 作業台のカッティングマット：緑がかった無彩色の地に10mm方眼。版ごとの「見る→書く」を1画面で反復する縦長レイアウト（広い画面では右にフィードバック欄） */
+:root{
+  --bg:#f2f4f1; --surface:#ffffff; --sunken:#e8ece7; --fg:#1c2420; --muted:#5b6a62; --line:#d3dbd5;
+  --accent:#2c7552; --accent-ink:#ffffff; --grid:rgba(44,117,82,.10);
+  --good:#2c7552; --fix:#b4561d; --ask:#3a5f9e; --open:#a16a10; --done:#2c7552; --no:#7a837e;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111613; --surface:#18201c; --sunken:#0d120f; --fg:#e3ebe6; --muted:#9aa9a1; --line:#2a3530;
+  --accent:#5cbf8b; --accent-ink:#0d1a13; --grid:rgba(92,191,139,.09);
+  --good:#5cbf8b; --fix:#e48a52; --ask:#7ea3e6; --open:#e0a84a; --done:#5cbf8b; --no:#8a948f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --surface:#18201c; --sunken:#0d120f; --fg:#e3ebe6; --muted:#9aa9a1; --line:#2a3530;
+  --accent:#5cbf8b; --accent-ink:#0d1a13; --grid:rgba(92,191,139,.09);
+  --good:#5cbf8b; --fix:#e48a52; --ask:#7ea3e6; --open:#e0a84a; --done:#5cbf8b; --no:#8a948f; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:clamp(22px,3.2vw,30px);font-weight:700;letter-spacing:.01em}
+h2{font-size:17px;font-weight:700}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin:0 auto}
+header.top{padding-block:22px 18px;margin-bottom:18px;border-bottom:1px solid var(--line);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px;background-position:-1px -1px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.meta{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;color:var(--muted);font-size:13px;margin-top:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:1px 10px;font-size:12px;background:var(--surface);color:var(--fg);white-space:nowrap}
+.chip.stage{border-color:var(--accent);color:var(--accent)}
+.vers{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.vers button{font:500 13px var(--f-mono);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:4px;padding:3px 10px;cursor:pointer}
+.vers button[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#meta a{color:var(--accent)}
+.tree{margin-top:10px}
+.tree summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.treewrap{overflow-x:auto;margin-top:8px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.treewrap svg{display:block}
+.treewrap a{cursor:pointer}
+.treewrap a:focus-visible rect{outline:2px solid var(--accent)}
+.vers .alts{display:inline-flex;gap:4px;padding:2px;border:1px dashed var(--line);border-radius:6px}
+.vers .alts button{border-style:solid}
+.vers button:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
+@media (min-width:1100px){.layout{grid-template-columns:minmax(0,1fr) 360px}.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);align-self:start;max-height:calc(100vh - 24px);overflow:auto}}
+section{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+main{display:grid;grid-template-columns:minmax(0,1fr);gap:30px;min-width:0}
+.summary{font-size:16px;max-width:68ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;min-width:0}
+.box h3{font-size:13px;color:var(--muted);font-weight:500;letter-spacing:.06em;margin-bottom:6px}
+.box ul{margin:0;padding-left:1.2em}
+.box li{margin:2px 0}
+.linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:13px;padding:0;white-space:nowrap;text-decoration:underline;text-underline-offset:3px}
+.hero{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.hero img{display:block;width:100%;height:auto;cursor:zoom-in}
+.hero .viewer{width:100%;aspect-ratio:16/10;max-width:100%;display:block;background:var(--sunken);touch-action:none}
+.hero .bar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);flex-wrap:wrap}
+.btn{font:500 13px var(--f-body);border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:5px 12px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.group-title{font-size:13px;color:var(--muted);letter-spacing:.08em;margin-top:4px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+figure img{display:block;width:100%;height:auto;cursor:zoom-in;background:var(--sunken)}
+figcaption{padding:8px 12px;font-size:13px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.slider{position:relative;overflow:hidden;background:var(--sunken);border-radius:var(--r) var(--r) 0 0;touch-action:pan-y}
+.slider img{display:block;width:100%;height:auto;pointer-events:none;user-select:none}
+.slider .after{position:absolute;inset:0;clip-path:inset(0 0 0 var(--pos,50%))}
+.slider .after img{width:100%;height:100%;object-fit:contain}
+.slider .handle{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;background:var(--accent);transform:translateX(-1px)}
+.slider .tag{position:absolute;top:8px;font:500 12px var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:0 6px}
+.slider input[type=range]{position:absolute;inset:auto 0 6px 0;width:calc(100% - 24px);margin:0 12px}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-weight:500;color:var(--muted);font-size:12px;letter-spacing:.06em}
+td.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.up{color:var(--fix)} .down{color:var(--ask)}
+.empty{color:var(--muted);font-size:14px;padding:10px 0}
+.exp{display:grid;gap:12px}
+.exp .fmt{display:flex;flex-wrap:wrap;gap:8px}
+.exp .fmt label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;background:var(--bg)}
+.exp .fmt label:has(input:checked){border-color:var(--accent)}
+.exp .fmt label:has(input:disabled){opacity:.45;cursor:default}
+.exp .fmt small{color:var(--muted);font-size:12px}
+.exp .checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:4px 16px}
+.exp .checks label{display:flex;gap:6px;align-items:center;font-size:14px;min-width:0}
+.exp .checks label span{overflow-wrap:anywhere}
+.exp .checks .file{color:var(--muted);font-family:var(--f-mono);font-size:12px}
+.exp input{accent-color:var(--accent)}
+.exp .go{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+/* 決めてほしいこと：はい／いいえ は切り替え、案はカードのラジオ。選んだ答えは1人1件で db に入る */
+.qs{display:grid;gap:12px}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;min-width:0}
+.qcard.decided{border-color:var(--accent)}
+.qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.qwhy{margin:4px 0 0;color:var(--muted);font-size:13px}
+.qhead .qn{font:500 12px var(--f-mono);color:var(--muted)}
+.qhead .qt{font-weight:500;flex:1 1 16em;min-width:0;overflow-wrap:anywhere}
+.chip.dec{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.vis{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.seg{justify-self:start;display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg);max-width:100%}
+.seg label{position:relative;display:inline-flex;gap:8px;align-items:center;padding:6px 18px;cursor:pointer;font-size:14px;white-space:nowrap}
+.seg label+label{border-left:1px solid var(--line)}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
+.seg label:has(input:disabled){cursor:default}
+.seg .cnt{font:500 12px var(--f-mono);opacity:.8}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:10px}
+.opt{display:grid;gap:6px;align-content:start;border:1px solid var(--line);border-radius:6px;padding:10px 12px;cursor:pointer;background:var(--bg);min-width:0}
+.opt:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt:has(input:disabled){cursor:default}
+.opt.win{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg))}
+.opt img{display:block;width:100%;height:auto;max-height:240px;object-fit:contain;border-radius:4px;background:var(--sunken)}
+.opt .top{display:flex;gap:8px;align-items:flex-start}
+.opt .top input{accent-color:var(--accent);margin-top:5px;flex:none}
+.opt .lbl{font-size:14px;overflow-wrap:anywhere}
+.opt .on{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.tally{display:flex;gap:8px;align-items:center;font:500 12px var(--f-mono);color:var(--muted)}
+.tally .bar{flex:1;height:4px;border-radius:2px;background:var(--sunken);overflow:hidden}
+.tally .bar i{display:block;height:100%;background:var(--accent)}
+.qfoot{display:flex;gap:6px 14px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.qfoot .who{flex:1 1 14em;min-width:0;overflow-wrap:anywhere}
+/* フィードバック */
+.side{min-width:0}
+.side .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+form{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+label.l{font-size:12px;color:var(--muted);letter-spacing:.06em}
+select,textarea{width:100%;max-width:100%;min-width:0;font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:7px 9px}
+textarea{min-height:92px;resize:vertical}
+.kinds{display:flex;gap:6px;flex-wrap:wrap}
+.kinds label{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:13px;cursor:pointer}
+.kinds input{accent-color:var(--accent)}
+.fb{display:grid;gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+.fb:first-child{border-top:0}
+.fb .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.fb .text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+.fb .reply{font-size:13px;color:var(--muted);border-left:2px solid var(--accent);padding-left:8px}
+.k-good{color:var(--good);border-color:var(--good)} .k-fix{color:var(--fix);border-color:var(--fix)} .k-ask{color:var(--ask);border-color:var(--ask)}
+.s-open{color:var(--open);border-color:var(--open)} .s-applied,.s-answered{color:var(--done);border-color:var(--done)} .s-declined{color:var(--no);border-color:var(--no)}
+.note{font-size:13px;color:var(--muted)}
+.status{font-size:13px;min-height:1.4em}
+.newver{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:10;display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--accent);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:14px;max-width:calc(100% - 32px)}
+dialog{border:0;padding:0;background:transparent;max-width:min(96vw,1800px);cursor:zoom-out}
+dialog .lbclose{position:fixed;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(10,14,12,.6);color:#fff;font-size:24px;line-height:1;cursor:pointer}
+dialog::backdrop{background:rgba(10,14,12,.82)}
+dialog img{display:block;max-width:100%;max-height:88vh;height:auto;border-radius:4px}
+dialog p{color:#e9efe9;margin:8px 0 0;font-size:14px}
+/* 文字の資料（.md・.txt・.csv）を読む窓。中を押しても閉じない（余白・×・Esc で閉じる） */
+dialog.docdlg{cursor:auto;width:min(96vw,980px)}
+.docview{background:var(--surface);color:var(--fg);border-radius:var(--r);padding:16px 20px;max-height:calc(100dvh - 136px);overflow:auto;font-size:14px}
+.docview .dochead{font:500 12px var(--f-mono);color:var(--muted);margin-bottom:8px;overflow-wrap:anywhere}
+.docview h2{font-size:19px;margin:4px 0 10px} .docview h3{font-size:16px;margin:16px 0 8px} .docview h4{font-size:14px;margin:14px 0 6px}
+.docview p{color:inherit;margin:8px 0;font-size:inherit}
+.docview ul,.docview ol{margin:8px 0;padding-left:1.4em}
+.docview .tablewrap{margin:10px 0} .docview td{white-space:normal;vertical-align:top} .docview th,.docview td{min-width:7em}
+.docview pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 var(--f-mono);margin:8px 0;background:var(--sunken);padding:10px 12px;border-radius:4px}
+.docview code{font-family:var(--f-mono);font-size:.92em;background:var(--sunken);padding:0 4px;border-radius:3px;overflow-wrap:anywhere}
+.docview blockquote{margin:8px 0;padding-left:10px;border-left:3px solid var(--line);color:var(--muted)}
+.docview a{color:var(--accent);overflow-wrap:anywhere}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow" data-i18n="board"></div>
+    <h1 id="project">__PROJECT__</h1>
+    <div class="meta" id="meta"></div>
+    <nav class="vers" id="vers" data-i18n-aria="versions"></nav>
+    <details class="tree" id="tree" hidden><summary id="treesum"></summary><div class="treewrap" id="treebody"></div></details>
+  </header>
+  <div class="layout">
+    <main id="main"></main>
+    <aside class="side" data-i18n-aria="feedback">
+      <div class="panel">
+        <div>
+          <h2 data-i18n="feedback"></h2>
+          <p class="note" id="fbnote" data-i18n="fbIntro"></p>
+        </div>
+        <form id="fbform" hidden>
+          <div>
+            <label class="l" for="fbtarget" data-i18n="fbTarget"></label>
+            <select id="fbtarget"></select>
+          </div>
+          <div class="kinds" role="radiogroup" data-i18n-aria="fbKind">
+            <label><input type="radio" name="kind" id="kind-fix" value="fix" checked> <span data-i18n="kind.fix"></span></label>
+            <label><input type="radio" name="kind" id="kind-good" value="good"> <span data-i18n="kind.good"></span></label>
+            <label><input type="radio" name="kind" id="kind-ask" value="ask"> <span data-i18n="kind.ask"></span></label>
+          </div>
+          <div>
+            <label class="l" for="fbtext" data-i18n="fbText"></label>
+            <textarea id="fbtext" data-i18n-ph="fbPlaceholder"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
+            <span class="status" id="fbstatus" role="status"></span>
+            <button class="btn" type="submit" id="fbsend" data-i18n="send"></button>
+          </div>
+        </form>
+        <div id="fblist"><p class="empty" data-i18n="fbLoading"></p></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<dialog id="lb"><button type="button" class="lbclose" id="lbclose" data-i18n-aria="close">×</button><img id="lbimg" alt=""><p id="lbcap"></p></dialog>
+<dialog id="doc" class="docdlg" aria-labelledby="docname"><button type="button" class="lbclose" id="docclose" data-i18n-aria="close">×</button><div class="docview"><div class="dochead" id="docname"></div><div id="docbody"></div></div></dialog>
+
+<script>
+const BOARD = /*__BOARD__*/null;
+// 画面の文言（ja／en）。言語は board.json の lang（build_page.py が決める）。切り替えボタンは置かない（AI との会話で変える）
+const I18N = {
+  ja: {
+    locale: "ja-JP",
+    board: "確認ボード", versions: "版", feedback: "フィードバック",
+    fbIntro: "この版を見て気づいたことを書いてください。次の版の変更点として反映します。",
+    fbTarget: "どこについて", fbKind: "種類", fbText: "内容",
+    fbPlaceholder: "例：手前の高さがもう少し低いほうがいい／USBの穴の位置が気になる",
+    send: "送る", fbLoading: "フィードバックを読み込んでいます…",
+    kind: {fix:"直したい", good:"良い", ask:"質問"},
+    status: {open:"未対応", applied:"反映済み", answered:"回答済み", declined:"見送り"},
+    yesno: {yes: "はい", no: "いいえ"},
+    prevLabel: "前の版", prevVer: "前の版", prevShort: "前", sep: "：", altsLabel: "別の案", altsGroup: "{n} の案",
+    treeSum: "バージョン履歴を見る（{n}版）", treeBranches: "・ブランチ {m}", treeAria: "バージョン履歴（どの版から作ったか）", treeDead: "続けなかった案",
+    hero: "外観", spin: "3Dビュー", close: "閉じる", newVer: "新しい版ができました", loadNew: "読み込む",
+    changes: "この版で変えたこと",
+    questions: "決めてほしいこと",
+    qHint: "ボタンで選ぶと、そのまま答えとして残ります（あとから選び直せます）。理由や別の案はフィードバック欄へ。",
+    qNoDb: "この画面では答えを保存できません。claude.ai でページを開くと選べます。",
+    qNoDbFile: "この画面では答えを保存できません。serve_review.py で PC のブラウザに開くと選べます。",
+    qReadOnly: "この権限では選べません。集計だけ表示しています。",
+    compare: "前の版との比較", comparePos: "比較の位置",
+    figures: "図", figure: "図",
+    dims: "寸法の変化", thItem: "項目", thBefore: "前", thAfter: "今", thDelta: "差", added: "追加", removed: "削除",
+    dimsAll: "寸法と根拠", dimsCount: "{n}項目", noBasis: "根拠が書かれていないもの {n}", noBasisCell: "根拠なし",
+    thValue: "値", thBasis: "根拠", openRef: "資料を開く", refsH: "資料（図面・データシート・写真）",
+    exportH: "エクスポート", format: "形式",
+    stlNote: "メッシュ。スライサー・確認用", stepNote: "ソリッド。Fusion などで編集",
+    saveZip: "ZIPで保存",
+    expNote: "単位は mm、Z が上。部品ごとのファイルを ZIP にまとめて保存します。", noStep: "この版には STEP がありません。",
+    notes: "メモ",
+    allParts: "全部品を1つにまとめたもの",
+    expChecking: "保存できるか確かめています…",
+    expNoDownloads: "このページでは保存が使えないのでエクスポートできません（公開のときに保存が有効になっていないか、許可されていません）",
+    expNoClaude: "この画面では保存できません。claude.ai でページを開いてください",
+    expPick: "エクスポートする部品を選んでください",
+    expNoZip: "ZIP の部品を読み込めませんでした。ページを開き直してください",
+    expBuilding: "作っています…", expDelivered: "渡しました", expSaved: "保存しました",
+    expDeclined: "保存をやめました",
+    expRate: "確認の画面が開いています。閉じてからもう一度押してください",
+    expTooLarge: "大きすぎて保存できません。部品を減らしてください",
+    expFailed: code => "保存できませんでした" + (code ? `（${code}）` : ""),
+    loading3d: "読み込み中…", spinHint: "ドラッグで回転・ピンチで拡大", fail3d: "3Dを読み込めませんでした",
+    people: n => `${n}人`,
+    chosenBy: items => "選んだ人：" + items.map(([who, label]) => `${who}（${label}）`).join("、"),
+    you: "あなた", someone: "だれか",
+    writeInFeedback: "フィードバック欄に書いてください", noneChosen: "まだ誰も選んでいません",
+    decided: "決定：", clearChoice: "選択を取り消す", write: "書く", writeReason: "理由・別の案を書く",
+    saving: "保存しています…", cleared: "取り消しました", saved: "保存しました",
+    noPermChoose: "この権限では選べません", saveRetry: "保存できませんでした。少し待ってからもう一度選んでください",
+    all: "全体", cmpPrefix: "比較：", qPrefix: "決めてほしいこと：", question: "決めてほしいこと",
+    noFeedback: v => `${v} へのフィードバックはまだありません。`,
+    olderOpen: n => `前の版からの未対応 ${n}件`,
+    thisPC: "このPC",
+    localNote: "このPCで開いた確認ページです。書いたことは review/feedback_local.json に残ります。書き終わったら AI に「フィードバックを読んで」と頼んでください。",
+    noDb: "この画面ではフィードバックを読み書きできません。コメント機能で書き込んでください。",
+    noDbFile: "この画面ではフィードバックを読み書きできません。serve_review.py で PC のブラウザに開くと書き込めます。",
+    viewOnly: "閲覧のみの権限です。書き込むには編集できる権限が必要です。",
+    fbLoadFailed: code => `フィードバックを読み込めませんでした（${code}）。ページを開き直してください。`,
+    needText: "内容を書いてください", sending: "送っています…", sent: "送りました",
+    noPermWrite: "この権限では書き込めません", sendRetry: "送れませんでした。少し待ってからもう一度送ってください",
+  },
+  en: {
+    locale: "en-US",
+    board: "Review board", versions: "Versions", feedback: "Feedback",
+    fbIntro: "Write what you notice about this version. It goes into the changes for the next version.",
+    fbTarget: "About", fbKind: "Type", fbText: "Comment",
+    fbPlaceholder: "e.g. The front could be a bit lower / Not sure about the USB hole position",
+    send: "Send", fbLoading: "Loading feedback…",
+    kind: {fix:"Fix", good:"Good", ask:"Question"},
+    status: {open:"Open", applied:"Applied", answered:"Answered", declined:"Declined"},
+    yesno: {yes: "Yes", no: "No"},
+    prevLabel: "Previous", prevVer: "Previous version", prevShort: "Before", sep: ": ", altsLabel: "Alternatives", altsGroup: "alternatives of {n}",
+    treeSum: "Show the version tree ({n} versions)", treeBranches: ", {m} branch point(s)", treeAria: "Version tree (which version each came from)", treeDead: "not continued",
+    hero: "Main view", spin: "View in 3D", close: "Close", newVer: "A new version is ready", loadNew: "Load",
+    changes: "Changed in this version",
+    questions: "Questions to decide",
+    qHint: "Pick a button and it is saved as your answer. You can change it later. Put reasons or other ideas in the feedback panel.",
+    qNoDb: "Answers cannot be saved on this screen. Open the page on claude.ai to choose.",
+    qNoDbFile: "Answers cannot be saved on this screen. Open the page in the browser with serve_review.py to choose.",
+    qReadOnly: "Your access does not allow choosing. Showing the tally only.",
+    compare: "Compared with the previous version", comparePos: "Comparison position",
+    figures: "Figures", figure: "Figure",
+    dims: "Dimension changes", thItem: "Item", thBefore: "Before", thAfter: "Now", thDelta: "Diff", added: "added", removed: "removed",
+    dimsAll: "Dimensions and basis", dimsCount: "{n} items", noBasis: "{n} without a basis", noBasisCell: "no basis",
+    thValue: "Value", thBasis: "Basis", openRef: "open reference", refsH: "References (drawings, datasheets, photos)",
+    exportH: "Export", format: "Format",
+    stlNote: "Mesh. For slicers and checking", stepNote: "Solid. Edit in Fusion and similar",
+    saveZip: "Save as ZIP",
+    expNote: "Units are mm, Z up. Each part is a separate file, saved together in one ZIP.", noStep: " This version has no STEP.",
+    notes: "Notes",
+    allParts: "All parts in one file",
+    expChecking: "Checking whether saving works…",
+    expNoDownloads: "Export is off because saving is not available on this page (saving was not enabled when it was published, or it is not allowed).",
+    expNoClaude: "Saving does not work on this screen. Open the page on claude.ai.",
+    expPick: "Choose the parts to export",
+    expNoZip: "Could not load the ZIP library. Reload the page.",
+    expBuilding: "Building…", expDelivered: "Handed over", expSaved: "Saved",
+    expDeclined: "Save canceled",
+    expRate: "A confirmation is already open. Close it, then press again.",
+    expTooLarge: "Too large to save. Select fewer parts.",
+    expFailed: code => "Could not save" + (code ? ` (${code})` : ""),
+    loading3d: "Loading…", spinHint: "Drag to rotate, pinch to zoom", fail3d: "Could not load the 3D model",
+    people: n => n === 1 ? "1 person" : `${n} people`,
+    chosenBy: items => "Chosen by: " + items.map(([who, label]) => `${who} (${label})`).join(", "),
+    you: "you", someone: "someone",
+    writeInFeedback: "Write your answer in the feedback panel", noneChosen: "No one has chosen yet",
+    decided: "Decided: ", clearChoice: "Clear my choice", write: "Write", writeReason: "Add a reason or another idea",
+    saving: "Saving…", cleared: "Cleared", saved: "Saved",
+    noPermChoose: "Your access does not allow choosing", saveRetry: "Could not save. Wait a moment and choose again.",
+    all: "Whole design", cmpPrefix: "Comparison: ", qPrefix: "Question: ", question: "Question",
+    noFeedback: v => `No feedback on ${v} yet.`,
+    olderOpen: n => `Still open from earlier versions: ${n}`,
+    thisPC: "This PC",
+    localNote: "This review page is open on this PC. What you write is saved in review/feedback_local.json. When you are done, ask the AI to \"read the feedback\".",
+    noDb: "Feedback cannot be read or written on this screen. Use comments instead.",
+    noDbFile: "Feedback cannot be read or written on this screen. Open the page in the browser with serve_review.py to write it.",
+    viewOnly: "View-only access. You need edit access to write.",
+    fbLoadFailed: code => `Could not load feedback (${code}). Reload the page.`,
+    needText: "Write something first", sending: "Sending…", sent: "Sent",
+    noPermWrite: "Your access does not allow writing", sendRetry: "Could not send. Wait a moment and send again.",
+  },
+};
+const LANG = BOARD.lang === "en" ? "en" : "ja";
+const T = I18N[LANG];
+const KIND = T.kind;
+const STATUS = T.status;
+document.documentElement.lang = LANG;
+// 静的な部分（ヘッダー・フィードバック欄）の文言を入れる。data-i18n="kind.fix" のように . でたどる
+const tr = key => key.split(".").reduce((o, k) => o?.[k], T) ?? "";
+document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = tr(el.dataset.i18n));
+document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", tr(el.dataset.i18nAria)));
+document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = tr(el.dataset.i18nPh));
+// 拡大した画像は、余白・画像・×のどこを押しても閉じる（Esc でも閉じる）
+document.getElementById("lb").addEventListener("click", e => e.currentTarget.close());
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// 文字の資料（.md・.txt・.csv）は、ページの中で UTF-8 として読んで見せる。
+// ファイルをそのまま開くと、配信のしかたによってはブラウザが別の文字コードで読み、文字化けする
+const TEXT_REF = /\.(md|markdown|txt|csv)$/i;
+document.addEventListener("click", e => {
+  const a = e.target.closest?.("a[href]"), h = a?.getAttribute("href");
+  if (!h || /^[a-z][a-z0-9+.-]*:/i.test(h) || !TEXT_REF.test(h.split(/[?#]/)[0])) return;
+  e.preventDefault();
+  openText(h);
+});
+document.getElementById("doc").addEventListener("click", e => {
+  if (e.target === e.currentTarget || e.target.id === "docclose") e.currentTarget.close();
+});
+async function openText(href){
+  let txt;
+  try {
+    const r = await fetch(href, {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    txt = await r.text();          // text() はいつも UTF-8 で読む
+  } catch (err) {
+    window.open(href, "_blank", "noopener");   // 読めないとき（file:// で開いたときなど）は、そのまま開く
+    return;
+  }
+  const path = href.split(/[?#]/)[0];
+  $("#docname").textContent = decodeURIComponent(path);
+  $("#docbody").innerHTML = /\.csv$/i.test(path) ? csvHtml(txt)
+    : /\.(md|markdown)$/i.test(path) ? mdHtml(txt, path.slice(0, path.lastIndexOf("/") + 1)) : `<pre>${esc(txt)}</pre>`;
+  const d = $("#doc");
+  if (!d.open) d.showModal();
+  d.querySelector(".docview").scrollTop = 0;
+}
+// 小さな Markdown の読み方：見出し・表・箇条書き・コード・引用・段落と、文中の `コード`・**太字**・リンク・URL
+function mdInline(s, base){
+  const link = (u, t) => /^(https?:|#|\/)/i.test(u) || !/^[a-z][a-z0-9+.-]*:/i.test(u)
+    ? `<a href="${/^(https?:|#|\/)/i.test(u) ? u : base + u}" target="_blank" rel="noopener">${t}</a>` : t;
+  return s.split(/(`[^`]+`)/).map((p, i) => {
+    if (i % 2) return `<code>${esc(p.slice(1, -1))}</code>`;
+    return esc(p).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => link(u, t))
+      .replace(/(^|[\s（(])(https?:\/\/[^\s<）)]+)/g, (m, pre, u) => pre + link(u, u));
+  }).join("");
+}
+function mdHtml(src, base){
+  const L = src.replace(/\r\n?/g, "\n").split("\n"), out = [], inl = s => mdInline(s, base);
+  const cells = s => s.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+  const LI = /^\s*([-*+]|\d+[.)])\s+/, BLOCK = /^(```|#{1,6}\s|>|\s*\||\s*([-*+]|\d+[.)])\s+|\s*(-{3,}|\*{3,})\s*$)/;
+  let i = 0;
+  while (i < L.length){
+    const l = L[i];
+    if (!l.trim()){ i++; continue; }
+    if (/^```/.test(l)){
+      const b = [];
+      for (i++; i < L.length && !/^```/.test(L[i]); i++) b.push(L[i]);
+      i++; out.push(`<pre>${esc(b.join("\n"))}</pre>`); continue;
+    }
+    let m = l.match(/^(#{1,6})\s+(.*)$/);
+    if (m){ const n = Math.min(m[1].length + 1, 4); out.push(`<h${n}>${inl(m[2])}</h${n}>`); i++; continue; }
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(l)){ out.push("<hr>"); i++; continue; }
+    if (/^\s*\|/.test(l) && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(L[i + 1] || "")){
+      const head = cells(l), rows = [];
+      for (i += 2; i < L.length && /^\s*\|/.test(L[i]); i++) rows.push(cells(L[i]));
+      out.push(`<div class="tablewrap"><table><thead><tr>${head.map(c => `<th>${inl(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inl(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+      continue;
+    }
+    if (LI.test(l)){
+      const ol = /\d/.test(l.match(LI)[1]), items = [];
+      for (; i < L.length && LI.test(L[i]); i++)
+        items.push(inl(L[i].replace(LI, "")).replace(/^\[ \]\s*/, "☐ ").replace(/^\[[xX]\]\s*/, "☑ "));
+      out.push(`<${ol ? "ol" : "ul"}>${items.map(t => `<li>${t}</li>`).join("")}</${ol ? "ol" : "ul"}>`);
+      continue;
+    }
+    if (/^>/.test(l)){
+      const b = [];
+      for (; i < L.length && /^>/.test(L[i]); i++) b.push(inl(L[i].replace(/^>\s?/, "")));
+      out.push(`<blockquote>${b.join("<br>")}</blockquote>`); continue;
+    }
+    const b = [];
+    for (; i < L.length && L[i].trim() && !BLOCK.test(L[i]); i++) b.push(inl(L[i]));
+    if (!b.length){ b.push(inl(L[i])); i++; }
+    out.push(`<p>${b.join("<br>")}</p>`);
+  }
+  return out.join("");
+}
+function csvHtml(src){
+  const rows = [];
+  let row = [], f = "", q = false;
+  for (let i = 0; i < src.length; i++){
+    const c = src[i];
+    if (q){ if (c !== '"') f += c; else if (src[i + 1] === '"'){ f += '"'; i++; } else q = false; }
+    else if (c === '"') q = true;
+    else if (c === ","){ row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r"){ if (c === "\r" && src[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f || row.length){ row.push(f); rows.push(row); }
+  const [head = [], ...body] = rows.filter(r => r.some(x => x.trim()));
+  return `<div class="tablewrap"><table><thead><tr>${head.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${body.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+const vers = BOARD.versions;
+let cur = vers[vers.length - 1];
+let feedback = [];         // db から
+let names = {};            // 投稿者の表示名
+let canWrite = false;
+let answers = [];          // db の answers（1人1問1件）
+let decisions = {};        // db の decisions（AI が書く決定）。キー "<版>~q<番号>"
+let myId = null;
+let answerDb = null;       // 書き込める db（読み取りだけのときは null）
+let dbState = "loading";   // loading → rw（選べる）／ro（集計だけ）／none（db が使えない画面）
+const qOf = q => typeof q === "string" ? {q, type: "text"} : q;   // 0.2 までの版は文字列
+// 選択肢の表示名。はい／いいえ は画面の言語で出す（言語を変える前に作った版でも揃う）
+const optLabel = (q, o) => (q.type === "yesno" && T.yesno[o.id]) || o.label;
+const labelOf = (q, id) => { const o = (q.options || []).find(o => o.id === id); return (o && optLabel(q, o)) || id; };
+const safeSeg = s => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, "_");
+const ansId = (ver, i, uid) => `${safeSeg(ver)}~q${i}~${safeSeg(uid)}`;
+
+function pickFromHash(){
+  const h = decodeURIComponent(location.hash.slice(1));
+  const v = vers.find(x => x.version === h);
+  if (v) cur = v;
+}
+
+function fmt(v, unit){ if (v === null || v === undefined) return "—"; return esc(v) + (typeof v === "number" && unit ? `<span style="color:var(--muted)"> ${esc(unit)}</span>` : ""); }
+
+// 版の番号（v04a → 4）と、同じ番号の別の案
+function verNum(ver){ const m = /^v(\d+)/.exec(ver || ""); return m ? Number(m[1]) : -1; }
+function alts(v){ return vers.filter(x => x !== v && verNum(x.version) === verNum(v.version)); }
+
+// バージョン履歴（ツリー）：どの版から作ったか（prev）を線でつなぐ。案は縦に分かれる。必要なときだけ開く
+let treeOpen = false;
+function renderTree(){
+  const box = $("#tree");
+  if (!box) return;
+  if (vers.length < 2){ box.hidden = true; return; }
+  box.hidden = false;
+  const byV = Object.fromEntries(vers.map(v => [v.version, v]));
+  const parentOf = v => byV[v.prev] ? v.prev : null;
+  const kids = {};
+  vers.forEach(v => { const p = parentOf(v); if (p) (kids[p] ??= []).push(v.version); });
+  const pos = {}; let lane = -1;
+  const place = (ver, depth, ln) => { pos[ver] = {x: depth, y: ln}; (kids[ver] || []).forEach((c, i) => place(c, depth + 1, i === 0 ? ln : ++lane)); };
+  vers.forEach(v => { if (!parentOf(v) && !(v.version in pos)) place(v.version, 0, ++lane); });
+  const maxX = Math.max(...Object.values(pos).map(p => p.x)), maxY = Math.max(...Object.values(pos).map(p => p.y));
+  const branches = Object.values(kids).filter(k => k.length > 1).length;
+  const CW = 140, RH = 50, NW = 114, NH = 36, PAD = 6;
+  const W = (maxX + 1) * CW + PAD, H = (maxY + 1) * RH + PAD;
+  const nx = p => PAD + p.x * CW, ny = p => PAD + p.y * RH;
+  const edges = vers.map(v => {
+    const p = parentOf(v); if (!p) return "";
+    const a = pos[p], b = pos[v.version], x1 = nx(a) + NW, y1 = ny(a) + NH / 2, x2 = nx(b), y2 = ny(b) + NH / 2, mx = (x1 + x2) / 2;
+    return `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>`;
+  }).join("");
+  const nodes = vers.map(v => {
+    const p = pos[v.version], on = v === cur, dead = !kids[v.version] && p.x < maxX;
+    const full = String(v.stage || ""), stage = full.length > 11 ? full.slice(0, 10) + "…" : full;
+    return `<a href="#${esc(v.version)}" aria-label="${esc(v.version)} ${esc(full)}${dead ? "（" + esc(T.treeDead) + "）" : ""}"><title>${esc(v.version)} ${esc(full)}${dead ? "（" + esc(T.treeDead) + "）" : ""}</title>
+      <rect x="${nx(p)}" y="${ny(p)}" width="${NW}" height="${NH}" rx="6" fill="${on ? "var(--accent)" : "var(--bg)"}"
+        stroke="${on ? "var(--accent)" : "var(--line)"}" stroke-width="1.5" ${dead ? 'stroke-dasharray="4 3" opacity=".6"' : ""}/>
+      <text x="${nx(p) + NW / 2}" y="${ny(p) + 15}" text-anchor="middle" font-size="13" font-family="var(--f-mono)" fill="${on ? "var(--accent-ink)" : "var(--fg)"}" ${dead ? 'opacity=".6"' : ""}>${esc(v.version)}</text>
+      <text x="${nx(p) + NW / 2}" y="${ny(p) + 29}" text-anchor="middle" font-size="10" fill="${on ? "var(--accent-ink)" : "var(--muted)"}" ${dead ? 'opacity=".6"' : ""}>${esc(stage)}</text></a>`;
+  }).join("");
+  $("#treesum").textContent = T.treeSum.replace("{n}", vers.length) + (branches ? T.treeBranches.replace("{m}", branches) : "");
+  $("#treebody").innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(T.treeAria)}">${edges}${nodes}</svg>`;
+  box.open = treeOpen;
+  box.ontoggle = () => { treeOpen = box.open; };
+}
+
+function renderHeader(){
+  $("#meta").innerHTML = [
+    cur.stage ? `<span class="chip stage">${esc(cur.stage)}</span>` : "",
+    `<span class="num">${esc(cur.version)}</span>`,
+    cur.date ? `<span class="num">${esc(cur.date)}</span>` : "",
+    cur.prev ? `<span>${esc(T.prevLabel)} <span class="num">${esc(cur.prev)}</span></span>` : "",
+    alts(cur).length ? `<span>${esc(T.altsLabel)} ${alts(cur).map(v => `<a href="#${esc(v.version)}" class="num">${esc(v.version)}</a>`).join(" ")}</span>` : ""
+  ].join("");
+  // 版の並び。同じ番号の案（v04a・v04b：ブランチ）は点線の枠でまとめる
+  const btn = v => `<button type="button" data-v="${esc(v.version)}" aria-current="${v === cur}">${esc(v.version)}</button>`;
+  const groups = [];
+  vers.forEach(v => { const n = verNum(v.version), g = groups[groups.length - 1]; if (g && g.n === n) g.list.push(v); else groups.push({n, list: [v]}); });
+  $("#vers").innerHTML = groups.map(g => g.list.length > 1
+    ? `<span class="alts" role="group" aria-label="${esc(T.altsGroup.replace("{n}", "v" + String(g.n).padStart(2, "0")))}">${g.list.map(btn).join("")}</span>`
+    : btn(g.list[0])).join("");
+  renderTree();
+  $("#vers").querySelectorAll("button").forEach(b => b.onclick = () => { cur = vers.find(v => v.version === b.dataset.v); history.replaceState(null, "", "#" + cur.version); renderAll(); });
+}
+
+function heroHTML(){
+  const img = cur.images[0];
+  if (!img) return "";
+  return `<section aria-label="${esc(T.hero)}"><div class="hero" id="hero">
+    <img src="${esc(img.src)}" alt="${esc(img.caption)}" data-cap="${esc(img.caption)}">
+    <div class="bar"><span>${esc(img.caption)}</span>
+    ${cur.model ? `<button class="btn ghost" type="button" id="spin">${esc(T.spin)}</button>` : ""}</div></div></section>`;
+}
+
+function mainHTML(){
+  const out = [];
+  out.push(heroHTML());
+  const lists = [];
+  if (cur.summary) out.push(`<p class="summary">${esc(cur.summary)}</p>`);
+  if (cur.changes?.length) lists.push(`<div class="box"><h3>${esc(T.changes)}</h3><ul>${cur.changes.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`);
+  if (lists.length) out.push(`<section class="cols">${lists.join("")}</section>`);
+  if (cur.questions?.length) out.push(`<section aria-label="${esc(T.questions)}"><h2>${esc(T.questions)}</h2>
+    <p class="note" id="qnote" style="margin:0">${esc(T.qHint)}</p>
+    <div class="qs" id="qs"></div></section>`);
+
+  if (cur.compare?.length){
+    out.push(`<section aria-label="${esc(T.compare)}"><h2>${esc(T.compare)}</h2><div class="gallery">${cur.compare.map((c, i) => c.before ? `
+      <figure><div class="slider" style="--pos:50%" data-i="${i}">
+        <img src="${esc(c.before)}" alt="${esc(cur.prev || T.prevVer)}${esc(T.sep)}${esc(c.caption)}">
+        <div class="after"><img src="${esc(c.after)}" alt="${esc(cur.version)}${esc(T.sep)}${esc(c.caption)}"></div>
+        <div class="handle"></div>
+        <span class="tag" style="left:8px">${esc(cur.prev || T.prevShort)}</span><span class="tag" style="right:8px">${esc(cur.version)}</span>
+        <input type="range" min="0" max="100" value="50" id="cmp-${esc(cur.version)}-${i}" aria-label="${esc(T.comparePos)}">
+      </div><figcaption><span>${esc(c.caption)}</span></figcaption></figure>` : `
+      <figure><img src="${esc(c.src)}" alt="${esc(c.caption)}" data-cap="${esc(c.caption)}"><figcaption><span>${esc(c.caption)}</span></figcaption></figure>`).join("")}</div></section>`);
+  }
+
+  const rest = cur.images.slice(1);
+  if (rest.length){
+    const groups = {};
+    rest.forEach(im => (groups[im.group || T.figures] ??= []).push(im));
+    out.push(`<section aria-label="${esc(T.figures)}"><h2>${esc(T.figures)}</h2>${Object.entries(groups).map(([g, ims]) => `
+      <div class="group-title">${esc(g)}</div><div class="gallery">${ims.map(im => `
+        <figure><img src="${esc(im.src)}" alt="${esc(im.caption)}" data-cap="${esc(im.caption)}" loading="lazy">
+        <figcaption><span>${esc(im.caption)}</span></figcaption></figure>`).join("")}</div>`).join("")}</section>`);
+  }
+
+  if (cur.params_diff?.length){
+    out.push(`<section aria-label="${esc(T.dims)}"><h2>${esc(T.dims)} <span class="num" style="color:var(--muted);font-weight:400;font-size:13px">${esc(cur.prev || "")} → ${esc(cur.version)}</span></h2>
+      <div class="tablewrap"><table><thead><tr><th>${esc(T.thItem)}</th><th style="text-align:right">${esc(T.thBefore)}</th><th style="text-align:right">${esc(T.thAfter)}</th><th style="text-align:right">${esc(T.thDelta)}</th></tr></thead><tbody>
+      ${cur.params_diff.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${fmt(r.before, r.unit)}</td><td class="n">${fmt(r.after, r.unit)}</td>
+        <td class="n ${r.delta > 0 ? "up" : r.delta < 0 ? "down" : ""}">${r.delta !== undefined ? (r.delta > 0 ? "+" : "") + esc(r.delta) : (r.kind === "added" ? esc(T.added) : r.kind === "removed" ? esc(T.removed) : "")}</td></tr>`).join("")}
+      </tbody></table></div></section>`);
+  }
+  // 寸法と根拠：その値がどこから来たか（図面・データシート・実測・仮）。閉じた状態で置く
+  if (cur.dims?.length){
+    const nob = cur.dims.filter(d => !d.basis).length;
+    out.push(`<section aria-label="${esc(T.dimsAll)}"><details class="box"><summary><b>${esc(T.dimsAll)}</b>
+      <span class="note"> ${esc(T.dimsCount.replace("{n}", cur.dims.length))}${nob ? " · " + esc(T.noBasis.replace("{n}", nob)) : ""}</span></summary>
+      <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>${esc(T.thItem)}</th><th style="text-align:right">${esc(T.thValue)}</th><th>${esc(T.thBasis)}</th></tr></thead><tbody>
+      ${cur.dims.map(d => `<tr><td style="white-space:normal">${esc(d.label)} <span class="mono" style="color:var(--muted);font-size:12px">${esc(d.key)}</span></td>
+        <td class="n">${fmt(d.value, d.unit)}</td>
+        <td style="white-space:normal;min-width:16em">${d.status ? `<span class="chip">${esc(d.status)}</span> ` : ""}${d.basis ? esc(d.basis) : `<span style="color:var(--fix)">${esc(T.noBasisCell)}</span>`}${d.ref ? ` <a href="${esc(d.ref)}" target="_blank" rel="noopener">${esc(T.openRef)}</a>` : ""}</td></tr>`).join("")}
+      </tbody></table></div></details></section>`);
+  }
+  // 資料：refs/ の画像はその場で、ほかのファイル（PDF など）はリンクで
+  if (cur.refs?.length){
+    const ims = cur.refs.filter(r => r.img), docs = cur.refs.filter(r => !r.img);
+    out.push(`<section aria-label="${esc(T.refsH)}"><h2>${esc(T.refsH)}</h2>
+      ${ims.length ? `<div class="gallery">${ims.map(r => `<figure><img src="${esc(r.src)}" alt="${esc(r.caption || r.name)}" data-cap="${esc(r.caption || r.name)}" loading="lazy"><figcaption><span>${esc(r.caption || r.name)}</span></figcaption></figure>`).join("")}</div>` : ""}
+      ${docs.length ? `<div class="box"><ul>${docs.map(r => `<li><a href="${esc(r.src)}" target="_blank" rel="noopener">${esc(r.name)}</a>${r.caption ? " — " + esc(r.caption) : ""}</li>`).join("")}</ul></div>` : ""}
+    </section>`);
+  }
+  if (cur.model || cur.step?.length){
+    const hasStl = !!cur.model, hasStep = !!cur.step?.length;
+    out.push(`<section aria-label="${esc(T.exportH)}"><h2>${esc(T.exportH)}</h2><div class="box exp">
+      <div class="fmt" role="radiogroup" aria-label="${esc(T.format)}">
+        <label><input type="radio" name="fmt" id="fmt-stl" value="stl" ${hasStl ? "checked" : "disabled"}> STL <small>${esc(T.stlNote)}</small></label>
+        <label><input type="radio" name="fmt" id="fmt-step" value="step" ${!hasStl && hasStep ? "checked" : ""} ${hasStep ? "" : "disabled"}> STEP <small>${esc(T.stepNote)}</small></label>
+      </div>
+      <div class="checks" id="explist"></div>
+      <div class="go"><button class="btn" type="button" id="expgo">${esc(T.saveZip)}</button><span class="status" id="expstatus" role="status"></span></div>
+      <p class="note" style="margin:0">${esc(T.expNote)}${hasStep ? "" : esc(T.noStep)}</p>
+    </div></section>`);
+  }
+  if (cur.notes) out.push(`<section><div class="box"><h3>${esc(T.notes)}</h3><p style="margin:0;white-space:pre-wrap">${esc(cur.notes)}</p></div></section>`);
+  return out.join("");
+}
+
+function wireMain(){
+  document.querySelectorAll("#main img[data-cap]").forEach(im => im.onclick = () => {
+    $("#lbimg").src = im.src; $("#lbimg").alt = im.alt; $("#lbcap").textContent = im.dataset.cap; $("#lb").showModal();
+  });
+  document.querySelectorAll(".slider").forEach(sl => {
+    const r = sl.querySelector("input");
+    r.oninput = () => sl.style.setProperty("--pos", r.value + "%");
+  });
+  const spin = $("#spin");
+  if (spin) spin.onclick = () => openViewer(spin);
+  if ($("#expgo")){
+    document.querySelectorAll('input[name="fmt"]').forEach(r => r.onchange = renderExpList);
+    renderExpList();
+    $("#expgo").onclick = exportZip;
+    showExpState();
+  }
+}
+
+// ---- エクスポート（STL は 3Dモデルからその場で作る。STEP は載せてあるファイル）
+const glbCache = {};
+function loadGLB(v){
+  if (!glbCache[v.model]) glbCache[v.model] = (async () => {
+    const {GLTFLoader} = await import("three/addons/loaders/GLTFLoader.js");
+    // 3Dモデルは base64 のテキストで載せている（アーティファクトが .glb を配信しないため）
+    const b64 = (await (await fetch(v.model)).text()).trim();
+    const bin = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+    return new GLTFLoader().parseAsync(bin.buffer, "");
+  })();
+  return glbCache[v.model];
+}
+function expFormat(){ return document.querySelector('input[name="fmt"]:checked')?.value || "stl"; }
+function expItems(){
+  if (expFormat() === "step") return (cur.step || []).map((st, i) => ({id: "s" + i, name: st.name, file: st.file}));
+  const parts = cur.parts?.length ? cur.parts : [];
+  const items = parts.map((p, i) => ({id: "p" + i, name: p.name || p.key, file: `${String(i + 1).padStart(2, "0")}_${p.key || "part"}.stl`}));
+  items.push({id: "all", name: T.allParts, file: `all_${cur.version}.stl`});
+  return items;
+}
+function renderExpList(){
+  $("#explist").innerHTML = expItems().map(it => `<label><input type="checkbox" id="exp-${esc(cur.version)}-${esc(it.id)}" data-id="${esc(it.id)}" checked>
+    <span>${esc(it.name)} <span class="file">${esc(it.file)}</span></span></label>`).join("");
+}
+// 保存（downloads）が使えるかは開いたときに1回だけ確かめる。使えない画面ではボタンを押せない表示にして理由を出す
+let downloadsApi;            // undefined：確かめ中／null：使えない
+(async () => {
+  try { downloadsApi = window.claude ? await window.claude.use("downloads") : null; } catch (e) { downloadsApi = null; }
+  // 普通のブラウザ（PC で serve_review.py から開いたときなど）では、ふつうのダウンロードで保存する
+  if (!downloadsApi && !window.claude) downloadsApi = {save: async ({filename, data}) => {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(data); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    return {status: "saved"};
+  }};
+  showExpState();
+})();
+function showExpState(){
+  const st = $("#expstatus"), go = $("#expgo");
+  if (!go) return;
+  if (downloadsApi === undefined){ go.disabled = true; st.textContent = T.expChecking; return; }
+  go.disabled = !downloadsApi;
+  st.textContent = downloadsApi ? "" : window.claude ? T.expNoDownloads : T.expNoClaude;
+}
+async function exportZip(){
+  const st = $("#expstatus"), go = $("#expgo");
+  if (!downloadsApi){ showExpState(); return; }
+  const ids = new Set([...document.querySelectorAll("#explist input:checked")].map(c => c.dataset.id));
+  const items = expItems().filter(it => ids.has(it.id));
+  if (!items.length){ st.textContent = T.expPick; return; }
+  if (typeof JSZip === "undefined"){ st.textContent = T.expNoZip; return; }
+  go.disabled = true; st.textContent = T.expBuilding;
+  try {
+    const zip = new JSZip(), fmt = expFormat();
+    if (fmt === "step"){
+      for (const it of items){
+        const stp = cur.step[Number(it.id.slice(1))];
+        const b64 = (await (await fetch(stp.src)).text()).trim();
+        zip.file(it.file, Uint8Array.from(atob(b64), ch => ch.charCodeAt(0)));
+      }
+    } else {
+      const THREE = await import("three");
+      const {STLExporter} = await import("three/addons/exporters/STLExporter.js");
+      const gl = await loadGLB(cur);
+      gl.scene.updateMatrixWorld(true);
+      const back = new THREE.Matrix4().makeRotationX(Math.PI / 2);   // 表示用の Y上 → 元の Z上
+      const byIndex = {};
+      gl.scene.traverse(o => {
+        if (!o.isMesh) return;
+        let n = o, m = null;
+        while (n && !(m = /^p(\d+)_/.exec(n.name || ""))) n = n.parent;
+        const g = o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(back);
+        (byIndex[m ? m[1] : "x"] ??= []).push(new THREE.Mesh(g));
+      });
+      const exp = new STLExporter();
+      const groupOf = list => { const g = new THREE.Group(); list.forEach(x => g.add(x.clone())); return g; };
+      for (const it of items){
+        const list = it.id === "all" ? Object.values(byIndex).flat() : (byIndex[it.id.slice(1)] || []);
+        if (!list.length) continue;
+        zip.file(it.file, exp.parse(groupOf(list), {binary: true}).buffer);
+      }
+    }
+    const blob = await zip.generateAsync({type: "blob", compression: "DEFLATE"});
+    const name = `${BOARD.project}_${cur.version}_${fmt.toUpperCase()}.zip`;
+    const res = await downloadsApi.save({filename: name, data: blob});
+    st.textContent = res.status === "delivered" ? T.expDelivered : T.expSaved;
+  } catch (e) {
+    const code = e && e.code;
+    st.textContent = code === "declined" ? T.expDeclined
+      : code === "rate_limited" ? T.expRate
+      : code === "too_large" ? T.expTooLarge
+      : T.expFailed(code);
+    if (!code) console.error(e);
+  } finally { go.disabled = false; }
+}
+
+async function openViewer(btn){
+  btn.disabled = true; btn.textContent = T.loading3d;
+  try {
+    const THREE = await import("three");
+    const {GLTFLoader} = await import("three/addons/loaders/GLTFLoader.js");
+    const {OrbitControls} = await import("three/addons/controls/OrbitControls.js");
+    const hero = $("#hero");
+    const canvas = document.createElement("canvas"); canvas.className = "viewer";
+    hero.querySelector("img").replaceWith(canvas);
+    const r = new THREE.WebGLRenderer({canvas, antialias: true});
+    r.setPixelRatio(Math.min(2, devicePixelRatio)); r.outputColorSpace = THREE.SRGBColorSpace;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--sunken").trim();
+    const s = new THREE.Scene(); s.background = new THREE.Color(bg || "#e8ece7");
+    s.add(new THREE.HemisphereLight(0xffffff, 0x8a948f, 1.6));
+    const d = new THREE.DirectionalLight(0xffffff, 1.8); s.add(d);
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 1e5);
+    const ctl = new OrbitControls(cam, canvas); ctl.enableDamping = true;
+    const gl0 = await loadGLB(cur);
+    const gl = {scene: gl0.scene.clone(true)};
+    gl.scene.traverse(o => { if (o.isMesh && o.material.transparent) o.material.depthWrite = false; });
+    s.add(gl.scene);
+    const box = new THREE.Box3().setFromObject(gl.scene), c = box.getCenter(new THREE.Vector3()), R = box.getSize(new THREE.Vector3()).length();
+    // 全体（対角 R の球）が縦の画角 30° に入る距離から見る
+    const dist = 0.5 * R / Math.sin(THREE.MathUtils.degToRad(15)) * 1.05;
+    cam.position.copy(c).addScaledVector(new THREE.Vector3(-0.45, 0.55, 0.85).normalize(), dist); ctl.target.copy(c); cam.near = R / 200; cam.far = R * 20; cam.updateProjectionMatrix();
+    d.position.set(c.x - R, c.y + 2 * R, c.z + R);
+    const size = () => { const w = canvas.clientWidth, h = canvas.clientHeight; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
+    new ResizeObserver(size).observe(canvas); size();
+    (function loop(){ ctl.update(); r.render(s, cam); requestAnimationFrame(loop); })();
+    btn.textContent = T.spinHint;
+  } catch (e) {
+    btn.textContent = T.fail3d; console.error(e);
+  }
+}
+
+// ---- 決めてほしいこと
+function renderQuestions(){
+  const box = $("#qs");
+  if (!box) return;
+  const ver = cur.version;
+  box.innerHTML = cur.questions.map((raw, i) => {
+    const q = qOf(raw), dec = decisions[`${ver}~q${i}`];
+    const mine = answers.find(a => a.version === ver && a.q === i && a.author === myId && myId);
+    const list = answers.filter(a => a.version === ver && a.q === i);
+    const total = list.length;
+    const dis = !answerDb || dec ? "disabled" : "";
+    const count = id => list.filter(a => a.choice === id).length;
+    const decLabel = dec ? labelOf(q, dec.choice) : "";
+    let body = "";
+    if (q.type === "yesno"){
+      body = `<div class="seg" role="radiogroup" aria-label="${esc(q.q)}">${q.options.map(o => `
+        <label><input class="vis" type="radio" name="ans-${esc(ver)}-${i}" id="ans-${esc(ver)}-${i}-${esc(o.id)}" value="${esc(o.id)}" data-qi="${i}"
+          ${mine?.choice === o.id ? "checked" : ""} ${dis}>${esc(optLabel(q, o))}<span class="cnt">${count(o.id)}</span></label>`).join("")}</div>`;
+    } else if (q.type === "choice"){
+      body = `<div class="opts" role="radiogroup" aria-label="${esc(q.q)}">${q.options.map(o => {
+        const n = count(o.id), pct = total ? Math.round(100 * n / total) : 0;
+        return `<label class="opt ${dec?.choice === o.id ? "win" : ""}">
+          ${o.img ? `<img src="${esc(o.img)}" alt="${esc(o.label)}" loading="lazy">` : ""}
+          <span class="top"><input type="radio" name="ans-${esc(ver)}-${i}" id="ans-${esc(ver)}-${i}-${esc(o.id)}" value="${esc(o.id)}" data-qi="${i}"
+            ${mine?.choice === o.id ? "checked" : ""} ${dis}><span class="lbl">${esc(o.label)}</span></span>
+          ${o.note ? `<span class="on">${esc(o.note)}</span>` : ""}
+          <span class="tally"><span class="bar"><i style="width:${pct}%"></i></span><span>${esc(T.people(n))}</span></span></label>`;
+      }).join("")}</div>`;
+    }
+    const who = list.length && q.type !== "text"
+      ? T.chosenBy(list.map(a => [esc(a.author === myId ? T.you : names[a.author] || T.someone), esc(labelOf(q, a.choice))]))
+      : (q.type === "text" ? T.writeInFeedback : T.noneChosen);
+    return `<div class="qcard ${dec ? "decided" : ""}">
+      <div class="qhead"><span class="qn">Q${i + 1}</span><span class="qt">${esc(q.q)}</span>
+        ${dec ? `<span class="chip dec">${esc(T.decided)}${esc(decLabel)}${dec.version ? " " + esc(dec.version) : ""}</span>` : ""}</div>
+      ${q.why ? `<p class="qwhy">${esc(q.why)}</p>` : ""}
+      ${body}
+      ${dec?.note ? `<div class="reply" style="font-size:13px;border-left:2px solid var(--accent);padding-left:8px">${esc(dec.note)}</div>` : ""}
+      <div class="qfoot"><span class="who">${who}</span>
+        ${mine && !dec && answerDb ? `<button type="button" class="linkbtn" data-clear="${i}">${esc(T.clearChoice)}</button>` : ""}
+        <button type="button" class="linkbtn" data-q="${i}">${esc(q.type === "text" ? T.write : T.writeReason)}</button>
+        <span class="status" id="qst-${i}" role="status"></span></div></div>`;
+  }).join("");
+  box.querySelectorAll("input[data-qi]").forEach(r => r.onchange = () => saveAnswer(Number(r.dataset.qi), r.value));
+  box.querySelectorAll("[data-clear]").forEach(b => b.onclick = () => saveAnswer(Number(b.dataset.clear), null));
+  box.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
+    const t = $("#fbtarget"); t.value = "q:" + b.dataset.q;
+    const k = document.getElementById("kind-ask"); if (k && qOf(cur.questions[b.dataset.q]).type === "text") k.checked = true;
+    $("#fbtext").focus();
+  });
+  const st = answerDb ? "rw" : dbState === "rw" ? "ro" : dbState;
+  if ($("#qnote")) $("#qnote").textContent = !cur.questions.some(q => qOf(q).type !== "text") || st === "rw" || st === "loading"
+    ? T.qHint
+    : st === "none" ? (window.claude ? T.qNoDb : T.qNoDbFile)
+    : T.qReadOnly;
+}
+
+// 1つの問いへの書き込みは1度に1回。続けて押されたら最後の選択だけを書く
+const ansQueue = {};
+async function saveAnswer(i, choice){
+  if (!answerDb || !myId) return;
+  const ver = cur.version, id = ansId(ver, i, myId), q = qOf(cur.questions[i]);
+  const st = () => document.getElementById("qst-" + i);
+  const job = ansQueue[id] ??= {busy: false, next: undefined};
+  job.next = choice;
+  if (job.busy) return;
+  job.busy = true;
+  try {
+    while (job.next !== undefined){
+      const c = job.next; job.next = undefined;
+      if (st()) st().textContent = T.saving;
+      const ref = answerDb.collection("answers").doc(id);
+      if (c === null) await ref.delete();
+      else await ref.set({version: ver, q: i, question: q.q, choice: c,
+        label: labelOf(q, c), author: myId, updatedAt: new Date().toISOString()});
+      if (st()) st().textContent = c === null ? T.cleared : T.saved;
+    }
+  } catch (err) {
+    if (st()) st().textContent = err.code === "invalid_argument" ? T.noPermChoose : T.saveRetry;
+    if (err.code === "invalid_argument"){ answerDb = null; renderQuestions(); }
+  } finally { job.busy = false; }
+}
+
+function targets(){
+  const t = [["all", T.all]];
+  cur.images.forEach((im, i) => t.push(["img:" + i, im.caption]));
+  (cur.compare || []).forEach((c, i) => t.push(["cmp:" + i, T.cmpPrefix + c.caption]));
+  (cur.questions || []).forEach((q, i) => t.push(["q:" + i, T.qPrefix + qOf(q).q]));
+  return t;
+}
+function targetLabel(f){
+  const v = vers.find(x => x.version === f.version) || cur;
+  const [k, i] = String(f.target || "all").split(":");
+  if (k === "img") return v.images[i]?.caption || T.figure;
+  if (k === "cmp") return T.cmpPrefix + (v.compare?.[i]?.caption || "");
+  if (k === "q") return v.questions?.[i] ? qOf(v.questions[i]).q : T.question;
+  return T.all;
+}
+
+function fbItem(f){
+  const who = names[f.author] || "";
+  const when = f.createdAt ? new Date(f.createdAt).toLocaleString(T.locale, {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"}) : "";
+  return `<div class="fb"><div class="row">
+      <span class="chip k-${esc(f.kind)}">${esc(KIND[f.kind] || f.kind)}</span>
+      <span class="chip s-${esc(f.status || "open")}">${esc(STATUS[f.status || "open"])}${f.resolvedIn ? " " + esc(f.resolvedIn) : ""}</span>
+      <span>${esc(targetLabel(f))}</span></div>
+    <div class="text">${esc(f.text)}</div>
+    ${f.reply ? `<div class="reply">${esc(f.reply)}</div>` : ""}
+    <div class="row"><span class="num">${esc(f.version)}</span><span>${esc(who)}</span><span class="num">${esc(when)}</span></div></div>`;
+}
+
+function renderFeedback(){
+  const sel = $("#fbtarget"), keep = sel.value;
+  sel.innerHTML = targets().map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("");
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+  const mine = feedback.filter(f => f.version === cur.version).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const older = feedback.filter(f => f.version !== cur.version && (f.status || "open") === "open" && f.version < cur.version);
+  let html = "";
+  html += mine.length ? mine.map(fbItem).join("") : `<p class="empty">${T.noFeedback(esc(cur.version))}</p>`;
+  if (older.length) html += `<h3 class="group-title" style="margin-top:12px">${esc(T.olderOpen(older.length))}</h3>` + older.map(fbItem).join("");
+  $("#fblist").innerHTML = html;
+}
+
+function renderAll(){
+  pickFromHash();
+  renderHeader();
+  $("#main").innerHTML = mainHTML();
+  wireMain();
+  renderQuestions();
+  renderFeedback();
+}
+
+window.addEventListener("hashchange", renderAll);
+renderAll();
+
+// ---- ローカルモード：PC で serve_review.py から開いたとき（Artifact の db が無い）。
+// フィードバック・答え・決定を、ページを配信しているサーバー（review/feedback_local.json）に保存する。db と同じ使い方ができる形にする
+function isLocalHost(){ return ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname); }
+async function localStore(){
+  if (!isLocalHost()) return null;
+  let store;
+  try { const r = await fetch("feedback", {cache: "no-store"}); if (!r.ok) return null; store = await r.json(); } catch (e) { return null; }
+  const subs = {};
+  const snap = name => ({docs: Object.entries(store[name] || {}).map(([id, v]) => ({id, data: () => v}))});
+  const emit = () => { for (const n in subs) subs[n].forEach(cb => cb(snap(n))); };
+  const post = async body => {
+    const r = await fetch("feedback", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    if (!r.ok) throw {code: "local_" + r.status};
+    store = await r.json(); emit();
+  };
+  // 見ている間は3秒ごとにスタンプ（/stamp）だけを見て、変わったときだけ読み直す。
+  // フィードバック・答え・決定は差し替え、新しい版はページを読み直す（書きかけの文があれば、ボタンを出して待つ）
+  let stamp = null;
+  const refetch = async () => { try { const r = await fetch("feedback", {cache: "no-store"}); if (r.ok){ store = await r.json(); emit(); } } catch (e) {} };
+  const newBoard = () => {
+    if (!($("#fbtext")?.value || "").trim()) return location.reload();
+    if (document.getElementById("newver")) return;
+    const bar = document.createElement("div"); bar.className = "newver"; bar.id = "newver"; bar.setAttribute("role", "status");
+    bar.innerHTML = `<span>${esc(T.newVer)}</span><button class="btn" type="button">${esc(T.loadNew)}</button>`;
+    bar.querySelector("button").onclick = () => location.reload();
+    document.body.appendChild(bar);
+  };
+  const poll = async () => {
+    if (document.visibilityState !== "visible") return;
+    try {
+      const r = await fetch("stamp", {cache: "no-store"});
+      if (!r.ok) return;                        // 古い serve_review.py（/stamp が無い）
+      const s = await r.json();
+      if (stamp && s.board !== stamp.board) newBoard();
+      if (stamp && s.store !== stamp.store) await refetch();
+      stamp = s;
+    } catch (e) {}
+  };
+  setInterval(poll, 3000); poll();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ refetch(); poll(); } });
+  const db = {collection: name => ({
+    onSnapshot(cb){ (subs[name] ??= []).push(cb); cb(snap(name)); return () => {}; },
+    add: doc => post({collection: name, doc}),
+    doc: id => ({set: doc => post({collection: name, id, doc}), delete: () => post({collection: name, id, delete: true})}),
+  })};
+  const user = {can: async () => true, id: async () => "local",
+    profiles: async ids => Object.fromEntries(ids.map(i => [i, {name: i === "local" ? T.thisPC : ""}]))};
+  return {db, user};
+}
+
+// ---- フィードバックの保存（db）。使えない画面では読み取りだけにする
+(async () => {
+  const c = window.claude;
+  let db = c ? await c.use("db") : null;
+  let user = c ? await c.use("user") : null;
+  if (!db){
+    const local = await localStore();
+    if (local){
+      ({db, user} = local);
+      $("#fbnote").textContent = T.localNote;
+    }
+  }
+  if (!db){
+    dbState = "none"; renderQuestions();
+    $("#fbnote").textContent = window.claude ? T.noDb : T.noDbFile;
+    $("#fblist").innerHTML = "";
+    return;
+  }
+  const may = user ? await user.can("data.write") : null;
+  canWrite = may !== false;
+  myId = user ? await user.id() : null;
+  answerDb = canWrite && myId ? db : null;
+  dbState = answerDb ? "rw" : "ro";
+  renderQuestions();
+  const resolveNames = async ids => {
+    ids = ids.filter(id => id && !(id in names));
+    if (!user || !ids.length) return;
+    try { const ps = await user.profiles(ids); ids.forEach(id => names[id] = ps[id]?.name || ""); } catch (e) {}
+  };
+  db.collection("answers").onSnapshot(async snap => {
+    answers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    await resolveNames([...new Set(answers.map(a => a.author))]);
+    renderQuestions();
+  }, () => {});
+  db.collection("decisions").onSnapshot(snap => {
+    decisions = {}; snap.docs.forEach(d => decisions[d.id] = d.data());
+    renderQuestions();
+  }, () => {});
+  $("#fbform").hidden = !canWrite;
+  if (!canWrite) $("#fbnote").textContent = T.viewOnly;
+  db.collection("feedback").onSnapshot(async snap => {
+    feedback = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    const ids = [...new Set(feedback.map(f => f.author).filter(Boolean))];
+    if (user && ids.length){
+      try { const ps = await user.profiles(ids); ids.forEach(id => names[id] = ps[id]?.name || ""); } catch (e) {}
+    }
+    renderFeedback();
+  }, err => { $("#fblist").innerHTML = `<p class="empty">${T.fbLoadFailed(esc(err.code))}</p>`; });
+
+  $("#fbform").onsubmit = async e => {
+    e.preventDefault();
+    const text = $("#fbtext").value.trim();
+    if (!text){ $("#fbstatus").textContent = T.needText; return; }
+    $("#fbsend").disabled = true; $("#fbstatus").textContent = T.sending;
+    try {
+      await db.collection("feedback").add({
+        version: cur.version, target: $("#fbtarget").value,
+        kind: document.querySelector('input[name="kind"]:checked').value,
+        text, author: myId, createdAt: new Date().toISOString(), status: "open"
+      });
+      $("#fbtext").value = ""; $("#fbstatus").textContent = T.sent;
+    } catch (err) {
+      $("#fbstatus").textContent = err.code === "invalid_argument" ? T.noPermWrite : T.sendRetry;
+      if (err.code === "invalid_argument"){ canWrite = false; $("#fbform").hidden = true; }
+    } finally { $("#fbsend").disabled = false; }
+  };
+})();
+</script>

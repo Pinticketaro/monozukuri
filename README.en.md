@@ -32,7 +32,7 @@ Commands that start with `/plugin` work only in Claude Code. They do not work in
 
 ## How it works
 
-Ask in plain words and the matching skill runs. In Claude Code you can also call them by name: `/monozukuri:setup`, `/monozukuri:new-project`, `/monozukuri:review-page`.
+Ask in plain words and the matching skill runs. In Claude Code you can also call them by name: `/monozukuri:monozukuri-setup`, `/monozukuri:monozukuri-new-project`, `/monozukuri:monozukuri-review-page`.
 
 There are 4 stages (gates) before the final build. The goal is to get the final build, which costs time and material, right in one go.
 
@@ -49,9 +49,9 @@ If you are not sure, ask "What should I do next?". Claude checks the project che
 
 | Skill | Ask | What it does |
 | --- | --- | --- |
-| setup | "Set up the mock environment", "Make rendering work on my Mac" | Installs what rendering, sections and comparison need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery, playwright + Chromium, three.js, a Japanese font) in one go, and checks it with a test render. On a Mac, it installs into a virtual environment outside the project (`~/.monozukuri/venv`) |
-| new-project | "Start a new making project", "Make coupons", "Update the tools", "Switch this project to English" | Creates the project: a params file (shape dimensions + fabrication values with confidence), a mock generator (STL and STEP from one shape definition; the STEP has real arcs, cylinders and cones, and opens in Fusion with one component per part), a coupon generator, scripts for rendering, sections, comparison and the dimension sheet, a stage checklist, handoff docs and Git settings. Then it draws the first mock. It narrows the fabrication values and steps to the process (laser / 3D print / both), and flags faces that may need support in 3D printing. It sets and switches the project language (Japanese / English) |
-| review-page | "Make a review page for this version", "Read the feedback", "Open the review page in the browser" | Renders mocks or models people made (STL / OBJ / STEP), compares them with the previous version, adds the version to the project's review page and publishes it (in Claude Code, it opens in your browser). Claude reads the feedback and answers written on the page, and adds a reply or "Decided" once they are applied |
+| monozukuri-setup | "Set up the mock environment", "Make rendering work on my Mac" | Installs what rendering, sections and comparison need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery, playwright + Chromium, three.js, a Japanese font) in one go, and checks it with a test render. On a Mac, it installs into a virtual environment outside the project (`~/.monozukuri/venv`) |
+| monozukuri-new-project | "Start a new making project", "Make coupons", "Update the tools", "Switch this project to English" | Creates the project: a params file (shape dimensions + fabrication values with confidence), a mock generator (STL and STEP from one shape definition; the STEP has real arcs, cylinders and cones, and opens in Fusion with one component per part), a coupon generator, scripts for rendering, sections, comparison and the dimension sheet, a stage checklist, handoff docs and Git settings. Then it draws the first mock. It narrows the fabrication values and steps to the process (laser / 3D print / both), and flags faces that may need support in 3D printing. It sets and switches the project language (Japanese / English) |
+| monozukuri-review-page | "Make a review page for this version", "Read the feedback", "Open the review page in the browser" | Renders mocks or models people made (STL / OBJ / STEP), compares them with the previous version, adds the version to the project's review page and publishes it (in Claude Code, it opens in your browser). Claude reads the feedback and answers written on the page, and adds a reply or "Decided" once they are applied |
 
 ### Changes in 0.5.0
 
@@ -112,9 +112,9 @@ These are planned, in order. They are not in yet.
 README.en.md                      English documentation (this file)
 .claude-plugin/marketplace.json   Marketplace definition
 plugins/monozukuri/               The plugin
-  skills/setup/                   Environment setup
-  skills/new-project/             Templates, coupons, technical requirement references
-  skills/review-page/             Rendering, comparison, review page, feedback
+  skills/monozukuri-setup/        Environment setup
+  skills/monozukuri-new-project/  Templates, coupons, technical requirement references
+  skills/monozukuri-review-page/  Rendering, comparison, review page, feedback
 dist/monozukuri.plugin            Package for the Claude app
 ```
 

@@ -2,7 +2,7 @@
 
 English: [README.en.md](README.en.md)
 
-レーザー加工・3Dプリントのものづくりの試行錯誤（アイデアを出す、迷って選ぶ、うまくいかなかった理由を考える）を、人が自分で楽しむための Claude プラグイン。
+レーザー加工・3Dプリントのものづくりの試行錯誤（アイデアを出す、迷って選ぶ、うまくいかなかった理由を考える）を、人が自分で楽しむための AI のスキルです。Claude（Claude Code・Claude アプリ）ではプラグインとして、Codex などほかの AI ではスキルのフォルダとして入れます。
 寸法・はめあい・ファイル形式・材料の安全といった技術のハードルは AI が受け持ち、人のアイデアを尊重しながら、別の案も提案し続けます。
 **立体のモック → 確認ページ → フィードバック → 次の版** を繰り返して形を決めます。モックは形と比率を決めるための粗い立体で、最終形は Fusion などで人がモデル化する前提です。モデル化した結果（STL / STEP）も同じ確認ページで見比べられます。
 
@@ -24,6 +24,38 @@ English: [README.en.md](README.en.md)
 
 `/plugin` で始まるコマンドは Claude Code 専用です。Claude アプリの入力欄では使えません。
 
+### Codex とほかの AI
+
+Codex など、`~/.agents/skills/` からスキルを読む AI では、このリポジトリを置いて、3つのスキルのフォルダをリンクします。
+
+```bash
+git clone https://github.com/Pinticketaro/monozukuri.git ~/monozukuri-skills
+mkdir -p ~/.agents/skills
+ln -s ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skills/
+```
+
+- 3つのスキル（`monozukuri-setup`・`monozukuri-new-project`・`monozukuri-review-page`）は、同じフォルダに並べて入れてください。スキルどうしで参照資料とスクリプトを使い合います。
+- `git pull` で新しい版になります。入れたら AI を起動し直してください。
+- Codex では `$monozukuri-setup` のように `$` を付けて名前を書くか、`/skills` から選びます。依頼の文が説明に合えば、名前を書かなくても選ばれます。
+- Windows では、WSL（Windows の中の Linux）の中で AI と上のコマンドを動かします（下の「対応環境」）。
+
+## 対応環境
+
+| 環境 | 使えるか | 要るもの・注意 |
+| --- | --- | --- |
+| macOS | 使えます | Python 3.10 以上と Node.js（`brew install python@3.12 node`） |
+| Linux | 使えます | Python 3.10 以上、Node.js、日本語フォント（Ubuntu なら `fonts-noto-cjk`） |
+| Windows の WSL（Ubuntu など） | 使えます（Linux として動きます） | AI も WSL の中で動かし、プロジェクトは WSL 側のフォルダ（`~/` の下）に置きます |
+| Windows のまま（PowerShell） | まだ使えません | セットアップのスクリプトが動きません |
+
+| AI | 確認ページ | 決めてほしいことの聞き方 | スキルの呼び方 |
+| --- | --- | --- | --- |
+| Claude Code | PC のブラウザ（`serve_review.py`） | 選択式の問いの画面 | `/monozukuri:monozukuri-setup` など |
+| Claude アプリ | アーティファクトとして公開するか、PC のブラウザ | 選択式の問いの画面 | ふつうの言葉で頼む |
+| Codex | PC のブラウザ（`serve_review.py`） | 文字で、番号付きの選択肢 | `$monozukuri-setup` など |
+
+どの AI でも同じ SKILL.md を使い、プロジェクトのファイルの形（パラメータファイル、`out/vNN/`、`review/`）も同じです。ある AI で作ったプロジェクトを、別の AI で続けられます（アーティファクトに書かれたフィードバックは、Claude アプリからしか読めません）。
+
 ## セットアップ
 
 1. **新しい会話を始める**：プラグインは会話の開始時に読み込まれます。追加する前から開いていた会話では使えません。
@@ -31,7 +63,7 @@ English: [README.en.md](README.en.md)
 
 ## 使い方
 
-ふつうの言葉で頼めば、対応するスキルが動きます。Claude Code では `/monozukuri:setup`、`/monozukuri:new-project`、`/monozukuri:review-page` と名前でも呼べます。
+ふつうの言葉で頼めば、対応するスキルが動きます。Claude Code では `/monozukuri:monozukuri-setup`、`/monozukuri:monozukuri-new-project`、`/monozukuri:monozukuri-review-page`、Codex では `$monozukuri-setup` などと名前でも呼べます。
 
 本番の前に4つの段階（ステージゲート）を通ります。うまくいかない理由を、時間と材料のかかる本番ではなく、モックや小さなテストピースで見つけるためです。
 
@@ -44,13 +76,20 @@ English: [README.en.md](README.en.md)
 
 迷ったら「次は何をすればいい？」と聞いてください。プロジェクトのチェックリストを見て案内します。
 
-## できること（v0.5.0）
+## できること（v0.7.0）
 
 | スキル | こう頼むと動く | すること |
 | --- | --- | --- |
-| setup | 「モックの環境を整えて」「Mac でレンダリングできるようにして」 | レンダリング・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）をまとめて入れ、テストレンダリングまで確かめる。Mac ではプロジェクトの外の仮想環境（`~/.monozukuri/venv`）に入れる |
-| new-project | 「新しいものづくりを始めたい」「テストピースを作って」「ツールを更新して」「英語にして」 | パラメータファイル（形の寸法＋加工パラメータと信頼度）、モック生成（1つの形の定義から STL と STEP。STEP は本物の円弧・円柱・円錐を持ち、Fusion で部品ごとのコンポーネントとして開ける）、テストピースの生成、レンダリング・断面・比較・寸法表のスクリプト、段階チェックリスト、引き継ぎ資料、Git 設定のテンプレートを作り、最初のモックをレンダリングする。加工方法（レーザー／3Dプリント／両方）に合わせて加工パラメータと手順を絞り、3Dプリントでサポートが要りそうな面を自動で知らせる。プロジェクトの言語（日本語／英語）を決め、切り替える |
-| review-page | 「この版の確認ページを作って」「フィードバックを読んで」「ブラウザで確認ページを開いて」 | モックや人が作ったモデル（STL / OBJ / STEP）をレンダリングして前の版と比べ、プロジェクトごとの確認ページに版を追加して公開する（Claude Code では PC のブラウザで開く）。ページに書かれたフィードバックと答えを Claude が読み、反映したら返信や「決定」を付ける |
+| monozukuri-setup | 「モックの環境を整えて」「Mac でレンダリングできるようにして」 | レンダリング・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）をまとめて入れ、テストレンダリングまで確かめる。Mac ではプロジェクトの外の仮想環境（`~/.monozukuri/venv`）に入れる |
+| monozukuri-new-project | 「新しいものづくりを始めたい」「テストピースを作って」「ツールを更新して」「英語にして」 | パラメータファイル（形の寸法＋加工パラメータと信頼度）、モック生成（1つの形の定義から STL と STEP。STEP は本物の円弧・円柱・円錐を持ち、Fusion で部品ごとのコンポーネントとして開ける）、テストピースの生成、レンダリング・断面・比較・寸法表のスクリプト、段階チェックリスト、引き継ぎ資料、Git 設定のテンプレートを作り、最初のモックをレンダリングする。加工方法（レーザー／3Dプリント／両方）に合わせて加工パラメータと手順を絞り、3Dプリントでサポートが要りそうな面を自動で知らせる。プロジェクトの言語（日本語／英語）を決め、切り替える |
+| monozukuri-review-page | 「この版の確認ページを作って」「フィードバックを読んで」「ブラウザで確認ページを開いて」 | モックや人が作ったモデル（STL / OBJ / STEP）をレンダリングして前の版と比べ、プロジェクトごとの確認ページに版を追加して、PC のブラウザで開く（Claude アプリではアーティファクトとしても公開できる）。ページに書かれたフィードバックと答えを AI が読み、反映したら返信や「決定」を付ける |
+
+### 0.7.0 で変わったこと
+
+- **スキルの名前が変わりました**：`setup` → `monozukuri-setup`、`new-project` → `monozukuri-new-project`、`review-page` → `monozukuri-review-page`。Claude Code での呼び方は `/monozukuri:monozukuri-setup` などになります。ふつうの言葉で頼む使い方は変わりません
+- Codex など、ほかの AI でも同じスキルが使えます（上の「Codex とほかの AI」）。選択式の問いの画面が無い AI では文字の選択肢で聞き、確認ページは PC のブラウザで開きます
+- PC で開く確認ページのサーバーは、AI のコマンドが終わっても動き続けます（以前は Claude Code で10分ほどで止まることがありました）。止めるときは「確認ページを止めて」と頼むか、`serve_review.py <プロジェクト> --stop`
+- 今までのプロジェクトはそのまま動きます（ツールはプロジェクトの `tools/` に写してあるため）
 
 ### 0.5.0 で変わったこと
 
@@ -72,7 +111,7 @@ English: [README.en.md](README.en.md)
 - 外観・平面図・断面図、前の版との比較スライダー、寸法の変化の表
 - 3Dビューでモデルを見る（スマホでも）
 - 見ている版の STL / STEP を ZIP でエクスポートする
-- Claude Code では PC のブラウザで開ける（「ブラウザで確認ページを開いて」）
+- PC のブラウザで開ける（「ブラウザで確認ページを開いて」。Claude Code・Codex など）
 - 「決めてほしいこと」に はい／いいえ や案の選択で答える
 - フィードバック（直したい／良い／質問）を図や問いごとに書く
 
@@ -108,9 +147,9 @@ English: [README.en.md](README.en.md)
 README.en.md                      英語の説明
 .claude-plugin/marketplace.json   マーケットプレイスの定義
 plugins/monozukuri/               プラグイン本体
-  skills/setup/                   環境セットアップ
-  skills/new-project/             テンプレート・テストピース・技術要件の参照資料
-  skills/review-page/             レンダリング・比較・確認ページ・フィードバック
+  skills/monozukuri-setup/        環境セットアップ
+  skills/monozukuri-new-project/  テンプレート・テストピース・技術要件の参照資料
+  skills/monozukuri-review-page/  レンダリング・比較・確認ページ・フィードバック
 dist/monozukuri.plugin            Claude アプリ用のパッケージ
 ```
 
