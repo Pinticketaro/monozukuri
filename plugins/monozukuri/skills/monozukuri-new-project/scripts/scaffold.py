@@ -218,12 +218,19 @@ def known_versions():
 
 
 def top_defs(path):
-    """ファイルの一番外側で定義している関数・クラスの名前"""
+    """ファイルの一番外側で定義している関数・クラスの名前と、クラスのメソッド（「クラス.メソッド」）。
+    メソッドも数えるのは、プロジェクトでクラスに足したメソッド（Solid.rotate_x など）を上書きで消さないため"""
     try:
         tree = ast.parse(open(path, encoding="utf-8").read())
     except (SyntaxError, UnicodeDecodeError):
         return None
-    return {n.name for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
+    names = set()
+    for n in tree.body:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(n.name)
+        if isinstance(n, ast.ClassDef):
+            names |= {f"{n.name}.{m.name}" for m in n.body if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    return names
 
 
 def without_build(path, lang="ja"):
@@ -316,7 +323,9 @@ def update_tools(proj, force, lang_flag=None):
                 olds = [known[base][f]["defs"]]
             else:                                        # 元の版がわからなければ、今の版より前の版と比べる
                 olds = [d[f]["defs"] for v, d in known.items() if f in d and v != new_ver]
-            added = sorted(mine - set(olds[-1])) if olds else []
+            # 前の版の記録（tool_versions.json）にメソッドの名前が無いときは、一番外側の名前だけで比べる
+            old = set(olds[-1]) if olds else set()
+            added = sorted(n for n in mine - old if "." not in n or any("." in o for o in old)) if olds else []
             plan.append((f, T["upd_mine"].format(names=T["names"].format(names=", ".join(added)) if added else "")))
             continue
         lost = sorted(mine - theirs) if mine is not None and theirs is not None else []
