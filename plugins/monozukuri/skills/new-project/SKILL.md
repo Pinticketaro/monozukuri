@@ -2,102 +2,45 @@
 name: new-project
 description: >
   This skill should be used when the user says "新しいものづくりを始めたい", "モックから始めたい",
-  "プロジェクトの雛形を作って", "プロジェクトのテンプレートを作って",
-  "レーザーと3Dプリントで〇〇を作りたい", "start a new making project",
-  "start from a mock", "make a project template", "I want to make X with a laser cutter and a 3D printer",
-  or starts a new physical-making
-  project (laser cutting, 3D printing, small enclosures, furniture, gadgets) that should move fast through
-  3D mock images and feedback before a human models the final form. Also used for "試し片を作って",
-  "テストピースを作って", "テストプリントを作って", "テストカットを作って",
-  "カーフを測りたい", "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーで切っていい？",
-  "この材料はレーザーカットしていい？",
-  "道具を新しくして", "ツールを更新して", "プラグインを更新したので道具を更新して",
-  "プラグインを更新したのでツールを更新して", "サポートが要る所を調べて",
-  "このプロジェクトを英語にして", "日本語に戻して", "部品の棚を作って", "ライブラリを作って",
-  "棚に上げて", "ライブラリに登録して", "棚の寸法を入れて", "ライブラリの寸法を入れて",
-  "実測を棚に残して", "実測をライブラリに残して", "make coupons", "measure the kerf",
-  "decide the fits and tolerances", "what pilot hole for heat-set inserts", "can I laser cut this material?",
-  "update the tools", "I updated the plugin, update the tools", "find where support is needed",
-  "switch the project to English", "switch the project to Japanese".
-  Creates a project with a parameter file (shape + fabrication values with confidence), a mock generator (STL + STEP from one shape definition),
-  test-coupon generator, preview/section/compare scripts, stage checklist, handoff docs and git settings,
-  and carries digital-fabrication requirements (laser, FDM, data/units, assembly, material safety).
-  Narrows fabrication values to the chosen process (laser / FDM / both), flags FDM overhangs that need support,
-  and updates an existing project's tools after a plugin update (scaffold.py --update-tools).
-  Projects are Japanese or English (meta.lang in the params file; scaffold.py --lang en), switched later through chat.
+  "レーザーと3Dプリントで〇〇を作りたい", "テストピースを作って", "カーフを測りたい",
+  "はめあい・公差を決めたい", "この材料はレーザーカットしていい？", "ツールを更新して",
+  "ライブラリに登録して", "このプロジェクトを英語にして", "start a new making project",
+  "make coupons", "measure the kerf", "can I laser cut this material?", "update the tools",
+  "switch the project to English".
+  Creates a laser-cutting / 3D-printing project (parameter file, mock generator for STL + STEP,
+  test coupons, preview scripts, stage checklist) and carries digital-fabrication requirements,
+  material safety, a personal library of machines, materials and parts, and tool updates after a plugin update.
 metadata:
-  version: "0.5.1"
+  version: "0.6.1"
 ---
 
 # 新規プロジェクトのテンプレート
 
 モックで形と比率を決め、確認ページのフィードバックで版を重ね、固まったら人がモデル化する、という流れのプロジェクトを作る。
 テンプレートは `templates/`（言語によらないツールなどは `project/`、言語ごとの文書・パラメータファイル・例の mock.py は `lang/<ja|en>/`、加工方法ごとの例は `variants/<加工方法>/<ja|en>/`）、作成は `scripts/scaffold.py`。参照資料：
-- `references/conventions.md`：モックの細かさ、パラメータファイル、反復の仕方
+- `references/conventions.md`：モックの細かさ、パラメータファイル、寸法の根拠と資料、反復の仕方
 - `references/fab-requirements.md`：レーザー・3Dプリント・データ形式・組み立ての技術要件（数値は「初期値＋信頼度＋測り方」）
 - `references/fab-safety.md`：レーザーカットしてはいけない材料（全面禁止／ラボ次第）
 - `references/fab-research-report.md`：上の要件の出典つき全文（数値の根拠を示すときに読む）
 - `references/ai-words-ja.md`：AI ワード辞書（日本語で書くときに使わない言い方と、代わりに使う言い方）。日本語の文を書くときはいつもこれに従う
+- たまに使うもの：`references/language.md`（英語のプロジェクト・言語の切り替え）、`references/library.md`（ライブラリ）、`references/workplace.md`（PC とクラウドの作業場所）、`references/update-tools.md`（プラグインを更新したら）
 
 前提として持っておく考え方：公開されている数値は初期値。出典どうしのずれが圧入とガタの差ほどあるので、カーフ・実板厚・クリアランス・インサート穴はテストピースで測った値を使う。
 
 ## 聞き方（選択式の画面）
-番号で選ぶ問いの画面（AskUserQuestion）が使えるとき（Claude Code・Claude アプリ）は、足りない情報と決めてほしいことをこれで聞く。
-- 1回に4問まで、1問に2〜4択。「その他」（自由入力）は画面が自動で付けるので、選択肢に入れない。
-- おすすめの案があれば先頭に置き、名前の最後に「（おすすめ）」を付ける。
-- 寸法のような自由な値も、よくある値を2〜3個の選択肢にして、ほかの値は「その他」で受ける（例：缶のサイズ 350ml／500ml／250ml、造形範囲 220×220／256×256／300×300）。
-- 5問以上あるときは、大事なものから4問ずつ、2回に分けて聞く。
-- 答えは `docs/決定事項.md`（英語のプロジェクトは `docs/decisions.md`。項目・決定・理由・版）と `LOG.md` に残す。
-- 画面が使えない環境では、今までどおり文字で、番号付きの選択肢を添えて聞く。
+足りない情報と決めてほしいことは、選択式の画面（AskUserQuestion）で聞く。1回に4問まで（5問以上なら大事なものから2回に分ける）、1問に2〜4択。おすすめの案を先頭に置き、名前の最後に「（おすすめ）」を付ける。寸法のような自由な値も、よくある値を2〜3個の選択肢にする（「その他」は画面が自動で付ける）。
+答えは `docs/決定事項.md`（項目・決定・理由・版）と `LOG.md` に残す。画面が使えない環境では、文字で番号付きの選択肢を添えて聞く。
 
-## 言語（日本語・英語）
-- ユーザーが書いた言語で答える。問いの画面（AskUserQuestion）の問いと選択肢も、その言語で書く（英語なら「（おすすめ）」は「(Recommended)」）。
-- プロジェクトの言語はパラメータファイル（`params/params_vNN.json`）の `meta.lang`：`ja`（日本語）か `en`（英語）。無ければ `ja`（今までのプロジェクトはそのまま日本語で動く）。ツールの表示、図の文字、確認ページの画面の言葉はこれに従う。
-- 新しいプロジェクトの言語は、会話の言語で決める（英語で話していれば `en`）。どちらとも取れないとき（日本語と英語が混ざる、見る人が別の言語など）だけ、手順1の問いに入れて聞く。
-- `scaffold.py --lang en` で作ると `meta.lang` が `en` になり、文書・パラメータファイルの label と basis・例の mock.py が英語になる。省くと環境変数 `MONOZUKURI_LANG`、それも無ければ `ja`。
-- 英語のプロジェクトはファイル名も英語になる。この SKILL.md の日本語のファイル名は、英語のプロジェクトでは右の名前に読み替える。
+## 言語
+ユーザーが書いた言語で答える。プロジェクトの言語はパラメータファイルの `meta.lang`（`ja`／`en`、無ければ `ja`）。英語のプロジェクト（ファイル名・status の読み替え）と、言語の切り替え（「英語にして」）は `references/language.md` を読む。
 
-| 日本語のプロジェクト | 英語のプロジェクト |
-|---|---|
-| `docs/チェックリスト.md` | `docs/checklist.md` |
-| `docs/決定事項.md` | `docs/decisions.md` |
-| `docs/引き継ぎ.md` | `docs/handoff.md` |
-| `measurements/試し片記録.csv` | `measurements/coupon_log.csv` |
-| `measurements/実測.md` | `measurements/measured.md` |
-| `docs/寸法表_vNN.md`（`tools/dims_sheet.py` が書く） | `docs/dims_vNN.md` |
-| `docs/fusion_params_vNN.csv` | 同じ名前 |
-
-- `fab` の `status` は、日本語のプロジェクトでは 初期値／実測／指針／規格／計算／経験則、英語のプロジェクトでは initial／measured／guideline／standard／calculated／rule of thumb（この順で対応する）。
-- Claude が書き足す文（`LOG.md`・決定事項・パラメータファイルの label・notes の問い）も、プロジェクトの言語で書く。
-
-**言語を切り替える**（確認ページに切り替えのボタンは無い。チャットで頼まれたときに行う。例「英語にして」「switch this project to Japanese」）
-1. いちばん新しいパラメータファイル（`params/params_vNN.json` の NN が最大のもの）の `meta.lang` を書き換える。前の版のパラメータファイルは変えない（その版の記録として残す）。
-2. 同じパラメータファイルの label・basis を新しい言語に書き直し、`status` を上の対応どおりに置き換える。キーと値は変えない。
-3. 最新の版を作り直す：`python3 tools/mock.py vNN` → `render_model.py`・`slices.py` → manifest の文（`stage`・`summary`・`changes`・`questions`）を新しい言語に直して（manifest に `"lang"` を書いてあれば、それも直す）`build_page.py`（review-page スキルの手順3〜4）。問いの並びは変えない（答えは問いの番号で結び付いている）。公開しているなら、いつもどおり再公開する。
-4. ページの画面の言葉は `review/board.json` の `lang` に従う（`build_page.py` が scene.json の `lang` から入れる）。前の版の画像や文はその版の言語のまま残る。
-- 文書のファイルは改名しない。いまあるほうの名前のファイルに書き足す（`docs/決定事項.md` があればそこへ）。訳して名前を変えるのは、ユーザーが望んだときだけ。
-
-## ライブラリ（機材・材料・既製品の寸法）
-プロジェクトをまたいで使う値を置く個人のライブラリ。場所は `~/.monozukuri/shelf/`（環境変数 `MONOZUKURI_SHELF` で変えられる）。ツールは `scripts/shelf.py`（`--help` で使い方）。ライブラリは任意で、無くても今までの手順はそのまま動く。
-- `parts/<キー>/`：確かめた既製品の寸法（`part.json`。形はパラメータファイルの `params` と同じ）と図面・データシート（`refs/`）
-- `machines/<キー>.json`：3Dプリンター（造形範囲・ノズル・Cura のプリンターの名前）とレーザー
-- `materials/<キー>.json`：材料と、機材ごとの実測値（テストピースで測った kerf・板厚・クリアランスなど）
-- ライブラリが無いときは、ユーザーに確かめてから `shelf.py init` で作る（Cura の3Dプリンターを造形範囲つきで取り込み、ラボのレーザーを仮の項目で入れる。git で履歴を残す）。わからない値は `null` で `notes` に「要確認」と書く
-- ライブラリの JSON は手で直してよい（直したらライブラリのフォルダで git commit）
-
-| コマンド | すること |
-|---|---|
-| `shelf.py list [parts\|machines\|materials]` | 1行ずつ短く出す |
-| `shelf.py show <キー>` | 1つを出す |
-| `shelf.py add-part <キー> --from <プロジェクト> --keys a,b,… [--title …]` | プロジェクトのパラメータファイルから、確かめた寸法と図面を部品ライブラリに登録する。仮・根拠なしの寸法は登録せずに名前を出す。`--keys` を省くと候補を出す |
-| `shelf.py use <部品> <プロジェクト> [--prefix pi_]` | 部品ライブラリの寸法をいちばん新しいパラメータファイルの `params` に足し、図面を `refs/` に写して `refs/資料.md` に行を足す。basis は「部品ライブラリ：<部品>（元の根拠）」。同じキーがあれば何も変えずに止まる |
-| `shelf.py record <プロジェクト> [--machine …] [--material …]` | パラメータファイルの `fab` で status が「実測」の値を、材料の実測に足す。省くとパラメータファイルの `meta`（`printer`・`laser`・`materials`）から決める |
-| `shelf.py fab <機材> <材料>…` | その組み合わせの実測値（無ければ「実測なし」） |
+## ライブラリ
+機材・材料・既製品の寸法を置く個人のライブラリ（`~/.monozukuri/shelf/`。任意で、無くても手順はそのまま動く）。`python3 scripts/shelf.py list` で見て、選択肢に使う。ライブラリを作る・部品を登録する・コマンドの一覧は `references/library.md`（`shelf.py --help` でも出る）。
 
 ## 手順
 
 ### 1. 決めることを集める
-依頼文・添付（スケッチ、写真、寸法メモ）から読み取り、足りないものだけを、下の「聞き方」に沿って選択式の画面でまとめて聞く。
+依頼文・添付（スケッチ、写真、寸法メモ）から読み取り、足りないものだけを、上の「聞き方」に沿って選択式の画面でまとめて聞く。
 先に `python3 scripts/shelf.py list` でライブラリを見て、ライブラリにある機材・材料・部品を選択肢に使う（ライブラリが無ければ今までどおりの選択肢で聞き、「ライブラリを作りますか」を1問足してよい）。
 - 名前と、何を作るか（1行）：依頼文から決められないときだけ聞く（自由入力になるので「その他」で受ける）
 - **加工方法**（いつも聞く。依頼文で明らかなら確かめるだけ）：「3Dプリントだけ」／「レーザーだけ」／「両方（例：板はレーザー、枠は3Dプリント）」。ここから `--process` を決める（`fdm`／`laser`／`both`）
@@ -105,14 +48,12 @@ metadata:
 - 中に入れる物・組み合わせる既製品の大きさ：部品ライブラリにあればそれを選択肢の先頭にする（`shelf.py use` で入れる。図面を探し直さない）。無ければよくある大きさを選択肢にする（例：350ml／500ml／250ml 缶）。実物があれば実測をお願いする
 - 使う材料：ライブラリの材料（実測があるもの）を先に出す。無ければフィラメントなら「PLA」／「PETG」／「TPU」、板なら「アクリル 3mm」／「シナベニヤ 4mm」など。レーザーカットする材料は `references/fab-safety.md` に照らし、「全面禁止」なら別の材料を提案、「ラボ次第」なら所属ラボのリストで確かめるよう伝える
 - 置き場所：「このPCのフォルダ」／「GitHub のリポジトリ」／「この作業環境だけ」
-- 言語：会話の言語で決める（上の「言語」）。迷うときだけ「日本語」／「English」で聞く。ここから `--lang` を決める（`ja`／`en`）
+- 言語：会話の言語で決める（英語で話していれば `en`）。迷うときだけ「日本語」／「English」で聞く。ここから `--lang` を決める（`ja`／`en`）
 
 
 ### 作業場所の決め方（手順2の前に）
-- **PC のフォルダに置き、PC にレンダリング環境がそろっている**（Claude Code など。setup の表がすべて OK）→ PC で直接作り、レンダリングも PC でする。
-- **PC のフォルダに置くが、レンダリングはクラウドでする**（Claude アプリで、PC にレンダリング環境が無い）→ クラウドで作業し、**版ごとに変わったファイルだけ**を PC のフォルダに書き戻す（パラメータファイル、`tools/mock.py`、`out/vNN/` の画像・STEP、`LOG.md`・`docs/` の変えた所、`review/` の増えた分）。tar で丸ごと送らない（同じ名前で上書きすると古い中身が残ることがあり、展開も失敗しやすい）。`.git` は同期しない。git の操作（コミット・push）は PC 側の人か Claude Code が行う。
-- **この作業環境だけ** → そのまま作る。
-- PC で動かすときは、コマンドの `python3` を setup が示した Python に読み替える（mac では `~/.monozukuri/venv/bin/python`）。
+PC のフォルダに置き、PC にレンダリング環境がそろっていれば（setup の表がすべて OK）、PC で直接作り、レンダリングも PC でする。コマンドの `python3` は setup が示した Python に読み替える（mac では `~/.monozukuri/venv/bin/python`）。
+PC のフォルダに置くがレンダリングはクラウドでするとき（Claude アプリで、PC にレンダリング環境が無い）は、`references/workplace.md` を読む。
 
 ### 2. テンプレートからプロジェクトを作る
 ```bash
@@ -120,23 +61,15 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
   --methods "<加工方法>" --process <laser|fdm|both> --bed 220x220 [--origin "<原点と向き>"] [--lang <ja|en>] [--git] \
   [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
 ```
-- ライブラリのプリンター・レーザー加工機を選んだら `--printer`・`--laser`、材料を `--material`（複数可。キーは `shelf.py list` のもの）で渡し、`--bed` は省く。造形範囲（`bed_*`）はプリンターから入り、その機材と材料の実測がライブラリにあれば、`fab` のその値が最初から「実測」になる（basis に出典）。パラメータファイルの `meta` に `printer`・`laser`・`materials` として残り、あとの `shelf.py record` が使う。ライブラリに無い材料は初期値のまま。
-- `--process` で、パラメータファイルの `fab` がその加工方法で使う項目だけになる（3Dプリントだけならカーフ・板厚は入らない）。チェックリスト・引き継ぎ・テストピースの案内も、関係しない加工方法の項目が外れる。省くと `both`。
-- `--lang en` で英語のプロジェクトになる（`meta.lang`、文書とそのファイル名、パラメータファイル、例の mock.py が英語）。`--name`・`--summary`・`--methods`・`--origin` もその言語で書く。省くと `MONOZUKURI_LANG`、無ければ日本語。
-- `--methods` は自由な説明として文書に残る（例「本体：3Dプリント（PETG）／ふた：アクリル3mm」）。
-- 既存のフォルダに中身があると止まる（上書きしない）。
-- レンダリング・断面・比較・差分のスクリプトは `tools/` にコピーされるので、プロジェクト単体で動く。
-- 環境が足りなければ setup スキルを先に実行する。
+- ライブラリの機材・材料を選んだら `--printer`・`--laser`・`--material` で渡し、`--bed` は省く（実測があれば `fab` に最初から入る）。引数の詳しい説明は `scaffold.py --help`。
+- `--name`・`--summary`・`--methods`・`--origin` はプロジェクトの言語で書く。`--methods` は自由な説明として文書に残る（例「本体：3Dプリント（PETG）／ふた：アクリル3mm」）。
+- 既存のフォルダに中身があると止まる（上書きしない）。環境が足りなければ setup スキルを先に実行する。
 
 ### 3. 最初のモックを、ユーザーの形に書き換える
 テンプレートの `params/params_v01.json` と `tools/mock.py` の `build()` は例。`laser`・`both` は「アクリル板2枚でPLAの枠を挟む箱」、`fdm` は「缶を入れる底つきの筒＋ストラップホール付きのラグ」。依頼の形に書き換える。
 - 形の関数（`tools/geom.py`）：押し出し `slab`、円柱 `cyl`、直方体 `box`、筒 `tube`、円錐台 `cone`、回転体 `revolve`、ストラップホール付きのラグ `lug_with_slot`。組み合わせは `+`・`-`・`&`、`.translate()`・`.rotate_z()`。
-- 寸法はパラメータファイルだけに書き、項目ごとに `label` を付ける。
-- **寸法ごとに根拠を残す**：`params` の項目にも `basis`（どこから来た値か）を書く。図面・データシートなら名前とページ（例「公式図面 Raspberry Pi 4 mechanical drawing p.1」）、実測なら「実測（measurements/実測.md）」、決めた値なら「決定事項（v03）」。資料のファイルか URL があれば `ref` に書く（`"ref": "refs/rpi4-mechanical.pdf"`）。
-- **資料は `refs/` に置く**：調べて見つけたデータシート・図面（PDF）、ユーザーから届いた写真・寸法メモ、実測の写真を保存し、`refs/資料.md` の表に出典（URL・ページ）・取った日・使った寸法を書く。ライセンスなどで置けないものは URL だけ書く。
-- **部品ライブラリにある部品はライブラリから入れる**：`python3 scripts/shelf.py use <部品> <プロジェクト> --prefix <前に付ける文字>`。寸法・根拠・図面がそろって入る。`mock.py` では `P.<前に付ける文字><キー>` で読む。
-- **図面で確かめた既製品の寸法は部品ライブラリに登録する**：次のプロジェクトで図面を探し直さないように、ユーザーに確かめてから `shelf.py add-part <部品> --from <プロジェクト> --keys …`。既製品そのものの寸法だけを選ぶ（ケースの設計で決めた値は登録しない）。
-- **記憶だけの値を事実のように書かない**：調べずに入れた値は `basis` に「仮（記憶・要確認）」と書き、報告で確かめる先（公式の図面・実物）を伝える。`dims_sheet.py` は根拠の無い寸法を一覧にし、確認ページの「寸法と根拠」でも「根拠なし」と出る。
+- 寸法はパラメータファイルだけに書き、項目ごとに `label` と `basis`（どこから来た値か）を付ける。資料（図面・データシート・写真）は `refs/` に置き、`refs/資料.md` に出典を書く。調べずに入れた値は `basis` に「仮（記憶・要確認）」。書き方は `references/conventions.md` の「寸法の根拠と資料」。
+- 部品ライブラリにある部品は `shelf.py use` で入れ、図面で確かめた既製品の寸法はユーザーに確かめてから `shelf.py add-part` で登録する（`references/library.md`）。
 - パラメータファイルは `params`（形の寸法）と `fab`（加工パラメータ：実板厚 `t_*`・`kerf`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算／経験則。英語のプロジェクトは initial／measured／guideline／standard／calculated／rule of thumb）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
 - 細部は作らない。形・大きさ・比率・配置がわかる粗さにとどめる（`references/conventions.md`）。
 - 寸法から機械的にわかる問題（造形範囲を超える、中身が入らない）は notes に出す。
@@ -144,7 +77,7 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 - 3Dプリントする部品は、サポートが要りそうなオーバーハング面（水平から `overhang_deg`＝45° より浅い面）が自動で notes に出る。中身・既製品・レーザーの板など印刷しない部品は、部品の6つめに `{"print": False}` を付けて外す。印刷の向きを変えるときは `{"up": "-z"}` など（パラメータファイルの `meta.print_up` でもよい）。`--process laser` のプロジェクトでは調べない。
 - わからない寸法は仮の値で進め、パラメータファイルの label に「仮」（英語のプロジェクトは「provisional」）と書き、ユーザーに実測をお願いする項目として報告に入れる。
 
-（案を2つ以上並べて試すときは、版をブランチに分ける：`params_v04a.json`・`params_v04b.json`、`meta.parent` に分けた元。手順は review-page スキルの「案を分ける」。）
+（案を2つ以上並べて試すときは、版をブランチに分ける：`params_v04a.json`・`params_v04b.json`、`meta.parent` に分けた元。手順は review-page スキルの `references/branches.md`。）
 
 ### 4. 1回目の画像を作って見る
 ```bash
@@ -171,18 +104,8 @@ python3 tools/coupons.py v01
 外観画像をユーザーに見せ（SendUserFile）、review-page スキルで確認ページを作って公開する。以後は review-page の手順で反復する（2つ目の版からは review-page の `make_version.py` で、モックからページまで1回で作る）。
 `--git` で作った場合は最初のコミットまでできている。GitHub に上げるのはユーザーが望んだときだけ。
 
-## プラグインを更新したら（既存のプロジェクトのツールを新しくする）
-`tools/` はプロジェクトにコピーされるので、プラグインを更新しても既存のプロジェクトは古いツールのままになる。更新したら、まずツールを新しくする。
-```bash
-python3 scripts/scaffold.py --update-tools <プロジェクトのフォルダ>
-```
-- 上書きするのはプラグインが管理するファイルだけ（`geom.py`・`common.py`・`coupons.py`・`dims_sheet.py`・`render_model.py`・`slices.py`・`compare.py`・`params_diff.py`・`requirements.txt`）。元は `tools/.backup-<日時>/` に残る。
-- `mock.py` は上書きしない（利用者の `build()` があるため）。新しいテンプレートが `tools/mock.py.new` に置かれ、`build()` の外の違いが表示される。新しい枠組みを使うときは、`mock.py.new` の `build()` をプロジェクトの `build()` に置き換えて `mock.py` にする。
-  - 0.3.0 以前の `mock.py`（`main()` を持つもの）は、`def main()` から下を消して `if __name__ == "__main__": common.run_mock(build)` にする。中身・既製品など3Dプリントしない部品には、部品の6つめに `{"print": False}` を付ける（オーバーハングの確認から外す）。
-- プロジェクトで手を加えたファイルは、足した関数が新しい版にすべてあれば上書きする。新しい版に無い関数があると、何も上書きせずに止まる。その関数を残すかユーザーに確かめ、上書きしてよければ `--force`。
-- `mock.py.new` と表示の言語は、いちばん新しいパラメータファイルの `meta.lang`（無ければ日本語）。`--lang ja|en` を付けると表示だけがその言語になる（`mock.py.new` は変わらない）。
-- 使ったプラグインの版は `tools/.monozukuri-version` に記録される（「0.3.0 → 0.4.0」のように表示）。
-- 更新したら review-page の SKILL.md も読み直す（手順や問いの形が変わっていることがある）。
+## プラグインを更新したら
+既存のプロジェクトの `tools/` は古いままなので、「ツールを更新して」と頼まれたら `references/update-tools.md` を読んで `python3 scripts/scaffold.py --update-tools <プロジェクトのフォルダ>` を実行する。
 
 ## 報告
 2〜3文：何を作ったか、最初のモックで見てほしい所、実測をお願いしたい値。フォルダの中身の列挙はしない。

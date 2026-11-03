@@ -168,7 +168,7 @@ new-project の参照資料（`skills/new-project/references/`）にまとめて
 
 - `fab-requirements.md`：レーザー加工、FDM 3Dプリント、データ形式と単位、組み立てと仕上げの要件。数値は「初期値＋信頼度＋測り方」の形
 - `fab-safety.md`：レーザーカットしてはいけない材料（全面禁止／ラボ次第）
-- `conventions.md`：モックの細かさ、パラメータファイル、反復の仕方
+- `conventions.md`：モックの細かさ、パラメータファイル、寸法の根拠と資料、反復の仕方
 - `fab-research-report.md`：上の要件の出典つき全文。数値は出典ごとに【実測】【指針】【規格】【経験則】を区別している
 
 ## 必要なもの

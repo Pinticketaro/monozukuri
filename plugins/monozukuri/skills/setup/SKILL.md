@@ -10,7 +10,7 @@ description: >
   review-page scripts need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery for STEP output, playwright +
   Chromium, three.js, CJK font) and runs a test render. On macOS it installs into ~/.monozukuri/venv.
 metadata:
-  version: "0.5.1"
+  version: "0.6.1"
 ---
 
 # 環境セットアップ
