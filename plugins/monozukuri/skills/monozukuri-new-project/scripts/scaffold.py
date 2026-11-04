@@ -203,8 +203,13 @@ def resolve_lang(explicit=None, data=None):
 
 
 def plugin_version():
+    """プラグインの版。プラグインとして入れたときは plugin.json、スキルのフォルダだけを入れたとき
+    （Codex などの ~/.agents/skills/ に写したとき）は、このスキルの SKILL.md の metadata.version"""
     p = os.path.join(HERE, "..", "..", "..", ".claude-plugin", "plugin.json")
-    return json.load(open(p, encoding="utf-8"))["version"]
+    if os.path.exists(p):
+        return json.load(open(p, encoding="utf-8"))["version"]
+    m = re.search(r'^\s+version:\s*"([^"]+)"', open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read(), re.M)
+    return m.group(1) if m else "0.0.0"
 
 
 def sha(path):

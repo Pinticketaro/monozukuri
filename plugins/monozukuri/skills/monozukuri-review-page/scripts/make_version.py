@@ -153,7 +153,8 @@ def main():
     art = load(os.path.join(root, "review", "artifact.json"), {}) or {}
     srv = load(os.path.join(root, "review", ".serve.json"), {}) or {}
     if art.get("url"):
-        say.append(f"  公開: Artifact に review/publish_{ver}.json の files で（{art['url']}、capabilities は3つとも）")
+        say.append(f"  アーティファクトを公開できる環境なら: review/publish_{ver}.json の files で再公開する（{art['url']}、capabilities は3つとも）。"
+                   "できない環境では、公開したページはこの版に更新されない")
     if srv.get("url"):
         try:
             os.kill(int(srv.get("pid")), 0)

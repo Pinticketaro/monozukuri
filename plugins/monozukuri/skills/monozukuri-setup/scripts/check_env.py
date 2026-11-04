@@ -11,8 +11,8 @@ import sys
 import tempfile
 
 CACHE = os.environ.get("MONOZUKURI_CACHE", os.path.expanduser("~/.cache/monozukuri"))
-PLUGIN = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-RENDER = os.path.join(PLUGIN, "skills", "monozukuri-review-page", "scripts", "render_model.py")
+SKILLS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # スキルのフォルダが並ぶ所
+RENDER = os.path.join(SKILLS, "monozukuri-review-page", "scripts", "render_model.py")
 
 # 日本語が出せるフォント（見つかった順に使う）
 CJK_FONTS = ["Noto Sans CJK JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "IPAexGothic",

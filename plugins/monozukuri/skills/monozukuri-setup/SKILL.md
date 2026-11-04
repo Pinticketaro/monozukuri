@@ -62,6 +62,7 @@ metadata:
 | three.js が入らない（npm がない） | mac は `brew install node`。入れられない環境では、作業環境（クラウド）側でレンダリングする |
 | 日本語フォントが見つからない | mac はヒラギノ、Linux は `fonts-noto-cjk` を入れる。入れられない場合、図の日本語が□になるだけでレンダリング自体はできる |
 | cadquery が入らない | Python のバージョンに合う版が無いことがある（3.10〜3.12 が確実）。入らなくても STL のモックと確認ページは使える。STEP が要るときは conda（`conda install -c conda-forge cadquery`）を試す |
+| AI のサンドボックスでダウンロードや `~/` への書き込みが止められる（Codex の既定の設定など） | setup.sh はネットワークと、`~/.monozukuri/`・`~/.cache/monozukuri/` への書き込みが要る。ユーザーの許可を得て、サンドボックスの外で実行する（またはユーザーに `bash scripts/setup.sh` を実行してもらう） |
 | テストレンダリングがタイムアウト | WebGL がソフトウェアレンダリング（SwiftShader）で遅い環境。もう一度だけ実行し、それでもだめなら幅を小さく（`--width 1200`） |
 
 ## 置き場所

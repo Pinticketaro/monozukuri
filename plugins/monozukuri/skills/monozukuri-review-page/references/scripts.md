@@ -1,6 +1,7 @@
 # 個別のスクリプト（細かく指定したいとき）
 
 ふつうは `make_version.py` が下の順に実行する。別の向き・別の位置の断面が要るとき、人が作ったモデルを載せるときに、個別に使う。`<scripts>` はこのスキルの `scripts/`。
+作った画像は manifest の `images`（または `compare`）に足して、`make_version.py <プロジェクト> vNN --page-only` でページに載せる。
 
 ## モックの場合（プロジェクトに `tools/mock.py` がある）
 ```bash
@@ -20,7 +21,7 @@ python3 <scripts>/params_diff.py params/params_vPP.json params/params_vNN.json -
 - 平行投影はビューごとに枠いっぱいにレンダリングし、隅に縮尺の目安（「スケールバー 20mm」）が入る。上面と正面などの大きさを同じ縮尺で見比べたいときは `--same-scale`。
 - 前の版と同じ向きの画像を `compare` に before/after で渡すと、ページで重ねて動かせる。並べた静止画が要るときは `compare.py`（差分を赤で強調）。
 - 断面の位置は見たい所に合わせる：`--at x=値` / `--at y=値`、拡大は `--zoom=a,b`。
-- 平面図は、各部品の高さの中央の断面（濃い線）に、真上から見た外形（薄い面）を重ねる。断面の高さを決めたいときは `--plan-z 45,80`。
+- 平面図は、各部品の高さの中央の断面（濃い線）に、上面から見た外形（薄い面）を重ねる。断面の高さを決めたいときは `--plan-z 45,80`。
 - 図の文字（ビュー名・スケールバー・見出し）は scene.json の `"lang"`（パラメータファイルの `meta.lang`）の言語になる。プロジェクトと違う言語の図が要るときだけ `render_model.py`・`slices.py` に `--lang ja|en` を付ける（`params_diff.py` も同じ）。
 
 ## ページを作る（build_page.py）

@@ -31,11 +31,12 @@ Codex など、`~/.agents/skills/` からスキルを読む AI では、この�
 ```bash
 git clone https://github.com/Pinticketaro/monozukuri.git ~/monozukuri-skills
 mkdir -p ~/.agents/skills
-ln -s ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skills/
+ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skills/
 ```
 
 - 3つのスキル（`monozukuri-setup`・`monozukuri-new-project`・`monozukuri-review-page`）は、同じフォルダに並べて入れてください。スキルどうしで参照資料とスクリプトを使い合います。
 - `git pull` で新しい版になります。入れたら AI を起動し直してください。
+- 前に monozukuri-codex（Codex 版）を入れていた場合も、上のコマンドで同じ名前のリンクがこちらに置き換わります。
 - Codex では `$monozukuri-setup` のように `$` を付けて名前を書くか、`/skills` から選びます。依頼の文が説明に合えば、名前を書かなくても選ばれます。
 - Windows では、WSL（Windows の中の Linux）の中で AI と上のコマンドを動かします（下の「対応環境」）。
 

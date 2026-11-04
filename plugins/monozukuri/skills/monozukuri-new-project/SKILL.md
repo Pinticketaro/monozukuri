@@ -3,13 +3,15 @@ name: monozukuri-new-project
 description: >
   This skill should be used when the user says "新しいものづくりを始めたい", "モックから始めたい",
   "レーザーと3Dプリントで〇〇を作りたい", "テストピースを作って", "カーフを測りたい",
-  "はめあい・公差を決めたい", "この材料はレーザーカットしていい？", "ツールを更新して",
-  "ライブラリに登録して", "このプロジェクトを英語にして", "start a new making project",
-  "make coupons", "measure the kerf", "can I laser cut this material?", "update the tools",
-  "switch the project to English".
+  "はめあい・公差を決めたい", "インサートの穴径は", "この材料はレーザーカットしていい？",
+  "サポートが要る所を調べて", "ツールを更新して", "ライブラリに登録して", "このプロジェクトを英語にして",
+  "日本語に戻して", "start a new making project", "make coupons", "measure the kerf",
+  "what pilot hole for heat-set inserts", "can I laser cut this material?", "find where support is needed",
+  "update the tools", "switch the project to English".
   Creates a laser-cutting / 3D-printing project (parameter file, mock generator for STL + STEP,
   test coupons, preview scripts, stage checklist) and carries digital-fabrication requirements,
   material safety, a personal library of machines, materials and parts, and tool updates after a plugin update.
+  Flags FDM overhangs that need support. Projects are Japanese or English, switched through chat.
 license: MIT
 compatibility: macOS と Linux（Windows は WSL）。Python 3.10 以上と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
 metadata:
@@ -19,7 +21,7 @@ metadata:
 # 新規プロジェクトのテンプレート
 
 モックで形と比率を決め、確認ページのフィードバックで版を重ね、固まったら人がモデル化する、という流れのプロジェクトを作る。
-テンプレートは `templates/`（言語によらないツールなどは `project/`、言語ごとの文書・パラメータファイル・例の mock.py は `lang/<ja|en>/`、加工方法ごとの例は `variants/<加工方法>/<ja|en>/`）、作成は `scripts/scaffold.py`。参照資料：
+コマンドの `scripts/` はこのスキルのフォルダからの相対パス（`--dest` や `<プロジェクト>` は絶対パスで渡す）。テンプレートは `templates/`（言語によらないツールなどは `project/`、言語ごとの文書・パラメータファイル・例の mock.py は `lang/<ja|en>/`、加工方法ごとの例は `variants/<加工方法>/<ja|en>/`）、作成は `scripts/scaffold.py`。参照資料：
 - `references/conventions.md`：モックの細かさ、パラメータファイル、寸法の根拠と資料、反復の仕方
 - `references/fab-requirements.md`：レーザー・3Dプリント・データ形式・組み立ての技術要件（数値は「初期値＋信頼度＋測り方」）
 - `references/fab-safety.md`：レーザーカットしてはいけない材料（全面禁止／ラボ次第）
@@ -55,7 +57,7 @@ metadata:
 
 ### 作業場所の決め方（手順2の前に）
 - PC のフォルダに置き、PC にレンダリング環境がそろっていれば（monozukuri-setup の表がすべて OK）、PC で直接作り、レンダリングも PC でする。コマンドの `python3` は monozukuri-setup が示した Python に読み替える（mac では `~/.monozukuri/venv/bin/python`）。
-- クラウドの作業環境だけで作るときは、その中に作る（確認ページを PC のブラウザで開けないときは、画像で確かめてもらう）。
+- クラウドの作業環境だけで作るときは、その中に作る（確認ページは、アーティファクトを公開できればそれで作り、できなければ画像で確かめてもらう）。
 - PC のフォルダに置くがレンダリングはクラウドでするとき（Claude アプリで、PC にレンダリング環境が無い）は、`references/workplace.md` を読む。
 
 ### 2. テンプレートからプロジェクトを作る
