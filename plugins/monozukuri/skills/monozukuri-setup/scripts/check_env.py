@@ -112,7 +112,7 @@ def main():
         row(L("日本語フォント", "Japanese font"), False, str(e))
 
     os.makedirs(CACHE, exist_ok=True)
-    json.dump(env, open(os.path.join(CACHE, "env.json"), "w"), ensure_ascii=False, indent=2)
+    json.dump(env, open(os.path.join(CACHE, "env.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
     if "--no-render" not in sys.argv and env["three_dir"]:
         try:

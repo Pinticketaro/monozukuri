@@ -1186,7 +1186,8 @@
   },
   "slices.py": {
    "sha256": [
-    "d1f9e52ec2f345c96cec5395b4fc21033686719b722aa411d6d4f0f035f0758c"
+    "d1f9e52ec2f345c96cec5395b4fc21033686719b722aa411d6d4f0f035f0758c",
+    "d1a5a6778bb877e37cb3c32684341b1d87c140bd7ed2c27f975911d90d1d2539"
    ],
    "defs": [
     "darker",
@@ -1206,7 +1207,8 @@
   },
   "compare.py": {
    "sha256": [
-    "d5af1ff3f57b65783b17445429143a333f931ab63c850a7d6c17df96481cf7e0"
+    "d5af1ff3f57b65783b17445429143a333f931ab63c850a7d6c17df96481cf7e0",
+    "06d09dc577f366c6cc68eb34a50fe18450e5ae3a769cc6da867ac0c7f7a9887b"
    ],
    "defs": [
     "diff_image",

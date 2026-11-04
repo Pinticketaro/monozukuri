@@ -37,7 +37,7 @@ def help_lang(argv):
 def font(size):
     try:
         import json
-        env = json.load(open(os.path.expanduser("~/.cache/monozukuri/env.json")))
+        env = json.load(open(os.path.expanduser("~/.cache/monozukuri/env.json"), encoding="utf-8"))
         if env.get("cjk_font_path"):
             return ImageFont.truetype(env["cjk_font_path"], size)
     except Exception:
