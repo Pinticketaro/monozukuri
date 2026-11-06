@@ -110,3 +110,4 @@ jobs:
             ${{ runner.temp }}/mz test/スタンド/out/v01/make.log
             ${{ runner.temp }}/mz test/スタンド/review/.serve.log
           if-no-files-found: warn
+          include-hidden-files: true    # review/.serve.log は . で始まるので、これが無いと外される
