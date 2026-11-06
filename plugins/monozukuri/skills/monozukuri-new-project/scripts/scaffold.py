@@ -1,10 +1,10 @@
 """新しいものづくりプロジェクトをテンプレートから作る。既存のプロジェクトのツール（tools/）を更新する。
 使い方
-  python3 scaffold.py --dest <作るフォルダ> --name "名前" --summary "1行の説明"
-                      [--origin "外形の左下、X右・Y奥・Z上"] [--methods "上下の板：CO2レーザー／枠：3Dプリント（PLA）"]
-                      [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
-                      [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
-  python3 scaffold.py --update-tools <プロジェクトのフォルダ> [--force] [--lang ja|en]
+  python scaffold.py --dest <作るフォルダ> --name "名前" --summary "1行の説明"
+                     [--origin "外形の左下、X右・Y奥・Z上"] [--methods "上下の板：CO2レーザー／枠：3Dプリント（PLA）"]
+                     [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
+                     [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
+  python scaffold.py --update-tools <プロジェクトのフォルダ> [--force] [--lang ja|en]
 --dest がすでにあって中身があるときは止まる（上書きしない）。
 --printer・--laser・--material はライブラリ（shelf.py。~/.monozukuri/shelf/）の機材と材料。造形範囲（bed_*）をプリンターから入れ、
   その機材と材料の実測がライブラリにあれば、fab のその値を「実測」にして basis に出典を書く。パラメータファイルの meta に
@@ -32,12 +32,12 @@ import sys
 
 DOC_EN = """Create a new monozukuri project from the template, or update the tools (tools/) of an existing project.
 Usage
-  python3 scaffold.py --dest <folder> --name "Name" --summary "One-line description"
-                      [--origin "Bottom-left of the outline. X right, Y back, Z up"]
-                      [--methods "Top and bottom plates: CO2 laser / frame: 3D print (PLA)"]
-                      [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
-                      [--printer <shelf machine>] [--laser <shelf machine>] [--material <shelf material> ...]
-  python3 scaffold.py --update-tools <project folder> [--force] [--lang ja|en]
+  python scaffold.py --dest <folder> --name "Name" --summary "One-line description"
+                     [--origin "Bottom-left of the outline. X right, Y back, Z up"]
+                     [--methods "Top and bottom plates: CO2 laser / frame: 3D print (PLA)"]
+                     [--process laser|fdm|both] [--bed 220x220] [--lang ja|en] [--git]
+                     [--printer <shelf machine>] [--laser <shelf machine>] [--material <shelf material> ...]
+  python scaffold.py --update-tools <project folder> [--force] [--lang ja|en]
 Stops if --dest already exists and has files (never overwrites).
 --printer, --laser and --material are machines and materials on the parts shelf (shelf.py, ~/.monozukuri/shelf/).
   The bed size (bed_*) comes from the machine, and fab values measured on the shelf for that machine and material
@@ -54,7 +54,8 @@ Stops if --dest already exists and has files (never overwrites).
   mock.py.new and the messages follow meta.lang of the newest params file (else ja). --lang changes only the messages.
 """
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+# realpath：Windows でスキルのフォルダをジャンクション（mklink /J）で入れても、".." がプラグインのフォルダを指すように
+HERE = os.path.dirname(os.path.realpath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "templates", "project")    # 言語によらないもの（ツール・.gitattributes など）
 LANGS = os.path.join(HERE, "..", "templates", "lang")          # 言語ごとの文書・パラメータファイル・例の mock.py（lang/<ja|en>/）
 VARIANTS = os.path.join(HERE, "..", "templates", "variants")   # 加工方法ごとの例（variants/<加工方法>/<言語>/。params と mock.py の build() を差し替える）
@@ -78,6 +79,9 @@ MSG = {
         "origin": "外形の中心が X=0・Y=0、底面が Z=0。X右・Y奥・Z上",
         "commit": "テンプレートから作成：{name}（monozukuri）",
         "commit_fail": "!! コミットできませんでした（git の user.name / user.email を設定してから再実行）",
+        "no_git": "!! git が見つからないので、git の履歴なしで作りました（git を入れてから、このフォルダで"
+                  " git init・git add -A・git commit。Windows は Git for Windows）",
+        "git_fail": "!! git init・git add ができませんでした（git の履歴なしで作りました）：{err}",
         "no_tools": "{tools} がありません。プロジェクトのフォルダを指定してください",
         "estimated": "{v}（推定）",
         "unknown": "不明",
@@ -137,6 +141,9 @@ MSG = {
         "origin": "Outline centered at X=0, Y=0; bottom at Z=0. X right, Y back, Z up",
         "commit": "Scaffold: {name} (monozukuri)",
         "commit_fail": "!! Could not commit (set git user.name / user.email, then run again)",
+        "no_git": "!! git not found, so the project was created without git history (install git, then run"
+                  " git init, git add -A and git commit in this folder; on Windows install Git for Windows)",
+        "git_fail": "!! git init / git add failed (the project was created without git history): {err}",
         "no_tools": "{tools} not found. Give the project folder",
         "estimated": "{v} (estimated)",
         "unknown": "unknown",
@@ -207,18 +214,36 @@ def plugin_version():
     （Codex などの ~/.agents/skills/ に写したとき）は、このスキルの SKILL.md の metadata.version"""
     p = os.path.join(HERE, "..", "..", "..", ".claude-plugin", "plugin.json")
     if os.path.exists(p):
-        return json.load(open(p, encoding="utf-8"))["version"]
-    m = re.search(r'^\s+version:\s*"([^"]+)"', open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read(), re.M)
+        return json.loads(read_text(p))["version"]
+    m = re.search(r'^\s+version:\s*"([^"]+)"', read_text(os.path.join(HERE, "..", "SKILL.md")), re.M)
     return m.group(1) if m else "0.0.0"
 
 
+def read_text(path, errors="strict"):
+    """テキストを読む。utf-8-sig は BOM（PowerShell 5.1・メモ帳が付ける）があれば外し、無ければ utf-8 と同じ"""
+    with open(path, encoding="utf-8-sig", errors=errors) as fp:
+        return fp.read()
+
+
+def write_text(path, s, mode="w"):
+    """テキストを書く。改行は LF（Windows でも macOS と同じバイト列になる）"""
+    with open(path, mode, encoding="utf-8", newline="\n") as fp:
+        fp.write(s)
+
+
 def sha(path):
-    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+    """中身の sha256。改行は LF にそろえ、先頭の BOM は外してから数える（tool_versions.json は LF の中身。
+    Windows の git で CRLF になったファイルも、同じ中身なら同じ値になる）"""
+    with open(path, "rb") as fp:
+        b = fp.read()
+    if b.startswith(b"\xef\xbb\xbf"):
+        b = b[3:]
+    return hashlib.sha256(b.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def known_versions():
     """古い版から順に並べる"""
-    d = json.load(open(KNOWN, encoding="utf-8")) if os.path.exists(KNOWN) else {}
+    d = json.loads(read_text(KNOWN)) if os.path.exists(KNOWN) else {}
     return dict(sorted(d.items(), key=lambda kv: tuple(int(x) for x in kv[0].split("."))))
 
 
@@ -226,8 +251,8 @@ def top_defs(path):
     """ファイルの一番外側で定義している関数・クラスの名前と、クラスのメソッド（「クラス.メソッド」）。
     メソッドも数えるのは、プロジェクトでクラスに足したメソッド（Solid.rotate_x など）を上書きで消さないため"""
     try:
-        tree = ast.parse(open(path, encoding="utf-8").read())
-    except (SyntaxError, UnicodeDecodeError):
+        tree = ast.parse(read_text(path))
+    except (SyntaxError, ValueError):                   # ValueError：UTF-8 で読めない・NUL がある（3.10・3.11）
         return None
     names = set()
     for n in tree.body:
@@ -240,10 +265,10 @@ def top_defs(path):
 
 def without_build(path, lang="ja"):
     """mock.py から冒頭の説明と build() を除いた行（枠組みだけを比べるため）"""
-    src = open(path, encoding="utf-8").read().splitlines()
+    src = read_text(path, errors="replace").splitlines()
     try:
         tree = ast.parse("\n".join(src))
-    except SyntaxError:
+    except (SyntaxError, ValueError):
         return src
     cut = []
     if tree.body and isinstance(tree.body[0], ast.Expr) and isinstance(getattr(tree.body[0], "value", None), ast.Constant):
@@ -260,14 +285,14 @@ def without_build(path, lang="ja"):
 def project_meta(proj):
     """いちばん新しいパラメータファイル（params/params_vNN.json）の meta。読めなければ {}"""
     vs = []
-    for f in glob.glob(os.path.join(proj, "params", "params_v*.json")):
+    for f in glob.glob(os.path.join(glob.escape(proj), "params", "params_v*.json")):
         m = re.search(r"params_v(\d+)([a-z]*)\.json$", f)          # ブランチの案（v04a など）も数える
         if m:
             vs.append((int(m.group(1)), m.group(2), f))
     if not vs:
         return {}
     try:
-        meta = json.load(open(max(vs)[2], encoding="utf-8")).get("meta", {})
+        meta = json.loads(read_text(max(vs)[2])).get("meta", {})
     except (OSError, ValueError, AttributeError):
         return {}
     return meta if isinstance(meta, dict) else {}
@@ -284,7 +309,7 @@ def mock_template(lang, process):
 
 
 def update_tools(proj, force, lang_flag=None):
-    proj = os.path.abspath(proj)
+    proj = os.path.abspath(os.path.expanduser(proj))   # PowerShell は ~ をそのまま渡す
     tools = os.path.join(proj, "tools")
     # プロジェクトの言語と加工方法：いちばん新しいパラメータファイルの meta.lang（無ければ ja）と meta.process（無ければ both）
     meta = project_meta(proj)
@@ -297,7 +322,7 @@ def update_tools(proj, force, lang_flag=None):
     new_ver = plugin_version()
     known = known_versions()
     vf = os.path.join(tools, VERSION_FILE)
-    old_ver = open(vf, encoding="utf-8").read().strip() if os.path.exists(vf) else None
+    old_ver = read_text(vf, errors="replace").strip() if os.path.exists(vf) else None
     base = old_ver                                       # 手を加えた所を見分けるとき、元にした版と比べる
     if not old_ver:
         # 記録が無ければ、中身がいちばん多く合う版を推定する
@@ -372,7 +397,7 @@ def update_tools(proj, force, lang_flag=None):
                 print(T["mock_same"])
             else:
                 print(T["mock_diff"].format(n=len(body)))
-                mine_src = open(mine, encoding="utf-8").read()
+                mine_src = read_text(mine, errors="replace")
                 if "run_mock(build)" not in mine_src and "def main(" in mine_src:
                     print(T["run_mock"])
                 for d in body[:20]:
@@ -380,12 +405,11 @@ def update_tools(proj, force, lang_flag=None):
                 if len(body) > 20:
                     print(T["more"].format(n=len(body) - 20))
 
-    open(vf, "w", encoding="utf-8").write(new_ver + "\n")
+    write_text(vf, new_ver + "\n")
     gi = os.path.join(proj, ".gitignore")
     line = "tools/.backup-*/"
-    if os.path.exists(gi) and line not in open(gi, encoding="utf-8").read().split("\n"):
-        with open(gi, "a", encoding="utf-8") as fp:
-            fp.write(f"\n{MSG[proj_lang]['gi_comment']}\n{line}\n")
+    if os.path.exists(gi) and line not in read_text(gi, errors="replace").splitlines():
+        write_text(gi, f"\n{MSG[proj_lang]['gi_comment']}\n{line}\n", mode="a")
     print(T["recorded"].format(vf=VERSION_FILE, v=new_ver))
 
 
@@ -404,7 +428,7 @@ def dump_params(d, path):
         else:
             body = json.dumps(val, ensure_ascii=False, indent=2).replace("\n", "\n  ")
             out.append(f'  "{sec}": {body}{comma}')
-    open(path, "w", encoding="utf-8").write("\n".join(out + ["}"]) + "\n")
+    write_text(path, "\n".join(out + ["}"]) + "\n")
 
 
 def keep_process_blocks(text, keep):
@@ -443,7 +467,9 @@ def shelf_lookup(a, T):
         if m.get("kind") != want:
             sys.exit(T["wrong_kind"].format(key=key, kind=m.get("kind"), opt=opt, want=want))
         machines[want] = (key, m)
-    return {"shelf": shelf, "machines": machines, "materials": mats}
+    # 材料もフォルダを作る前に読む（読めないファイルがあれば、ここで止まる。無い材料は None で、あとで知らせる）
+    mat_data = {m: shelf.get("materials", m) for m in mats}
+    return {"shelf": shelf, "machines": machines, "materials": mats, "mat_data": mat_data}
 
 
 def apply_shelf(d, plan, T, bed_given):
@@ -471,7 +497,7 @@ def apply_shelf(d, plan, T, bed_given):
         prev = orig[k]
     done = set()
     for mat in mats:
-        md = shelf.get("materials", mat)
+        md = plan["mat_data"][mat]
         if md is None:
             lines.append(T["no_material"].format(key=mat))
             continue
@@ -505,7 +531,7 @@ def apply_shelf(d, plan, T, bed_given):
 
 def create(a, lang):
     T = MSG[lang]
-    dest = os.path.abspath(a.dest)
+    dest = os.path.abspath(os.path.expanduser(a.dest))  # PowerShell は ~ をそのまま渡す
     if os.path.isdir(dest) and os.listdir(dest):
         sys.exit(T["dest_nonempty"].format(dest=dest))
     plan = shelf_lookup(a, T)                    # ライブラリの機材・材料（作る前に確かめる。無い機材なら止まる）
@@ -519,15 +545,15 @@ def create(a, lang):
     shutil.copytree(lang_dir, dest, dirs_exist_ok=True, ignore=junk)       # 言語ごとの文書・パラメータファイル・例の mock.py を重ねる
     for f in SHARED_FILES:
         shutil.copy(os.path.join(SHARED, f), os.path.join(dest, "tools", f))
-    open(os.path.join(dest, "tools", VERSION_FILE), "w", encoding="utf-8").write(plugin_version() + "\n")
+    write_text(os.path.join(dest, "tools", VERSION_FILE), plugin_version() + "\n")
 
     # パラメータファイル：例の形（fdm は3Dプリントの例）＋加工方法で使う fab だけ。fab はその言語のテンプレートのパラメータファイルから取る
     pp = os.path.join(dest, "params", "params_v01.json")
-    base = json.load(open(lang_params, encoding="utf-8"))
+    base = json.loads(read_text(lang_params))
     var = os.path.join(VARIANTS, a.process, lang)
     if os.path.isdir(var):
         shutil.copytree(var, dest, dirs_exist_ok=True, ignore=junk)
-    d = json.load(open(pp, encoding="utf-8"))
+    d = json.loads(read_text(pp))
     d["meta"]["process"] = a.process
     d["meta"]["lang"] = lang
     d["fab"] = {k: v for k, v in base["fab"].items() if set(v.get("process", ["laser", "fdm"])) & keep}
@@ -544,23 +570,30 @@ def create(a, lang):
         for f in fs:
             if f.endswith((".md", ".json")):
                 p = os.path.join(dd, f)
-                s = open(p, encoding="utf-8").read()
+                s = read_text(p)
                 for k, v in rep.items():
                     s = s.replace(k, v)
                 if f.endswith(".md"):
                     s = keep_process_blocks(s, keep)
-                open(p, "w", encoding="utf-8").write(s)
+                write_text(p, s)
 
     if a.git:
         def git(*args):
             subprocess.run(["git", "-C", dest, *args], check=True, capture_output=True)
-        if not os.path.isdir(os.path.join(dest, ".git")):
-            git("init", "-q", "-b", "main")
-        git("add", "-A")
         try:
-            git("commit", "-q", "-m", T["commit"].format(name=a.name))
-        except subprocess.CalledProcessError:
-            print(T["commit_fail"])
+            if not os.path.isdir(os.path.join(dest, ".git")):
+                git("init", "-q", "-b", "main")
+            git("add", "-A")
+        except OSError:                          # git が無い（Windows で Git for Windows を入れていないなど）
+            print(T["no_git"])
+        except subprocess.CalledProcessError as e:
+            err = (e.stderr or b"").decode("utf-8", "replace").strip().splitlines()
+            print(T["git_fail"].format(err=err[-1] if err else e.returncode))
+        else:
+            try:
+                git("commit", "-q", "-m", T["commit"].format(name=a.name))
+            except subprocess.CalledProcessError:
+                print(T["commit_fail"])
     for ln in shelf_lines:
         print(ln)
     print(dest)
@@ -577,11 +610,14 @@ def record_tool_versions(lang="ja"):
             e["sha256"].append(sha(src))
         if f.endswith(".py"):
             e["defs"] = sorted(set(e["defs"]) | (top_defs(src) or set()))
-    json.dump(known, open(KNOWN, "w", encoding="utf-8"), indent=1)
+    write_text(KNOWN, json.dumps(known, indent=1))
     print(MSG[lang]["known_recorded"].format(path=KNOWN, v=v))
 
 
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     # ヘルプの言語を先に決める（--lang があればそれ、無ければ MONOZUKURI_LANG、無ければ ja）
     argv, hl = sys.argv[1:], None
     for i, x in enumerate(argv):
@@ -604,7 +640,8 @@ def main():
     ap.add_argument("--git", action="store_true", help=H["h_git"])
     ap.add_argument("--printer", help=H["h_printer"])
     ap.add_argument("--laser", help=H["h_laser"])
-    ap.add_argument("--material", action="append", help=H["h_material"])
+    # extend＋nargs：PowerShell は --material pla,petg を pla と petg の2つに分けて渡すので、どちらの形でも受ける
+    ap.add_argument("--material", action="extend", nargs="+", help=H["h_material"])
     ap.add_argument("--update-tools", metavar=H["m_update"], help=H["h_update"])
     ap.add_argument("--force", action="store_true", help=H["h_force"])
     ap.add_argument("--record-tool-versions", action="store_true", help=argparse.SUPPRESS)

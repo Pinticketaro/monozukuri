@@ -2,18 +2,18 @@
 場所は ~/.monozukuri/shelf/（環境変数 MONOZUKURI_SHELF で変えられる）。変えるたびに git でコミットする。
 
 使い方
-  python3 shelf.py init                                    ライブラリを作る。Cura の3Dプリンターとラボのレーザー（仮）を入れる
-  python3 shelf.py list [parts|machines|materials]         1行ずつ短く出す
-  python3 shelf.py show <キー>                             1つを出す（寸法は表、資料は名前だけ）
-  python3 shelf.py add-part <キー> --from <プロジェクト> --keys a,b,… [--refs …] [--title …] [--source URL]
+  python shelf.py init                                     ライブラリを作る。Cura の3Dプリンターとラボのレーザー（仮）を入れる
+  python shelf.py list [parts|machines|materials]          1行ずつ短く出す
+  python shelf.py show <キー>                              1つを出す（寸法は表、資料は名前だけ）
+  python shelf.py add-part <キー> --from <プロジェクト> --keys a,b,… [--refs …] [--title …] [--source URL]
                                                            プロジェクトのいちばん新しいパラメータファイルから、確かめた寸法を部品ライブラリに登録する。
                                                            根拠の無い寸法・仮の寸法は登録せずに名前を出す。--keys は * も使える。
                                                            --keys を省くと、登録できる寸法の候補を出して止まる
-  python3 shelf.py use <部品> <プロジェクト> [--prefix pi_] 部品ライブラリの寸法をプロジェクトのいちばん新しいパラメータファイルの params に足し、資料を refs/ に写す
-  python3 shelf.py record <プロジェクト> [--machine …] [--material …]
+  python shelf.py use <部品> <プロジェクト> [--prefix pi_]  部品ライブラリの寸法をプロジェクトのいちばん新しいパラメータファイルの params に足し、資料を refs/ に写す
+  python shelf.py record <プロジェクト> [--machine …] [--material …]
                                                            パラメータファイルの fab で status が「実測」の値を、材料の measured に足す。
                                                            機材と材料は省くとパラメータファイルの meta（printer・laser・materials）から決める
-  python3 shelf.py fab <機材> <材料>… [--json]             その組み合わせで使える値（実測があれば実測、無ければ無し）
+  python shelf.py fab <機材> <材料>… [--json]              その組み合わせで使える値（実測があれば実測、無ければ無し）
 """
 import argparse
 import configparser
@@ -63,22 +63,59 @@ def shelf_dir():
     return os.path.abspath(os.path.expanduser(os.environ.get("MONOZUKURI_SHELF") or "~/.monozukuri/shelf"))
 
 
-def load(p, default=None):
+def path_arg(p):
+    """コマンドラインのパス（PowerShell は ~ をそのまま渡すので、ここで ~ を展開する）"""
+    return os.path.abspath(os.path.expanduser(p))
+
+
+def read_text(p):
+    """テキストを読む。utf-8-sig は BOM（PowerShell 5.1・メモ帳が付ける）があれば外し、無ければ utf-8 と同じ。
+    UTF-8 で読めないファイル（ANSI で保存した資料.md など）は、何も変えずに止めて知らせる"""
     try:
-        return json.load(open(p, encoding="utf-8"))
-    except (OSError, ValueError):
+        with open(p, encoding="utf-8-sig") as fp:
+            return fp.read()
+    except UnicodeDecodeError as e:
+        sys.exit(f"UTF-8 で読めないので、何も変えずに止めました：{p}\n  {e}\n  UTF-8 で保存し直してから再実行してください")
+
+
+def write_text(p, s):
+    """テキストを書く。改行は LF（Windows でも macOS と同じバイト列になる）"""
+    with open(p, "w", encoding="utf-8", newline="\n") as fp:
+        fp.write(s)
+
+
+def load(p, default=None, strict=False):
+    """JSON を読む。無いときは default。あるのに読めないときも default だが、strict のときは止めて知らせる
+    （読めないファイルを無いものとして上書きしないため）"""
+    if not os.path.isfile(p):
+        return default
+    try:
+        with open(p, encoding="utf-8-sig") as fp:
+            return json.load(fp)
+    except (OSError, ValueError) as e:
+        if strict:
+            sys.exit(f"読めないファイルがあるので、何も変えずに止めました：{p}\n  {e}\n  UTF-8 の JSON に直してから再実行してください")
         return default
 
 
 def save(p, d):
     os.makedirs(os.path.dirname(p), exist_ok=True)
-    open(p, "w", encoding="utf-8").write(json.dumps(d, ensure_ascii=False, indent=2) + "\n")
+    write_text(p, json.dumps(d, ensure_ascii=False, indent=2) + "\n")
+
+
+def py_cmd(*args):
+    """知らせに出すコマンド：今の Python とこのスクリプト（Windows には python3 が無いことが多い）。空白のあるパスは "" で囲む。
+    Windows では区切りを / にする（Git Bash は引用符の外の \\ を消す。PowerShell と python.exe は / を受け付ける）"""
+    parts = [sys.executable, os.path.abspath(__file__), *args]
+    if os.name == "nt":
+        parts = [x.replace("\\", "/") for x in parts]
+    return " ".join(f'"{x}"' if " " in x else x for x in parts)
 
 
 def need_shelf():
     s = shelf_dir()
     if not os.path.isdir(s):
-        sys.exit(f"ライブラリがありません：{s}\n  python3 shelf.py init で作ってください")
+        sys.exit(f"ライブラリがありません：{s}\n  {py_cmd('init')} で作ってください")
     return s
 
 
@@ -97,7 +134,7 @@ def keys_of(kind):
 
 
 def get(kind, key):
-    return load(item_path(kind, key))
+    return load(item_path(kind, key), strict=True)
 
 
 def need(kind, key):
@@ -127,7 +164,7 @@ def commit(msg):
 def latest_params(proj, ver=None):
     """いちばん新しいパラメータファイル（params/params_vNN.json。ブランチの案 v04a なども数える）の (版, パス)"""
     vs = []
-    for f in glob.glob(os.path.join(proj, "params", "params_v*.json")):
+    for f in glob.glob(os.path.join(glob.escape(proj), "params", "params_v*.json")):
         m = re.search(r"params_(v(\d+)([a-z]*))\.json$", f)
         if m and (ver is None or m.group(1) == ver):
             vs.append((int(m.group(2)), m.group(3), m.group(1), f))
@@ -139,14 +176,14 @@ def latest_params(proj, ver=None):
 
 def write_params(path, d):
     """パラメータファイルを元の書き方のまま書く（テンプレートの1項目1行の形なら同じ形、そうでなければ indent=2）"""
-    text = open(path, encoding="utf-8").read()
+    text = read_text(path)
     if re.search(r'^\s+"[^"]+":\s*\{"value"', text, re.M):
         sys.path.insert(0, HERE)
         from scaffold import dump_params
         dump_params(d, path)
     else:
         out = json.dumps(d, ensure_ascii=False, indent=2)
-        open(path, "w", encoding="utf-8").write(out + ("\n" if text.endswith("\n") else ""))
+        write_text(path, out + ("\n" if text.endswith("\n") else ""))
 
 
 def refs_index(proj):
@@ -163,7 +200,7 @@ def index_rows(path):
     rows = {}
     if not os.path.exists(path):
         return rows
-    for ln in open(path, encoding="utf-8").read().splitlines():
+    for ln in read_text(path).splitlines():
         cells = [c.strip() for c in ln.strip().strip("|").split("|")] if ln.strip().startswith("|") else []
         if len(cells) >= 2 and cells[0] and not set(cells[0]) <= set("-: "):
             rows[cells[0].strip("`")] = (cells[1:] + [""] * 4)[:4]
@@ -171,7 +208,8 @@ def index_rows(path):
 
 
 def is_local(ref):
-    return bool(ref) and not re.match(r"^[a-z]+:", ref, re.I)
+    """ref がファイルか（URL でないか）。URL の scheme は2文字以上なので、C:\\… や D:/… のドライブ名はファイル"""
+    return bool(ref) and not re.match(r"^[a-z][a-z0-9+.-]+:", ref, re.I)
 
 
 # ---- Cura のプリンター ----
@@ -187,17 +225,37 @@ def cura_dirs():
         if os.path.isdir(os.path.join(base, "machine_instances")):
             conf = base
             break
-        vs = [d for d in glob.glob(os.path.join(base, "*")) if os.path.isdir(os.path.join(d, "machine_instances"))]
+        vs = [d for d in glob.glob(os.path.join(glob.escape(base), "*")) if os.path.isdir(os.path.join(d, "machine_instances"))]
         vs.sort(key=lambda d: tuple(int(x) if x.isdigit() else 0 for x in os.path.basename(d).split(".")))
         if vs:
             conf = vs[-1]
             break
     res = None
-    for r in [os.environ.get("MONOZUKURI_CURA_RESOURCES")] + sorted(glob.glob("/Applications/*Cura*.app/Contents/Resources/share/cura/resources")):
+    cands = [os.environ.get("MONOZUKURI_CURA_RESOURCES")] + sorted(glob.glob("/Applications/*Cura*.app/Contents/Resources/share/cura/resources"))
+    if os.name == "nt":                          # Windows：Program Files に入れた Cura
+        cands += win_cura_resources(os.path.basename(conf) if conf else "")
+    for r in cands:
+        r = os.path.expanduser(r) if r else None
         if r and os.path.isdir(os.path.join(r, "definitions")):
             res = r
             break
     return conf, res
+
+
+def win_cura_resources(ver):
+    """Windows の Cura の resources の候補（Cura 5：C:\\Program Files\\UltiMaker Cura 5.x.y\\share\\cura\\resources、
+    Cura 4：…\\Ultimaker Cura 4.x\\resources）。設定の版（ver。例 5.7）と同じ版の Cura を先に、あとは新しい版から"""
+    want = tuple(int(x) for x in re.findall(r"\d+", ver))
+    bases = [os.environ.get(v) for v in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)")]
+    if os.environ.get("LOCALAPPDATA"):
+        bases.append(os.path.join(os.environ["LOCALAPPDATA"], "Programs"))
+    found = []
+    for b in dict.fromkeys(b for b in bases if b):
+        for d in glob.glob(os.path.join(glob.escape(b), "*Cura*")):
+            nums = tuple(int(x) for x in re.findall(r"\d+", os.path.basename(d)))
+            for r in (os.path.join(d, "share", "cura", "resources"), os.path.join(d, "resources")):
+                found.append((bool(want) and nums[:len(want)] == want, nums, r))
+    return [r for _, _, r in sorted(found, reverse=True)]
 
 
 def read_cfg(path):
@@ -278,11 +336,11 @@ def cura_machines():
     ver = os.path.basename(conf)
     out = []
     extruders = []
-    for p in glob.glob(os.path.join(conf, "extruders", "*.cfg")):
+    for p in glob.glob(os.path.join(glob.escape(conf), "extruders", "*.cfg")):
         c = read_cfg(p)
         if c and c.has_section("metadata"):
             extruders.append(c)
-    for p in sorted(glob.glob(os.path.join(conf, "machine_instances", "*.global.cfg"))):
+    for p in sorted(glob.glob(os.path.join(glob.escape(conf), "machine_instances", "*.global.cfg"))):
         c = read_cfg(p)
         if not c or not c.has_section("containers"):
             continue
@@ -317,7 +375,7 @@ def cura_machines():
             econts = [e.get("containers", k) for k in sorted(e.options("containers"), key=int)] if e.has_section("containers") else []
             if len(econts) == 8:
                 cura_mat = None if econts[4].startswith("empty") else econts[4]
-                vf = next(iter(glob.glob(os.path.join(res, "variants", "**", econts[5] + ".inst.cfg"), recursive=True)), None) \
+                vf = next(iter(glob.glob(os.path.join(glob.escape(res), "variants", "**", glob.escape(econts[5]) + ".inst.cfg"), recursive=True)), None) \
                     if res and not econts[5].startswith("empty") else None
                 vc = read_cfg(vf) if vf else None
                 if vc and vc.has_option("values", "machine_nozzle_size"):
@@ -352,7 +410,7 @@ def cmd_init(a):
     for k in KINDS:
         os.makedirs(os.path.join(s, k), exist_ok=True)
     if not os.path.exists(os.path.join(s, "README.md")):
-        open(os.path.join(s, "README.md"), "w", encoding="utf-8").write(README)
+        write_text(os.path.join(s, "README.md"), README)
     print(f"ライブラリ：{s}{'（新しく作った）' if new else '（すでにある）'}")
     added = []
     machines, conf = cura_machines()
@@ -422,7 +480,7 @@ def latest_measured(ms):
 
 def cmd_show(a):
     need_shelf()
-    key = a.key
+    key = a.key.replace("\\", "/")                  # Windows の書き方（parts\<キー>）も受ける
     hits = []
     if "/" in key:
         kind, key = key.split("/", 1)
@@ -430,7 +488,7 @@ def cmd_show(a):
     else:
         hits = [k for k in KINDS if get(k, key) is not None]
     if not hits:
-        sys.exit(f"ライブラリに「{a.key}」がありません（shelf.py list で一覧）")
+        sys.exit(f"ライブラリに「{a.key}」がありません（{py_cmd('list')} で一覧）")
     kind = hits[0]
     d = get(kind, key)
     print(f"{kind}/{key}：{d.get('title', '')}")
@@ -469,9 +527,9 @@ def cmd_add_part(a):
     need_shelf()
     if not re.fullmatch(r"[a-z0-9_][a-z0-9_\-]*", a.key):
         sys.exit(f"部品のキーは英小文字・数字・_ で（例 raspberry_pi4）：{a.key}")
-    proj = os.path.abspath(a.from_)
+    proj = path_arg(a.from_)
     ver, pf = latest_params(proj)
-    params = (load(pf) or {}).get("params") or {}
+    params = (load(pf, strict=True) or {}).get("params") or {}
     ok_keys, skip_tent, skip_nob = [], [], []
     for k, it in params.items():
         if not isinstance(it, dict) or "value" not in it:
@@ -487,7 +545,7 @@ def cmd_add_part(a):
         print("  " + ",".join(k for k in ok_keys if params[k].get("ref")) + "  ← 資料（ref）つき")
         print("  " + ",".join(k for k in ok_keys if not params[k].get("ref")) + "  ← 資料なし（設計で決めた値も入る。既製品の寸法だけを選ぶ）")
         sys.exit("--keys で登録する寸法を指定してください（* も使える）")
-    pats = [p.strip() for p in a.keys.split(",") if p.strip()]
+    pats = [p.strip() for p in ",".join(a.keys).split(",") if p.strip()]
     chosen, missing = [], []
     for p in pats:
         hit = [k for k in params if fnmatch.fnmatchcase(k, p)]
@@ -508,9 +566,15 @@ def cmd_add_part(a):
     for k in up:
         r = params[k].get("ref")
         if is_local(r):
-            files.append(r)
+            files.append(r.replace("\\", "/"))          # Windows で書いた refs\x.pdf も macOS で読めるように
     for r in a.refs or []:
-        files.append(os.path.relpath(os.path.abspath(r), proj) if os.path.isabs(r) or os.path.exists(r) else r)
+        r = os.path.expanduser(r)
+        if os.path.isabs(r) or os.path.exists(r):
+            try:
+                r = os.path.relpath(os.path.abspath(r), proj)
+            except ValueError:                   # Windows でプロジェクトと別のドライブ：絶対パスのまま
+                r = os.path.abspath(r)
+        files.append(r)
     copied = []
     for r in dict.fromkeys(files):
         src = os.path.join(proj, r)
@@ -531,7 +595,7 @@ def cmd_add_part(a):
         it = params[k]
         ref = it.get("ref")
         if is_local(ref):
-            ref = "refs/" + os.path.basename(ref)
+            ref = "refs/" + os.path.basename(ref.replace("\\", "/"))
         new = {"value": it["value"], "unit": it.get("unit", ""), "label": it.get("label", k), "basis": it["basis"]}
         if ref:
             new["ref"] = ref
@@ -561,12 +625,24 @@ def cmd_add_part(a):
     commit(f"部品 {a.key}：{os.path.basename(proj)} {ver} から寸法 {len(up)}" + (f"・資料 {len(copied)}" if copied else ""))
 
 
+TEXT_REFS = (".md", ".txt", ".csv", ".svg", ".json", ".dxf", ".html")
+
+
+def same_content(p, q):
+    """2つのファイルの中身が同じか。テキストの資料は改行の違い（CRLF・LF）を見ない（Windows の git はチェックアウトで CRLF にすることがある）"""
+    with open(p, "rb") as f1, open(q, "rb") as f2:
+        x, y = f1.read(), f2.read()
+    if x != y and p.lower().endswith(TEXT_REFS):
+        return x.replace(b"\r\n", b"\n") == y.replace(b"\r\n", b"\n")
+    return x == y
+
+
 def cmd_use(a):
     need_shelf()
     part = need("parts", a.part)
-    proj = os.path.abspath(a.project)
+    proj = path_arg(a.project)
     ver, pf = latest_params(proj)
-    d = load(pf)
+    d = load(pf, strict=True)
     if d is None:
         sys.exit(f"パラメータファイルが読めません：{pf}")
     dims = part.get("dims") or {}
@@ -586,9 +662,15 @@ def cmd_use(a):
         if not os.path.isfile(src):
             continue
         dst = os.path.join(proj, "refs", os.path.basename(src))
-        if os.path.exists(dst) and open(dst, "rb").read() != open(src, "rb").read():
+        if os.path.exists(dst) and not same_content(dst, src):
             sys.exit(f"プロジェクトの refs/ に同じ名前で中身が違うファイルがあるので、何も変えずに止めました：{os.path.basename(src)}")
         plan.append((r, src, dst))
+    # 資料の一覧は、何かを変える前に読む（UTF-8 で読めなければ、ここで止まる）
+    idx = refs_index(proj)
+    if plan:
+        text = read_text(idx) if os.path.exists(idx) else \
+            "# 資料\n\n| ファイル | 何か | 出典（URL・ページ） | 取った日 | 使った寸法（キー） |\n|---|---|---|---|---|\n"
+        rows = index_rows(idx)
     for _, src, dst in plan:
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         if not os.path.exists(dst):
@@ -602,12 +684,8 @@ def cmd_use(a):
         params[pre + k] = new
     write_params(pf, d)
     # 資料の一覧に行を足す（同じファイルの行があれば足さない）
-    idx = refs_index(proj)
     added_rows = []
     if plan:
-        text = open(idx, encoding="utf-8").read() if os.path.exists(idx) else \
-            "# 資料\n\n| ファイル | 何か | 出典（URL・ページ） | 取った日 | 使った寸法（キー） |\n|---|---|---|---|---|\n"
-        rows = index_rows(idx)
         lines = text.split("\n")
         for r, src, _ in plan:
             name = os.path.basename(src)
@@ -626,7 +704,7 @@ def cmd_use(a):
                 lines += ["", "| ファイル | 何か | 出典（URL・ページ） | 取った日 | 使った寸法（キー） |", "|---|---|---|---|---|", row]
             added_rows.append(name)
         os.makedirs(os.path.dirname(idx), exist_ok=True)
-        open(idx, "w", encoding="utf-8").write("\n".join(lines))
+        write_text(idx, "\n".join(lines))
     print(f"{os.path.basename(pf)} の params に、部品ライブラリ {a.part}（{part.get('title', '')}）の寸法 {len(dims)} を足した："
           f"{', '.join(pre + k for k in dims)}")
     if plan:
@@ -657,9 +735,9 @@ def project_kinds(proc):
 
 def cmd_record(a):
     need_shelf()
-    proj = os.path.abspath(a.project)
+    proj = path_arg(a.project)
     ver, pf = latest_params(proj, a.version)
-    d = load(pf) or {}
+    d = load(pf, strict=True) or {}
     meta = d.get("meta") or {}
     name = os.path.basename(proj.rstrip(os.sep))
     if a.machine:
@@ -669,6 +747,12 @@ def cmd_record(a):
     if not measured:
         print(f"{os.path.basename(pf)} の fab に「実測」の値がありません（テストピースで測ったら status を「実測」にする）")
         return
+    # 使うかもしれない機材と材料は、どれかを書く前に全部読む（読めないファイルがあれば、何も書かないうちに止まる）
+    for kind, keys in (("machines", [a.machine] if a.machine else [meta.get("laser"), meta.get("printer")]),
+                       ("materials", [a.material] if a.material else mats_meta)):
+        for key in keys:
+            if isinstance(key, str) and key:
+                get(kind, key)
     done, skipped, known = {}, [], []
     for k, it in measured.items():
         kinds = project_kinds(it.get("process"))
@@ -757,6 +841,9 @@ def cmd_fab(a):
 
 
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = ap.add_subparsers(dest="cmd", required=True)
     sp.add_parser("init", help="ライブラリを作る（Cura の3Dプリンターとラボのレーザーを入れる）")
@@ -767,7 +854,9 @@ def main():
     p = sp.add_parser("add-part", help="プロジェクトのパラメータファイルから、確かめた寸法を部品ライブラリに登録する")
     p.add_argument("key")
     p.add_argument("--from", dest="from_", required=True, metavar="プロジェクト")
-    p.add_argument("--keys", help="登録する寸法のキー（, 区切り。* も使える）")
+    # nargs="+"：PowerShell は --keys a,b を a と b の2つに分けて渡すので、どちらの形でも受ける
+    # （cmd_add_part で , 区切りに連結してから分ける）。--keys は後ろの語を全部取るので、部品のキーは --keys より前に書く
+    p.add_argument("--keys", nargs="+", help="登録する寸法のキー（, 区切りか空白区切り。* も使える。部品のキーは --keys より前に書く）")
     p.add_argument("--refs", nargs="*", help="一緒に置く資料（プロジェクトからの相対パス）。省くと寸法の ref が指すファイル")
     p.add_argument("--title")
     p.add_argument("--source", help="出典の URL（省くと資料の一覧の出典から）")

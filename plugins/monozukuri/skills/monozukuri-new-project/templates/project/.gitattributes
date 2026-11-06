@@ -1,7 +1,13 @@
-*.json text
-*.py   text
-*.md   text
-*.svg  text
+*.json text eol=lf
+*.py   text eol=lf
+*.md   text eol=lf
+*.svg  text eol=lf
+*.txt  text eol=lf
+*.csv  text eol=lf
+*.html text eol=lf
+.gitignore         text eol=lf
+.gitattributes     text eol=lf
+.monozukuri-version text eol=lf
 *.dxf  text
 *.stl   binary
 *.step  binary
@@ -12,4 +18,8 @@
 *.blend binary
 *.png   binary
 *.jpg   binary
+*.jpeg  binary
+*.gif   binary
 *.webp  binary
+*.pdf   binary
+*.zip   binary

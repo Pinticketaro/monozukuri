@@ -1,5 +1,6 @@
 """前の版と今の版の画像を並べた比較画像を作る（左：前、中：今、右：変わった所を赤で強調）。
-使い方: python3 compare.py before.png after.png --out compare.png [--labels "v02" "v03"] [--no-diff]
+使い方: python compare.py before.png after.png --out compare.png [--labels "v02" "v03"] [--no-diff]
+  --labels は --labels v02,v03 とも書ける（PowerShell はカンマで2つに分けて渡すので、どちらでも同じ）。
 大きさが違う画像は、同じ高さにそろえてから比べる（差分は形がそろっているときだけ意味がある）。
 言葉（見出し・表示）は --lang ja|en、無ければ環境変数 MONOZUKURI_LANG、どちらも無ければ ja。
 """
@@ -9,10 +10,11 @@ import sys
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
+WIN_FONTS = os.path.join(os.environ.get("WINDIR") or "C:/Windows", "Fonts")      # Windows のフォントのフォルダ
 FONT_CANDIDATES = ["/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
                    "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
-                   "/System/Library/Fonts/Hiragino Sans GB.ttc",
-                   "C:/Windows/Fonts/YuGothM.ttc"]
+                   "/System/Library/Fonts/Hiragino Sans GB.ttc"] + \
+                  [os.path.join(WIN_FONTS, n) for n in ("YuGothM.ttc", "YuGothR.ttc", "meiryo.ttc", "msgothic.ttc")]
 
 
 def resolve_lang(explicit=None, data=None):
@@ -37,7 +39,9 @@ def help_lang(argv):
 def font(size):
     try:
         import json
-        env = json.load(open(os.path.expanduser("~/.cache/monozukuri/env.json"), encoding="utf-8"))
+        cache = os.path.expanduser(os.environ.get("MONOZUKURI_CACHE") or "~/.cache/monozukuri")
+        with open(os.path.join(cache, "env.json"), encoding="utf-8-sig") as fp:
+            env = json.load(fp)
         if env.get("cjk_font_path"):
             return ImageFont.truetype(env["cjk_font_path"], size)
     except Exception:
@@ -66,7 +70,37 @@ def diff_image(a, b):
     return base, changed
 
 
+def split_labels(argv):
+    """--labels a,b（カンマ区切りの1つの引数）と --labels=a,b を --labels a b にする。
+    PowerShell は引用符の無い a,b を2つに分けて渡すので、どのシェルでも同じになる。
+    分けるのは、次がオプションか終わりのとき、または分けないと画像（before・after）が2つそろわないときだけ
+    （--labels "幅160, 高さ80" v03 のように2つ渡したときは、カンマもそのまま）"""
+    out = []
+    for s in argv:
+        out += ["--labels", s[len("--labels="):]] if s.startswith("--labels=") else [s]
+    if "--labels" not in out:
+        return out
+    i = out.index("--labels")
+    if i + 1 >= len(out) or "," not in out[i + 1]:
+        return out
+
+    def images(args):          # --labels が2つ取ったときに残る、位置引数の数
+        n = j = 0
+        while j < len(args):
+            s = args[j]
+            j += 3 if s == "--labels" else 2 if s in ("--out", "--height", "--lang") else 1
+            n += not s.startswith("-")
+        return n
+    nxt = out[i + 2] if i + 2 < len(out) else None
+    if nxt is None or nxt.startswith("-") or images(out) < 2:
+        return out[:i + 1] + out[i + 1].split(",", 1) + out[i + 2:]
+    return out
+
+
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser()
     ap.add_argument("before")
@@ -77,7 +111,8 @@ def main():
     ap.add_argument("--no-diff", action="store_true")
     ap.add_argument("--lang", choices=["ja", "en"], help="見出し・表示の言葉（既定：環境変数 MONOZUKURI_LANG ＞ ja）" if ja
                     else "language of labels and messages (default: MONOZUKURI_LANG > ja)")
-    a = ap.parse_args()
+    a = ap.parse_args(split_labels(sys.argv[1:]))
+    a.before, a.after, a.out = (os.path.expanduser(p) for p in (a.before, a.after, a.out))   # PowerShell は ~ をそのまま渡す
     lang = resolve_lang(a.lang)
     if a.labels is None:
         a.labels = ["前の版", "この版"] if lang == "ja" else ["Previous", "This version"]

@@ -1,13 +1,12 @@
 """モデル化する人に渡す寸法表 docs/寸法表_<版>.md を作る。
 形の寸法、加工パラメータ（実測か初期値か・根拠）、モックで見つかった注意点、前の版から変わった値を1枚にまとめる。
-使い方: python3 tools/dims_sheet.py [v03] [--lang ja|en]
+使い方: python tools/dims_sheet.py [v03] [--lang ja|en]
 
 English: writes the dimension sheet for the person who builds the CAD model: docs/dims_<version>.md
 (Japanese projects: docs/寸法表_<version>.md), plus docs/fusion_params_<version>.csv for Fusion user parameters.
 One page with the shape dimensions, the fabrication values (measured or initial, and the basis), notes found in
 the mock, and the values changed from the previous version. Language: meta.lang in the params file (or --lang ja|en).
 """
-import json
 import os
 import sys
 
@@ -36,6 +35,7 @@ TXT = {
         "img_h": "## 画像",
         "img": "`out/{ver}/` の外観・平面図・断面図を参照。",
         "csv_status": "（{st}）",
+        "locked": "{path} に書き込めません。Excel などのアプリで開いていたら閉じて、もう一度実行してください",
     },
     "en": {
         "file": "dims_{ver}.md",
@@ -61,6 +61,7 @@ TXT = {
         "img_h": "## Images",
         "img": "See the exterior views, plan views and sections in `out/{ver}/`.",
         "csv_status": " ({st})",
+        "locked": "Cannot write {path}. If it is open in Excel or another app, close it and run again",
     },
 }
 
@@ -71,7 +72,20 @@ def not_measured(status):
     return s.startswith("初期値") or s.lower().startswith("initial")
 
 
+def write_text(path, text, t):
+    """生成したファイルを LF で書く。Windows では Excel などで開いているファイルに書き込めない（PermissionError）ので、
+    トレースバックでなく案内を出して止める"""
+    try:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+    except PermissionError:
+        raise SystemExit(t["locked"].format(path=os.path.relpath(path, common.ROOT).replace(os.sep, "/")))
+
+
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ver = common.version_from_argv()
     prm = common.load(ver, lang=common.lang_from_argv())
     t = TXT[prm.lang]
@@ -93,7 +107,8 @@ def main():
             return ""
         b, r = str(item.get("basis", "")), item.get("ref")
         if r:
-            href = r if "://" in r else "../" + r                 # docs/ から見た相対パス
+            r = str(r)
+            href = r if "://" in r else "../" + r.replace("\\", "/")   # docs/ から見た相対パス（Windows の区切り \ も / にする）
             b = (b + " " if b else "") + f"[{t['ref_link']}]({href})"
         return b.replace("|", "／")
 
@@ -118,28 +133,31 @@ def main():
 
     sp = os.path.join(common.ROOT, "out", ver, "scene.json")
     if os.path.exists(sp):
-        notes = json.load(open(sp, encoding="utf-8")).get("notes") or []
+        notes = common.read_json(sp, prm.lang).get("notes") or []
         if notes:
             lines += ["", t["notes_h"], ""] + [f"- {n}" for n in notes]
     rdir = os.path.join(common.ROOT, "refs")
     if os.path.isdir(rdir):
-        files = sorted(f for f in os.listdir(rdir) if not f.startswith("."))
+        # 隠しファイルは除く：.DS_Store など、Windows の desktop.ini・Thumbs.db、Office が開いている間の ~$ファイル
+        files = sorted(f for f in os.listdir(rdir)
+                       if not f.startswith((".", "~$")) and f.lower() not in ("desktop.ini", "thumbs.db"))
         index = next((f for f in ("資料.md", "index.md") if f in files), None)
         if files:
             lines += ["", t["refs_h"], "", t["refs_intro"].format(index="refs/" + (index or ""))]
             lines += [""] + [f"- [{f}](../refs/{f})" for f in files if f != index]
     lines += ["", t["img_h"], "", t["img"].format(ver=ver)]
     out = os.path.join(common.ROOT, "docs", t["file"].format(ver=ver))
-    open(out, "w", encoding="utf-8").write("\n".join(lines) + "\n")
 
     # Fusion のユーザーパラメータに写すための一覧（名前・値・単位・コメント）。ファイル名はどの言語でも同じ
     csv = os.path.join(common.ROOT, "docs", f"fusion_params_{ver}.csv")
-    with open(csv, "w", encoding="utf-8") as f:
-        f.write("name,value,unit,comment\n")
-        for k, v in vars(prm.P).items():
-            if isinstance(v, (int, float)) and not isinstance(v, bool):
-                st = prm.fab.get(k, {}).get("status", "")
-                f.write(f"{k},{v},{prm.units[k]},\"{prm.labels[k]}{t['csv_status'].format(st=st) if st else ''}\"\n")
+    rows = ["name,value,unit,comment"]
+    for k, v in vars(prm.P).items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            st = prm.fab.get(k, {}).get("status", "")
+            rows.append(f"{k},{v},{prm.units[k]},\"{prm.labels[k]}{t['csv_status'].format(st=st) if st else ''}\"")
+    # CSV を先に書く（Excel で開いていて書けないとき、寸法表だけが新しくなってずれないように）
+    write_text(csv, "\n".join(rows) + "\n", t)
+    write_text(out, "\n".join(lines) + "\n", t)
     print(out)
     print(csv)
 

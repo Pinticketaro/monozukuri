@@ -3,7 +3,7 @@
   - STL  … manifold3d で作る。速く、いつでも使える（レンダリング・断面・確認ページ用）
   - STEP … CadQuery（OpenCascade）で作る。面・円弧・円柱を持つソリッドなので、Fusion などで開いて
            押し出し・フィレット・穴などの編集ができる。モデル化の出発点に使う
-           （CadQuery が入っていないときは STEP を飛ばす。monozukuri-setup スキルの `setup.sh --with-cad` で入る）
+           （CadQuery が入っていないときは STEP を飛ばす。monozukuri-setup スキルで入る。Windows の ARM64 版 Python には無い）
 
 使い方（tools/mock.py の build() の中で）
     from geom import RRect, Circle, Poly, slab, cyl, box, tube, cone, revolve, lug_with_slot
@@ -27,7 +27,7 @@ English: a small toolkit. Write a shape once, and get both STL (mesh) and STEP (
   - STL  … made with manifold3d. Fast and always available (for renders, sections and the review page)
   - STEP … made with CadQuery (OpenCascade). A solid with real faces, arcs and cylinders, so you can open it in
            Fusion and edit it with extrude, fillet, hole and so on. Use it as the starting point for the CAD model
-           (without CadQuery, STEP is skipped. The monozukuri-setup skill's `setup.sh --with-cad` installs it)
+           (without CadQuery, STEP is skipped. The monozukuri-setup skill installs it; not available for Python on Windows ARM64)
 How to use: inside build() in tools/mock.py, as in the example above.
 Outlines (2D): RRect(w, d, r, cx, cy) rounded rectangle, Circle(d, cx, cy), Poly([(x, y), ...]) polygon.
 Solids: slab(outline, z0, t, holes) extrude with holes, cyl(cx, cy, d, z0, h) cylinder, box(x0, y0, z0, w, d, h),

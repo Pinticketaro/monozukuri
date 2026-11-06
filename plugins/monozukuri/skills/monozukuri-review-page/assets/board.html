@@ -11,9 +11,9 @@
   --bg:#f2f4f1; --surface:#ffffff; --sunken:#e8ece7; --fg:#1c2420; --muted:#5b6a62; --line:#d3dbd5;
   --accent:#2c7552; --accent-ink:#ffffff; --grid:rgba(44,117,82,.10);
   --good:#2c7552; --fix:#b4561d; --ask:#3a5f9e; --open:#a16a10; --done:#2c7552; --no:#7a837e;
-  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
-  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   --r:6px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -358,7 +358,7 @@ document.getElementById("lb").addEventListener("click", e => e.currentTarget.clo
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-// 文字の資料（.md・.txt・.csv）は、ページの中で UTF-8 として読んで見せる。
+// 文字の資料（.md・.txt・.csv）は、ページの中で読んで見せる（ふつうは UTF-8。違うときは decodeText が見分ける）。
 // ファイルをそのまま開くと、配信のしかたによってはブラウザが別の文字コードで読み、文字化けする
 const TEXT_REF = /\.(md|markdown|txt|csv)$/i;
 document.addEventListener("click", e => {
@@ -370,12 +370,20 @@ document.addEventListener("click", e => {
 document.getElementById("doc").addEventListener("click", e => {
   if (e.target === e.currentTarget || e.target.id === "docclose") e.currentTarget.close();
 });
+// UTF-8（BOM があってもよい）で読む。UTF-8 でないときは、BOM があれば UTF-16、無ければ Windows の古い文字コード
+// （日本語の Excel が CSV に使う Shift_JIS。英語のページでは Windows-1252）で読む
+function decodeText(b){
+  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder("utf-16le").decode(b);
+  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder("utf-16be").decode(b);
+  try { return new TextDecoder("utf-8", {fatal: true}).decode(b); }
+  catch (e) { return new TextDecoder(LANG === "ja" ? "shift_jis" : "windows-1252").decode(b); }
+}
 async function openText(href){
   let txt;
   try {
     const r = await fetch(href, {cache: "no-store"});
     if (!r.ok) throw new Error(r.status);
-    txt = await r.text();          // text() はいつも UTF-8 で読む
+    txt = decodeText(new Uint8Array(await r.arrayBuffer()));
   } catch (err) {
     window.open(href, "_blank", "noopener");   // 読めないとき（file:// で開いたときなど）は、そのまま開く
     return;

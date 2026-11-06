@@ -13,7 +13,7 @@ description: >
 license: MIT
 compatibility: macOS と Linux（Windows は WSL）。Python 3.10 以上と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
 metadata:
-  version: "0.7.0"
+  version: "0.7.1"
 ---
 
 # 確認ページ（確認ボード）

@@ -2,12 +2,12 @@
 出すのは短い要約だけ。各段の全部の出力は out/<版>/make.log に残す。
 
 使い方
-  python3 make_version.py <プロジェクト> vNN                  … 全部（manifest が無ければ画像まで）
-  python3 make_version.py <プロジェクト> vNN --page-only      … 画像は作り直さず、manifest を埋めてページだけ
-  python3 make_version.py <プロジェクト> vNN --no-page        … 画像まで
-  python3 make_version.py <プロジェクト> vNN --tool tools/model.py   … mock.py の代わりに使うツール（none で飛ばす。人が作ったモデルは
-                                                                     out/vNN/scene.json を先に書いて --tool none）
-  ほか: --views iso,top,side（render_model.py へ）、--at x=値（slices.py の断面の位置）
+  python make_version.py <プロジェクト> vNN                  … 全部（manifest が無ければ画像まで）
+  python make_version.py <プロジェクト> vNN --page-only      … 画像は作り直さず、manifest を埋めてページだけ
+  python make_version.py <プロジェクト> vNN --no-page        … 画像まで
+  python make_version.py <プロジェクト> vNN --tool tools/model.py   … mock.py の代わりに使うツール（none で飛ばす。人が作ったモデルは
+                                                                    out/vNN/scene.json を先に書いて --tool none）
+  ほか: --views iso,top,side（render_model.py へ。空白区切りも可）、--at x=値（slices.py の断面の位置）
 
 manifest（out/vNN/manifest.json）は文だけ書けばよい：stage・summary・changes・questions（notes・compare は任意）。
 空いている欄はこのスクリプトが埋めて書き戻す：
@@ -21,12 +21,14 @@ import argparse
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from status import load, params_versions, parent_of, ver_key  # noqa: E402
+from oscompat import serving  # noqa: E402
+from status import BAD, load, params_versions, parent_of, ver_key  # noqa: E402
 
 CAP = {
     "ja": {"preview": "外観", "plan": "平面図", "section": "断面", "fig": "図", "stage": "モック",
@@ -43,7 +45,9 @@ class Run:
 
     def step(self, name, cmd):
         """1段を動かして出力を返す。失敗したら最後の25行を出して止める"""
-        r = subprocess.run(cmd, cwd=self.root, capture_output=True, text=True)
+        # 子の出力は UTF-8 で読む（Windows の既定の ANSI コードページでは日本語・² などで止まる）
+        env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+        r = subprocess.run(cmd, cwd=self.root, capture_output=True, encoding="utf-8", errors="replace", env=env)
         out = (r.stdout + r.stderr).strip()
         self.log.append(f"$ {' '.join(cmd)}\n{out}\n")
         if r.returncode:
@@ -53,26 +57,35 @@ class Run:
         return [ln for ln in out.splitlines() if ln.strip() and not self.is_path(ln)]
 
     def is_path(self, ln):
-        head = ln.strip().split("（")[0].split(" ")[0]
-        return head.startswith((self.root, "out/", "/")) and ("/" in head)
+        """子が出したファイルの場所だけの行か（要約には出さない）。Windows の C:\\… や \\ 区切りの行も"""
+        s = ln.strip().replace("\\", "/")
+        head = s.split("（")[0].split(" ")[0]
+        return (s.startswith(self.root.replace("\\", "/")) or head.startswith(("out/", "/"))
+                or re.match(r"[A-Za-z]:/", head) is not None) and "/" in head
 
     def save(self):
         d = os.path.join(self.root, "out", self.ver)
         os.makedirs(d, exist_ok=True)
-        open(os.path.join(d, "make.log"), "w", encoding="utf-8").write("\n".join(self.log))
+        with open(os.path.join(d, "make.log"), "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(self.log))
 
 
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("project")
     ap.add_argument("version")
     ap.add_argument("--tool", default="tools/mock.py")
-    ap.add_argument("--views")
+    ap.add_argument("--views", nargs="+")    # PowerShell はカンマ区切りを別々の引数にするので、どちらでも受ける
     ap.add_argument("--at")
     ap.add_argument("--page-only", action="store_true")
     ap.add_argument("--no-page", action="store_true")
     a = ap.parse_args()
-    root, ver = os.path.abspath(a.project), a.version
+    a.tool = os.path.expanduser(a.tool)
+    views = ",".join(v for x in a.views for v in x.split(",") if v) if a.views else None
+    root, ver = os.path.abspath(os.path.expanduser(a.project)), a.version   # PowerShell は ~ をそのまま渡す
     py, R = sys.executable, Run(root, ver)
     o = lambda f: f"out/{ver}/{f}"
     exists = lambda rel: os.path.exists(os.path.join(root, rel))
@@ -97,7 +110,7 @@ def main():
         if not exists(o("scene.json")):
             raise SystemExit(f"!! {o('scene.json')} がありません")
         cmd = [py, os.path.join(HERE, "render_model.py"), "--scene", o("scene.json"), "--out", o("preview.png"), "--glb", o("model.glb")]
-        say += ["  " + ln for ln in R.step("render_model.py", cmd + (["--views", a.views] if a.views else []))]
+        say += ["  " + ln for ln in R.step("render_model.py", cmd + (["--views", views] if views else []))]
         cmd = [py, os.path.join(HERE, "slices.py"), "--scene", o("scene.json"), "--plan", o("plan.png"), "--section", o("section.png")]
         say += ["  " + ln for ln in R.step("slices.py", cmd + (["--at", a.at] if a.at else []))]
     if prev and exists(f"params/params_{prev}.json") and exists(f"params/params_{ver}.json"):
@@ -106,13 +119,21 @@ def main():
         say.append(f"  寸法の差（{prev} → {ver}）: {len(diff)}件")
         say += ["    " + ln.lstrip("- ") for ln in diff[:12]] + ([f"    ほか {len(diff) - 12}件"] if len(diff) > 12 else [])
 
+    # 読めなかったファイル（JSON の書き方・文字コード）
+    bad = lambda: [f"  !! 読めないファイル（JSON の書き方か文字コード（UTF-8）を直す）: {os.path.relpath(p, root)}（{e}）"
+                   for p, e in BAD if p != mpath]
+    man_bad = next((e for p, e in BAD if p == mpath), None)
+
     # 2. manifest の空いている欄を埋めて、ページを作る
     if a.no_page or not man:
         R.save()
-        if not man:
+        if man_bad:
+            say.append(f"  manifest（{o('manifest.json')}）が読めないのでページは作っていません（{man_bad}）。"
+                       "JSON の書き方か文字コード（UTF-8）を直して --page-only")
+        elif not man:
             say.append(f"  manifest（{o('manifest.json')}）が無いのでページは作っていません。文（stage・summary・changes・questions）を書いて --page-only")
         say.append(f"  見る画像: {o('preview.png')}（ほか plan.png・section.png）")
-        print("\n".join(say))
+        print("\n".join(say + bad()))
         return
     filled = []
 
@@ -131,7 +152,8 @@ def main():
                 {"src": o("section.png"), "caption": C["section"], "group": C["fig"]}]
     defaults = [d for d in defaults if exists(d["src"])]
     given = man.get("images", [])
-    if not any(g.get("src") in {d["src"] for d in defaults} for g in given):
+    # manifest のパスが \ 区切り（Windows で書いたもの）でも、同じ画像として比べる
+    if not any(str(g.get("src") or "").replace("\\", "/") in {d["src"] for d in defaults} for g in given):
         man["images"] = defaults[:1] + given + defaults[1:]
         filled.append("images")
     if prev and exists(f"out/{prev}/preview.png") and exists(o("preview.png")):
@@ -142,7 +164,8 @@ def main():
     fill("step", next((s for s in (o("step/index.json"), o("model/index.json")) if exists(s)), None))
     init = [k for k, it in (params.get("fab") or {}).items() if isinstance(it, dict) and it.get("status") in ("初期値", "initial")]
     fill("notes", C["measure"] + ("、" if lang == "ja" else ", ").join(init) if init else None)
-    json.dump(man, open(mpath, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    with open(mpath, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(man, f, ensure_ascii=False, indent=1)
     if filled:
         say.append("  manifest に埋めた欄: " + "・".join(filled))
     say += ["  " + ln for ln in R.step("build_page.py", [py, os.path.join(HERE, "build_page.py"), "--root", root,
@@ -156,13 +179,16 @@ def main():
         say.append(f"  アーティファクトを公開できる環境なら: review/publish_{ver}.json の files で再公開する（{art['url']}、capabilities は3つとも）。"
                    "できない環境では、公開したページはこの版に更新されない")
     if srv.get("url"):
-        try:
-            os.kill(int(srv.get("pid")), 0)
+        up = serving(srv, os.path.join(root, "review"))   # True・False・None（PID は動いているが応答しない）
+        if up:
             say.append(f"  PC のページ {srv['url']} は自動で更新されます")
-        except (OSError, TypeError, ValueError):
+        elif up is None:
+            say.append(f"  PC のページのサーバー（PID {srv.get('pid')}）は動いていますが、{srv['url']} が応答しません"
+                       "（serve_review.py で新しく立てられる）")
+        else:
             say.append("  PC のページのサーバーは止まっています（serve_review.py で動かす）")
     say.append(f"  見る画像: {o('preview.png')}（ほか plan.png・section.png）。全部の出力: {o('make.log')}")
-    print("\n".join(say))
+    print("\n".join(say + bad()))
 
 
 if __name__ == "__main__":

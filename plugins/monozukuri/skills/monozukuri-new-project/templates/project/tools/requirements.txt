@@ -1,10 +1,11 @@
 numpy
+scipy           # convex hulls in trimesh (cadquery used to bring it in)
 shapely>=2.0
 matplotlib>=3.7
 manifold3d>=3.0
 trimesh>=4.0
-networkx        # 断面・平面図（trimesh の section が使う） / sections and plan views (used by trimesh section)
+networkx        # sections and plan views (used by trimesh section)
 pillow>=10.0
 playwright>=1.40
-cascadio        # STEP を読むとき / for reading STEP
-cadquery        # モックを STEP でもエクスポートするとき（無ければ STL だけ） / for writing the mock as STEP too (STL only without it)
+cascadio        # for reading STEP
+cadquery        # for writing the mock as STEP too (STL only without it)

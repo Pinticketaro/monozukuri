@@ -1,0 +1,29 @@
+# テキストのファイルは、どの OS でも LF でチェックアウトする（Windows の git の core.autocrlf=true でも CRLF にしない）。
+# tool_versions.json の sha256 は LF の中身。setup.sh は CRLF だと Git Bash で動かない
+* text=auto eol=lf
+
+# cmd.exe は LF だけのバッチファイルを読み違えることがあるので、.bat・.cmd だけは CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# バイナリ（改行を変えない）
+*.plugin binary
+*.zip    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.pdf    binary
+*.ttf    binary
+*.otf    binary
+*.woff   binary
+*.woff2  binary
+*.stl    binary
+*.step   binary
+*.stp    binary
+*.3mf    binary
+*.glb    binary
+*.f3d    binary
+*.blend  binary

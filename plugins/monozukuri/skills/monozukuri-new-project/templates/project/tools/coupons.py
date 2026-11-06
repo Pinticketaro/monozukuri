@@ -11,7 +11,7 @@
   coupons.md            … 番号と値の対応、測り方、どの値をどこに書くか
 番号は「点の数」で示す（1点＝1番）。文字は使わない（レーザーソフト・スライサーでの文字化けを避けるため）。
 
-使い方: python3 tools/coupons.py [v03] [--lang ja|en]
+使い方: python tools/coupons.py [v03] [--lang ja|en]
 
 English: makes coupons (test pieces). Published values for each machine and material differ by about as much as
 the gap between a press fit and a loose fit, so cut and print these before the real part and set the values for
@@ -170,7 +170,8 @@ def laser_svg(T, out, lang="ja"):
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W:.2f}mm" height="{H:.2f}mm" '
            f'viewBox="0 0 {W:.3f} {H:.3f}">\n<!-- {TXT[lang]["svg_note"].format(T=T)} -->\n'
            + "\n".join(parts) + "\n</svg>\n")
-    open(out, "w", encoding="utf-8").write(svg)
+    with open(out, "w", encoding="utf-8", newline="\n") as f:
+        f.write(svg)
     return widths
 
 
@@ -222,6 +223,9 @@ def fdm_insert(depth, out):
 
 
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ver = common.version_from_argv()
     prm = common.load(ver, lang=common.lang_from_argv())
     P, lang = prm.P, prm.lang
@@ -259,7 +263,8 @@ def partial_lines(lang="ja"):
 
 
 def finish(out, lines):
-    open(os.path.join(out, "coupons.md"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    with open(os.path.join(out, "coupons.md"), "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
     print(out)
     for f in sorted(os.listdir(out)):
         print(" ", f)

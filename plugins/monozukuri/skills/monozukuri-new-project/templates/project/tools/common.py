@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import sysconfig
 from types import SimpleNamespace
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,14 +35,20 @@ MSG = {
            "step_bad": "{name}: STEP {se} / メッシュ {me}",
            "step_count": "{sdir}（STEP {n}個）",
            "step_check": "STEP の大きさの確認:", "step_ok": "すべて一致", "step_ng": "ずれあり → ",
-           "step_skip": "STEP は省きました（CadQuery がありません。monozukuri-setup スキルの `setup.sh` で入ります）",
+           "step_skip": "STEP は省きました（CadQuery がありません。monozukuri-setup スキルで入ります）",
+           "step_skip_arm": "STEP は省きました（Windows の ARM64 版 Python には CadQuery がありません。"
+                            "STEP が要るなら x64 版の Python で monozukuri-setup スキルを実行します）",
+           "not_utf8": "{path} が UTF-8 で保存されていません（ANSI・UTF-16 など）。UTF-8 で保存し直してください",
            "question": "問いの候補:", "qtype": "（{t}）", "note": "注意:"},
     "en": {"no_params": "No params file in params/",
            "assembly": "Assembly (all parts)",
            "step_bad": "{name}: STEP {se} / mesh {me}",
            "step_count": "{sdir} ({n} STEP files)",
            "step_check": "STEP size check:", "step_ok": "all match", "step_ng": "mismatch -> ",
-           "step_skip": "Skipped STEP (CadQuery is not installed. The monozukuri-setup skill's `setup.sh` installs it)",
+           "step_skip": "Skipped STEP (CadQuery is not installed. The monozukuri-setup skill installs it)",
+           "step_skip_arm": "Skipped STEP (CadQuery is not available for Python on Windows ARM64. "
+                            "For STEP, run the monozukuri-setup skill with an x64 Python)",
+           "not_utf8": "{path} is not saved as UTF-8 (ANSI, UTF-16 or similar). Save it again as UTF-8",
            "question": "Question candidate:", "qtype": "({t})", "note": "Note:"},
 }
 
@@ -77,7 +84,7 @@ def ver_key(v):
 
 def versions():
     vs = []
-    for f in glob.glob(os.path.join(PARAMS, "params_v*.json")):
+    for f in glob.glob(os.path.join(glob.escape(PARAMS), "params_v*.json")):     # フォルダ名に [ ] があっても探せるように
         m = re.search(r"params_(" + VER_RE + r")\.json$", f)
         if m:
             vs.append(m.group(1))
@@ -93,17 +100,32 @@ def latest():
 
 def version_from_argv():
     """コマンドの引数に v03 のような版があればそれ、なければ最新。"""
+    # 古いプロジェクトの mock.py（run_mock を呼ばず自分の main() を持つ）も最初にここを呼ぶので、ここでもそろえる
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     for a in sys.argv[1:]:
         if re.fullmatch(VER_RE, a):
             return a
     return latest()
 
 
+def read_json(path, lang=None):
+    """JSON を読む。utf-8-sig なので BOM 付きの UTF-8（Windows の PowerShell 5.1・メモ帳が付ける）も読める。
+    UTF-8 でないファイル（ANSI・UTF-16 で保存したもの）は、トレースバックでなく1行の案内で止める"""
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            return json.load(f)
+    except UnicodeDecodeError:
+        rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+        raise SystemExit(MSG[resolve_lang(lang or lang_from_argv())]["not_utf8"].format(path=rel))
+
+
 def load(ver=None, lang=None):
     """lang を渡すとそれを優先する（--lang の値など）。無ければパラメータファイルの meta.lang → 環境変数 → "ja"。"""
     ver = ver or latest()
     path = os.path.join(PARAMS, f"params_{ver}.json")
-    d = json.load(open(path, encoding="utf-8"))
+    d = read_json(path, lang)
     # params（形の寸法）と fab（テストピースで決める加工パラメータ：カーフ・実板厚・クリアランスなど）を1つにまとめて使う
     items = {**d.get("params", {}), **d.get("fab", {})}
     vals = {k: (v["value"] if isinstance(v, dict) and "value" in v else v) for k, v in items.items()}
@@ -120,7 +142,7 @@ def prev_version(ver):
     （その番号に案が複数あるとき＝ブランチの後は、いちばん後の案。続ける案は meta.parent に書く）"""
     path = os.path.join(PARAMS, f"params_{ver}.json")
     if os.path.exists(path):
-        parent = json.load(open(path, encoding="utf-8")).get("meta", {}).get("parent")
+        parent = read_json(path).get("meta", {}).get("parent")
         if parent:
             return parent
     n = ver_key(ver)[0]
@@ -202,6 +224,9 @@ def run_mock(build):
     パラメータファイルの meta.process が laser でなければ、3Dプリントする部品のサポートが要りそうな面を調べて注意に足す
     （しきい値は fab の overhang_deg、無ければ 45°）。
     表示の言語は prm.lang（パラメータファイルの meta.lang。--lang ja|en で上書きできる）。scene.json の "lang" にも書く。"""
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     import geom
     ver = version_from_argv()
     want_step = "--no-step" not in sys.argv
@@ -229,7 +254,8 @@ def run_mock(build):
 
     scene["notes"] = notes
     sp = os.path.join(out_dir(ver), "scene.json")
-    json.dump(scene, open(sp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    with open(sp, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(scene, f, ensure_ascii=False, indent=1)
     print(sp)
 
     if want_step and geom.has_cad():
@@ -237,7 +263,9 @@ def run_mock(build):
         index = []
         asm = os.path.join(sdir, f"assembly_{ver}.step")
         geom.export_assembly([(k, s, c, o) for _n, s, c, o, k, _opt in parts], asm)
-        index.append({"src": os.path.relpath(asm, ROOT), "name": msg["assembly"], "file": f"assembly_{ver}.step"})
+        # src は確認ページが読むので、どの OS でも "/" で書く
+        index.append({"src": os.path.relpath(asm, ROOT).replace(os.sep, "/"), "name": msg["assembly"],
+                      "file": f"assembly_{ver}.step"})
         bad = []
         for i, (name, solid, _c, _o, key, _opt) in enumerate(parts):
             fp = os.path.join(sdir, f"{i + 1:02d}_{key}.step")
@@ -245,12 +273,17 @@ def run_mock(build):
             ok, se, me = geom.check_step(solid, fp)
             if not ok:
                 bad.append(msg["step_bad"].format(name=name, se=se, me=me))
-            index.append({"src": os.path.relpath(fp, ROOT), "name": name, "file": os.path.basename(fp)})
-        json.dump(index, open(os.path.join(sdir, "index.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+            index.append({"src": os.path.relpath(fp, ROOT).replace(os.sep, "/"), "name": name,
+                          "file": os.path.basename(fp)})
+        with open(os.path.join(sdir, "index.json"), "w", encoding="utf-8", newline="\n") as f:
+            json.dump(index, f, ensure_ascii=False, indent=1)
         print(msg["step_count"].format(sdir=sdir, n=len(index)))
         print(msg["step_check"], msg["step_ok"] if not bad else msg["step_ng"] + " / ".join(bad))
     elif want_step:
-        print(msg["step_skip"])
+        # Windows の ARM64 版 Python には CadQuery のパッケージが無い。見るのは実行中の Python のビルド
+        # （platform.machine() は CPU を返すので、ARM64 の PC の x64 版 Python でも "ARM64" になる）
+        arm = os.name == "nt" and sysconfig.get_platform() == "win-arm64"
+        print(msg["step_skip_arm" if arm else "step_skip"])
 
     for n in notes:
         if isinstance(n, dict):

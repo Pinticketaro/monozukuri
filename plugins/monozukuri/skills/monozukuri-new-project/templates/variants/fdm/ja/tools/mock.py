@@ -7,7 +7,7 @@
   out/<版>/step/NN_<キー>.step … 部品ごとのソリッド（CadQuery があるとき。--no-step で省く）
   out/<版>/step/assembly_<版>.step … 全部品を名前と色付きでまとめたもの（Fusion で開くと部品ごとのコンポーネント）
   out/<版>/step/index.json     … STEP の一覧（確認ページの「エクスポート」に載せるとき使う）
-使い方: python3 tools/mock.py [v03] [--no-step]
+使い方: python tools/mock.py [v03] [--no-step]
 
 ▼ テンプレートの例（全部3Dプリント）：350ml缶を入れる底つきの筒に、ストラップホール付きのラグを左右に付けたケース。
   build() の中を自分の形に書き換える。形は geom.py の関数で書く（同じ定義から STL と STEP の両方ができる）。

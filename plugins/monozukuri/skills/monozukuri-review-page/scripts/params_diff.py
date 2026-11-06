@@ -1,5 +1,5 @@
 """2つの版のパラメータファイル（params_vNN.json）を比べて、変わった値の一覧を出す。
-使い方: python3 params_diff.py params_v02.json params_v03.json [--json out.json]
+使い方: python params_diff.py params_v02.json params_v03.json [--json out.json]
 
 パラメータファイルの形（monozukuri のテンプレート）
   {"meta": {...}, "params": {"outer_w": {"value": 160, "unit": "mm", "label": "外形の幅"}, ...}}
@@ -76,7 +76,16 @@ def diff(a, b):
     return rows
 
 
+def read_json(p):
+    """人や AI が書く JSON。utf-8-sig なら、PowerShell 5.1・メモ帳が付ける BOM があっても読める"""
+    with open(p, encoding="utf-8-sig") as f:
+        return json.load(f)
+
+
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser()
     ap.add_argument("before")
@@ -85,11 +94,12 @@ def main():
     ap.add_argument("--lang", choices=["ja", "en"], help="表示の言葉（既定：新しい版の meta.lang ＞ 環境変数 MONOZUKURI_LANG ＞ ja）" if ja
                     else "language of the printed list (default: meta.lang of the newer file > MONOZUKURI_LANG > ja)")
     a = ap.parse_args()
-    before, after = json.load(open(a.before, encoding="utf-8")), json.load(open(a.after, encoding="utf-8"))
+    before, after = (read_json(os.path.expanduser(p)) for p in (a.before, a.after))   # PowerShell は ~ をそのまま渡す
     lang = resolve_lang(a.lang, meta_lang(after))
     rows = diff(before, after)
     if a.json:
-        json.dump(rows, open(a.json, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        with open(os.path.expanduser(a.json), "w", encoding="utf-8", newline="\n") as f:   # 改行は LF（どの OS でも同じ）
+            json.dump(rows, f, ensure_ascii=False, indent=1)
     if not rows:
         print("変わった値はありません" if lang == "ja" else "No values changed")
     for r in rows:

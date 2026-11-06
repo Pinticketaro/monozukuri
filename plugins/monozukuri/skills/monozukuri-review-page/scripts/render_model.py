@@ -2,15 +2,16 @@
 モックでも、Fusion などで人が作ってエクスポートしたモデルでも同じように使える。
 
 使い方
-  python3 render_model.py --scene scene.json --out preview.png [--glb model.glb]
-  python3 render_model.py frame.stl:#d9d4cb plate.stl:#bcd6e4:0.6 --out preview.png --title "v03 外観"
+  python render_model.py --scene scene.json --out preview.png [--glb model.glb]
+  python render_model.py frame.stl:#d9d4cb plate.stl:#bcd6e4:0.6 --out preview.png --title "v03 外観"
 
 部品の指定は  ファイル[:色[:不透明度[:粗さ[:メタリック]]]]  （色は #rrggbb、不透明度 0〜1）
+  Windows のドライブ名（C:\\...）はそのまま書ける。ファイル名そのものに : は使えない。
 scene.json の形
   {"title": "...", "up": "z", "views": ["iso", "back", "side"],
    "parts": [{"file": "parts/frame.stl", "name": "枠", "color": "#d9d4cb",
               "opacity": 1, "roughness": 0.8, "metalness": 0}]}
-  file は scene.json からの相対パス。up はモデルの上方向（Fusion・多くのCADは z）。
+  file は scene.json からの相対パス（区切りは /）。up はモデルの上方向（Fusion・多くのCADは z）。
   views に使える名前: iso（等角）, back（斜め後ろ）, front（正面）, side（右側面）, top（上面）
   先頭のビューが大きく、残りが下に並ぶ。平行投影（front・side・top）は地面の影をレンダリングせず、
   ビューごとに枠いっぱいに合わせ、隅にスケールバー（例「スケールバー 20mm」）を入れる。
@@ -24,6 +25,7 @@ import argparse
 import http.server
 import json
 import os
+import shutil
 import socketserver
 import sys
 import tempfile
@@ -36,15 +38,16 @@ DOC_EN = """Render 3D models (STL / OBJ / 3MF / GLB / STEP) with shadows into on
 Works the same for mocks and for models exported from Fusion or other CAD.
 
 Usage
-  python3 render_model.py --scene scene.json --out preview.png [--glb model.glb]
-  python3 render_model.py frame.stl:#d9d4cb plate.stl:#bcd6e4:0.6 --out preview.png --title "v03 exterior"
+  python render_model.py --scene scene.json --out preview.png [--glb model.glb]
+  python render_model.py frame.stl:#d9d4cb plate.stl:#bcd6e4:0.6 --out preview.png --title "v03 exterior"
 
 Part spec:  file[:color[:opacity[:roughness[:metalness]]]]  (color #rrggbb, opacity 0-1)
+  A Windows drive (C:\\...) is fine. The file name itself must not contain ":".
 scene.json shape
   {"title": "...", "up": "z", "views": ["iso", "back", "side"], "lang": "en",
    "parts": [{"file": "parts/frame.stl", "name": "Frame", "color": "#d9d4cb",
               "opacity": 1, "roughness": 0.8, "metalness": 0}]}
-  file is relative to scene.json. up is the model's up axis (z for Fusion and most CAD).
+  file is relative to scene.json (use / between folders). up is the model's up axis (z for Fusion and most CAD).
   View names: iso (from above, front left), back (from above, rear), front, side (right), top (straight down)
   The first view is large; the rest line up below it. Parallel views (front, side, top) draw no ground
   shadow, each fills its own frame, and gets a scale bar in the corner (e.g. "Scale 20 mm").
@@ -55,7 +58,7 @@ Language (view names, scale bar, messages): --lang ja|en, else scene.json "lang"
 Requires: trimesh, playwright and three.js from the monozukuri-setup skill (cascadio for STEP)
 """
 
-CACHE = os.environ.get("MONOZUKURI_CACHE", os.path.expanduser("~/.cache/monozukuri"))
+CACHE = os.path.expanduser(os.environ.get("MONOZUKURI_CACHE", "~/.cache/monozukuri"))
 VIEW_LABEL = {"ja": {"iso": "等角", "back": "斜め後ろ", "front": "正面", "side": "右側面", "top": "上面"},
               "en": {"iso": "Isometric", "back": "Rear isometric", "front": "Front", "side": "Right side", "top": "Top"}}
 BAR_LABEL = {"ja": "スケールバー ${L}mm", "en": "Scale ${L} mm"}       # 縮尺の目安（three.js 側のテンプレート文字列）
@@ -81,10 +84,16 @@ def help_lang(argv):
                 got[k] = s[len(k) + 1:]
     data = None
     try:
-        data = json.load(open(got["--scene"], encoding="utf-8")).get("lang")
+        data = read_json(os.path.expanduser(got["--scene"])).get("lang")
     except Exception:
         pass
     return resolve_lang(got.get("--lang"), data)
+
+
+def read_json(path):
+    """scene.json を読む。utf-8-sig なので、PowerShell 5.1・メモ帳が付ける BOM があっても読める"""
+    with open(path, encoding="utf-8-sig") as f:
+        return json.load(f)
 
 
 def hex2rgba(h, a=1.0):
@@ -93,9 +102,13 @@ def hex2rgba(h, a=1.0):
 
 
 def parse_part(spec):
-    bits = spec.split(":")
-    # Windowsのドライブ名（C:\...）は使わない前提。ファイル名に : を含めない
-    p = {"file": bits[0]}
+    # Windows のドライブ名（C:\ や \\server\share）は先に外し、残りを : で分ける。
+    # macOS・Linux の splitdrive はいつも "" を返すので、そのまま : で分ける
+    drive, rest = os.path.splitdrive(spec)
+    if drive and rest[:1] not in ("\\", "/"):    # 「a:#fff」は 1文字のファイル名 a として読む
+        drive, rest = "", spec
+    bits = rest.split(":")
+    p = {"file": drive + bits[0]}
     if len(bits) > 1 and bits[1]:
         p["color"] = bits[1]
     if len(bits) > 2 and bits[2]:
@@ -152,7 +165,10 @@ def build_scene(parts, base, up, lang="ja"):
     if up == "z":
         R = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])
     for i, p in enumerate(parts):
-        f = p["file"] if os.path.isabs(p["file"]) else os.path.join(base, p["file"])
+        # Windows で書いた scene.json（model\frame.stl）も macOS・Linux で読めるよう、区切りを / にそろえる
+        # （Windows は / も受け付ける）。PowerShell は ~ を展開しないので、ここで展開する
+        rel = os.path.expanduser(p["file"].replace("\\", "/"))
+        f = rel if os.path.isabs(rel) else os.path.join(base, rel)
         m = load_mesh(f, lang)
         m.apply_transform(R)
         rgba = hex2rgba(p.get("color", "#c9ccc6"), p.get("opacity", 1.0))
@@ -166,14 +182,17 @@ def build_scene(parts, base, up, lang="ja"):
     return scene
 
 
-HTML = r"""<!doctype html><html><head><meta charset="utf-8">
-<style>html,body{margin:0;background:__BG__;font-family:'Noto Sans CJK JP','Hiragino Sans',sans-serif}
+HTML = r"""<!doctype html><html lang="__LANG__"><head><meta charset="utf-8">
+<style>html,body{margin:0;background:__BG__;font-family:'Noto Sans CJK JP','Hiragino Sans','Yu Gothic UI','Yu Gothic','Meiryo',sans-serif}
 #c{display:block}.lab{position:absolute;font-size:15px;color:#3b4540}
 .bar{position:absolute;height:6px;border:2px solid #3b4540;border-top:0}
 .barlab{position:absolute;font-size:13px;color:#3b4540;white-space:nowrap}</style></head><body>
 <canvas id="c" width="__W__" height="__H__"></canvas>
 <div class="lab" style="left:24px;top:14px;font-size:20px">__TITLE__</div>
 __LABELS__
+<script>// モジュールが読み込めない（MIME・404）・WebGL が作れない・読み込み後の例外を ERR に入れる（180 秒待たずに止める）
+addEventListener('error',e=>{window.ERR=window.ERR||String(e.message||(e.target&&(e.target.src||'script load failed: '+(e.target.type||e.target.tagName)))||e);},true);
+addEventListener('unhandledrejection',e=>{window.ERR=window.ERR||String(e.reason);});</script>
 <script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -296,27 +315,54 @@ def layout(views, W, ext, lang="ja"):
 
 
 def three_dir(lang="ja"):
-    d = os.environ.get("THREE_DIR") or os.path.join(CACHE, "three", "node_modules", "three")
+    d = os.path.expanduser(os.environ.get("THREE_DIR") or os.path.join(CACHE, "three", "node_modules", "three"))
     if not os.path.isfile(os.path.join(d, "build", "three.module.js")):
-        raise SystemExit("three.js が見つかりません。monozukuri-setup スキル（setup.sh）を実行してください" if lang == "ja"
-                         else "three.js was not found. Run the monozukuri-setup skill (setup.sh).")
+        raise SystemExit("three.js が見つかりません。monozukuri-setup スキルを実行してください" if lang == "ja"
+                         else "three.js was not found. Run the monozukuri-setup skill.")
     return d
 
 
+# 配信するファイルの種類。Windows の mimetypes はレジストリを読み、.js が text/plain になっている PC がある
+# （そのままだとブラウザがモジュールを読まない）。ここで決めておけば OS によらず同じになる
+MIME = {".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json",
+        ".glb": "model/gltf-binary", ".wasm": "application/wasm", ".css": "text/css"}
+
+
 def render(scene, title, views, out, width=1800, bg=BG, same_scale=False, lang="ja"):
+    three = three_dir(lang)              # 先に確かめる（無ければ作業フォルダを作らずに止める）
     work = tempfile.mkdtemp()
-    os.symlink(three_dir(lang), os.path.join(work, "three"))
+    try:
+        _render_in(work, three, scene, title, views, out, width, bg, same_scale, lang)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)     # 作業フォルダ（model.glb など）を消す。消せなくても止めない
+
+
+def _render_in(work, three, scene, title, views, out, width, bg, same_scale, lang):
     scene.export(os.path.join(work, "model.glb"))
     H, cells, labels = layout(views, width, scene.extents, lang)
     html = (HTML.replace("__TITLE__", title).replace("__LABELS__", labels).replace("__BARLAB__", BAR_LABEL[lang])
-            .replace("__W__", str(width))
+            .replace("__W__", str(width)).replace("__LANG__", lang)
             .replace("__H__", str(H)).replace("__VIEWS__", json.dumps(views)).replace("__CELLS__", json.dumps(cells))
             .replace("__BG__", bg).replace("__SAME__", "true" if same_scale else "false").replace("__PAD__", str(PAD)))
-    open(os.path.join(work, "index.html"), "w", encoding="utf-8").write(html)
+    with open(os.path.join(work, "index.html"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(html)
 
     class Q(http.server.SimpleHTTPRequestHandler):
+        extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, **MIME}
+
         def __init__(self, *a, **k):
             super().__init__(*a, directory=work, **k)
+
+        def translate_path(self, path):
+            # /three/... は three.js のフォルダから配信する（シンボリックリンクは Windows では
+            # 管理者権限か開発者モードが要るので使わない。別のドライブにあっても読める）
+            if path.startswith("/three/"):
+                self.directory = three
+                try:
+                    return super().translate_path(path[len("/three"):])
+                finally:
+                    self.directory = work
+            return super().translate_path(path)
 
         def log_message(self, *a):
             pass
@@ -339,9 +385,13 @@ def render(scene, title, views, out, width=1800, bg=BG, same_scale=False, lang="
             br.close()
     finally:
         httpd.shutdown()
+        httpd.server_close()
 
 
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser(description=__doc__ if ja else DOC_EN, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("parts", nargs="*", help="ファイル[:色[:不透明度[:粗さ[:メタリック]]]]" if ja
@@ -349,7 +399,8 @@ def main():
     ap.add_argument("--scene", help="scene.json")
     ap.add_argument("--out", required=True)
     ap.add_argument("--title", default="")
-    ap.add_argument("--views", default=None, help="カンマ区切り。例: iso,back,side" if ja else "comma-separated, e.g. iso,back,side")
+    ap.add_argument("--views", nargs="+", default=None, help="カンマ区切り（空白区切りも可）。例: iso,back,side" if ja
+                    else "comma-separated (spaces also work), e.g. iso,back,side")
     ap.add_argument("--up", default=None, choices=["z", "y"])
     ap.add_argument("--glb", help="確認ページ用のGLBも保存する" if ja else "also write a GLB for the review page")
     ap.add_argument("--width", type=int, default=1800)
@@ -358,23 +409,36 @@ def main():
     ap.add_argument("--lang", choices=["ja", "en"], help="図と表示の言葉（既定：scene.json の lang ＞ 環境変数 MONOZUKURI_LANG ＞ ja）" if ja
                     else "language of labels and messages (default: scene.json lang > MONOZUKURI_LANG > ja)")
     a = ap.parse_args()
+    # --views は nargs="+" なので、すぐ後ろの部品まで取ってしまう（--views iso,top a.stl:#fff …）。
+    # ビュー名には . : / \ が入らないので、それを含む語は部品に戻す
+    if a.views:
+        is_part = lambda t: any(c in t for c in ".:/\\")
+        a.parts += [t for t in a.views if is_part(t)]
+        a.views = [t for t in a.views if not is_part(t)] or None
+    # PowerShell は ~ を展開せずに渡すので、ここで展開する
+    a.out = os.path.expanduser(a.out)
+    a.scene = a.scene and os.path.expanduser(a.scene)
+    a.glb = a.glb and os.path.expanduser(a.glb)
 
     if a.scene:
-        sc = json.load(open(a.scene, encoding="utf-8"))
+        sc = read_json(a.scene)
         base = os.path.dirname(os.path.abspath(a.scene))
         parts = sc["parts"]
     else:
         sc, base, parts = {}, os.getcwd(), [parse_part(s) for s in a.parts]
     lang = resolve_lang(a.lang, sc.get("lang"))
-    if not parts:
-        raise SystemExit("部品がありません（--scene か ファイル名を指定）" if lang == "ja"
-                         else "No parts (give --scene or file names)")
-    up = a.up or sc.get("up", "z")
-    views = (a.views.split(",") if a.views else sc.get("views")) or ["iso", "back", "side"]
+    # --views は「iso,top」でも「iso top」でも受ける（PowerShell がカンマで分けて渡すことがある）。
+    # 部品の有無より先に確かめる（--views が部品の名前を取ったときに、その名前を示せる）
+    views = [v.strip() for v in ",".join(a.views).split(",") if v.strip()] if a.views else None
+    views = views or sc.get("views") or ["iso", "back", "side"]
     for v in views:
         if v not in VIEW_LABEL[lang]:
             raise SystemExit(f"ビュー名が違います: {v}（{', '.join(VIEW_LABEL[lang])}）" if lang == "ja"
                              else f"Unknown view name: {v} ({', '.join(VIEW_LABEL[lang])})")
+    if not parts:
+        raise SystemExit("部品がありません（--scene か ファイル名を指定）" if lang == "ja"
+                         else "No parts (give --scene or file names)")
+    up = a.up or sc.get("up", "z")
     title = a.title or sc.get("title", "")
     scene = build_scene(parts, base, up, lang)
     report_size(scene, up, lang)

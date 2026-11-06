@@ -1,7 +1,7 @@
 """プロジェクトのいまの状態を30行ほどで出す。新しい会話の始めに、これだけ読めば続きから始められるように。
 
 使い方
-  python3 status.py <プロジェクト>
+  python status.py <プロジェクト>
 
 出すもの
   バージョン履歴（どの版から作ったか・続けなかった案）、最新の版の要点、確認ページの場所、
@@ -17,6 +17,11 @@ import os
 import re
 import sys
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+from oscompat import serving  # noqa: E402
+
 VER_RE = r"v\d+[a-z]*"
 TENTATIVE = re.compile(r"^\s*(仮|tentative|placeholder)|要確認|要実測|to be (confirmed|measured)", re.I)
 INITIAL = ("初期値", "initial")
@@ -27,16 +32,31 @@ def ver_key(v):
     return (int(m.group(1)), m.group(2)) if m else (0, v or "")
 
 
+BAD = []   # あるのに読めなかった JSON ファイル（パス, 理由）。main で知らせる
+
+
 def load(p, default=None):
+    """JSON を読む。無いときは default。あるのに読めない（JSON の書き方・UTF-16 など）ときも default にして BAD に足す。
+    utf-8-sig: PowerShell 5.1・メモ帳が付ける BOM も読む"""
     try:
-        return json.load(open(p, encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        with open(p, encoding="utf-8-sig") as f:
+            return json.load(f)
+    except FileNotFoundError:
         return default
+    except (OSError, ValueError) as e:            # ValueError: JSON の誤り・UTF-8 でないバイト
+        if all(p != q for q, _ in BAD):
+            BAD.append((p, e))
+        return default
+
+
+def read_text(p):
+    with open(p, encoding="utf-8-sig", errors="replace") as f:
+        return f.read()
 
 
 def params_versions(root):
     vs = []
-    for p in glob.glob(os.path.join(root, "params", "params_v*.json")):
+    for p in glob.glob(os.path.join(glob.escape(root), "params", "params_v*.json")):
         m = re.fullmatch(r"params_(" + VER_RE + r")\.json", os.path.basename(p))
         if m:
             vs.append(m.group(1))
@@ -56,14 +76,6 @@ def parent_of(root, ver, order):
 def short(s, n=80):
     s = " ".join(str(s or "").split())
     return s if len(s) <= n else s[:n - 1] + "…"
-
-
-def alive(pid):
-    try:
-        os.kill(int(pid), 0)
-        return True
-    except (OSError, TypeError, ValueError):
-        return False
 
 
 def flow(order, prev, latest):
@@ -94,10 +106,22 @@ def q_label(q):
 
 
 def main():
-    root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
+    root = os.path.abspath(os.path.expanduser(sys.argv[1] if len(sys.argv) > 1 else "."))   # PowerShell は ~ をそのまま渡す
     rv = os.path.join(root, "review")
     board = load(os.path.join(rv, "board.json"), {}) or {}
-    store = load(os.path.join(rv, "feedback_local.json"), {}) or {}
+    sp = os.path.join(rv, "feedback_local.json")
+    store = load(sp, {})
+    # 読めても形が違う（[] や "feedback" が {} でない）ときも、読めないファイルとして知らせる（serve_review.py の load_store と同じ）
+    if not isinstance(store, dict):
+        BAD.append((sp, "not a JSON object"))
+        store = {}
+    for k in ("feedback", "answers", "decisions"):
+        if not isinstance(store.get(k, {}), dict):
+            BAD.append((sp, f'"{k}" is not a JSON object'))
+            store[k] = {}
     bvers = {v["version"]: v for v in board.get("versions", [])}
     pvers = params_versions(root)
     order = sorted(set(bvers) | set(pvers), key=ver_key)
@@ -129,7 +153,9 @@ def main():
     if art.get("url"):
         page.append(f"公開 {art['url']}（アーティファクト。フィードバックは references/publish-artifact.md の手順で読む）")
     if srv.get("url"):
-        page.append(f"PC {srv['url']}（{'動いている' if alive(srv.get('pid')) else '止まっている。serve_review.py で動かす'}）")
+        up = serving(srv, rv)                     # True・False・None（PID は動いているが応答しない）
+        page.append(f"PC {srv['url']}（" + ("動いている" if up else "止まっている。serve_review.py で動かす" if up is False else
+                    f"PID {srv.get('pid')} は動いているが応答しない。serve_review.py で新しく立てられる") + "）")
     if page:
         L.append("確認ページ: " + "／".join(page))
 
@@ -200,7 +226,7 @@ def main():
     # LOG.md の最後の版の節と、決定事項
     log = os.path.join(root, "LOG.md")
     if os.path.exists(log):
-        secs = re.split(r"(?m)^(?=## )", open(log, encoding="utf-8").read())
+        secs = re.split(r"(?m)^(?=## )", read_text(log))
         last = secs[-1].strip().splitlines() if len(secs) > 1 else []
         if last:
             L.append(f"LOG の最後: {last[0].lstrip('# ').strip()}")
@@ -208,7 +234,7 @@ def main():
     for name in ("決定事項.md", "decisions.md"):
         p = os.path.join(root, "docs", name)
         if os.path.exists(p):
-            rows = [r for r in open(p, encoding="utf-8").read().splitlines()
+            rows = [r for r in read_text(p).splitlines()
                     if r.startswith("|") and not re.match(r"\|\s*-", r)][1:]
             if rows:
                 cells = [c.strip() for c in rows[-1].strip("|").split("|")]
@@ -217,6 +243,8 @@ def main():
 
     nxt = f"v{ver_key(latest)[0] + 1:02d}"
     L.append(f"次の版を作るとき: params/params_{nxt}.json（meta.parent: \"{latest}\"）→ make_version.py <プロジェクト> {nxt}")
+    L += [f"!! 読めないファイル（JSON の書き方か文字コード（UTF-8）を直す）: {os.path.relpath(p, root) if p.startswith(root) else p}（{e}）"
+          for p, e in BAD]
     print("\n".join(L))
 
 

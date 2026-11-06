@@ -7,7 +7,7 @@ Output
   out/<ver>/step/NN_<key>.step  … solid per part (when CadQuery is installed; skip with --no-step)
   out/<ver>/step/assembly_<ver>.step … all parts in one file with names and colors (opens in Fusion as one component per part)
   out/<ver>/step/index.json     … list of the STEP files (used to show them in the "Export" section of the review page)
-Usage: python3 tools/mock.py [v03] [--no-step]
+Usage: python tools/mock.py [v03] [--no-step]
 
 Template example (all 3D printed): a case for a 350ml can. A tube with a bottom, with lugs on the left and right for a strap.
   Rewrite the inside of build() for your own shape. Draw shapes with the tools in geom.py (one definition gives both STL and STEP).

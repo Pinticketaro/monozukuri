@@ -3,18 +3,20 @@
 平面図は、断面（濃い線）の下に、真上から見た外形（薄い面）を重ねる。断面の高さに無いラグや突起も外形で見える。
 
 使い方
-  python3 slices.py --scene scene.json --plan plan.png                 （各部品の高さの中央の断面）
-  python3 slices.py --scene scene.json --plan plan.png --plan-z 45,80  （高さ 45mm と 80mm の断面）
-  python3 slices.py --scene scene.json --section section.png --at y=50      （Y=50mm の断面）
-  python3 slices.py --scene scene.json --section section.png --at x=80 --zoom 0,40
-    --zoom=a,b … 断面の横方向を a〜b mm だけ拡大して描く（負の値があるので = でつなぐ）
-    --zoom=a,b,c,d … 横方向 a〜b mm、高さ c〜d mm を拡大して描く（溝や段差など小さな所を見るとき）
+  python slices.py --scene scene.json --plan plan.png                 （各部品の高さの中央の断面）
+  python slices.py --scene scene.json --plan plan.png --plan-z 45 80  （高さ 45mm と 80mm の断面）
+  python slices.py --scene scene.json --section section.png --at y=50      （Y=50mm の断面）
+  python slices.py --scene scene.json --section section.png --at x=80 --zoom 0 40
+    --zoom a b … 断面の横方向を a〜b mm だけ拡大して描く（--zoom -10 40 のように負の値も書ける）
+    --zoom a b c d … 横方向 a〜b mm、高さ c〜d mm を拡大して描く（溝や段差など小さな所を見るとき）
+    --plan-z と --zoom は、カンマ区切り（--plan-z 45,80、--zoom=-10,40）でも書ける
 座標はモデルのまま（単位mm、up=z を前提。up=y のモデルは scene.json に "up": "y"）。
 言葉（見出し・凡例）は --lang ja|en、無ければ scene.json の "lang"、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 """
 import argparse
 import json
 import os
+import re
 import sys
 
 import matplotlib
@@ -25,6 +27,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
+
+# env.json に日本語のフォントが無いときに使う、Windows のフォント
+WIN_FONTS = os.path.join(os.environ.get("WINDIR") or "C:/Windows", "Fonts")
+FONT_CANDIDATES = [os.path.join(WIN_FONTS, n) for n in ("YuGothM.ttc", "YuGothR.ttc", "meiryo.ttc", "msgothic.ttc")]
+
+
+def read_json(p):
+    """人や AI が書く JSON。utf-8-sig なら、PowerShell 5.1・メモ帳が付ける BOM があっても読める"""
+    with open(p, encoding="utf-8-sig") as f:
+        return json.load(f)
 
 
 def resolve_lang(explicit=None, data=None):
@@ -46,7 +58,7 @@ def help_lang(argv):
                 got[k] = s[len(k) + 1:]
     data = None
     try:
-        data = json.load(open(got["--scene"], encoding="utf-8")).get("lang")
+        data = read_json(os.path.expanduser(got["--scene"])).get("lang")
     except Exception:
         pass
     return resolve_lang(got.get("--lang"), data)
@@ -54,12 +66,22 @@ def help_lang(argv):
 
 def setup_font():
     try:
-        env = json.load(open(os.path.expanduser("~/.cache/monozukuri/env.json"), encoding="utf-8"))
+        cache = os.path.expanduser(os.environ.get("MONOZUKURI_CACHE") or "~/.cache/monozukuri")
+        env = read_json(os.path.join(cache, "env.json"))
         if env.get("cjk_font_path"):
             font_manager.fontManager.addfont(env["cjk_font_path"])
             plt.rcParams["font.family"] = env["cjk_font"]
+            return
     except Exception:
         pass
+    for f in FONT_CANDIDATES:                  # Mac・Linux には無いパスなので、ここで見つかるのは Windows だけ
+        if os.path.exists(f):
+            try:
+                font_manager.fontManager.addfont(f)
+                plt.rcParams["font.family"] = font_manager.FontProperties(fname=f).get_name()
+                return
+            except Exception:
+                pass
 
 
 def load_mm(path):
@@ -75,11 +97,14 @@ def load_mm(path):
 
 
 def load(scene_path):
-    sc = json.load(open(scene_path, encoding="utf-8"))
+    sc = read_json(scene_path)
     base = os.path.dirname(os.path.abspath(scene_path))
     parts = []
     for p in sc["parts"]:
-        f = p["file"] if os.path.isabs(p["file"]) else os.path.join(base, p["file"])
+        fp = p["file"]
+        if os.sep == "/" and "\\" in fp and not os.path.exists(os.path.join(base, fp)):
+            fp = fp.replace("\\", "/")              # Windows で書いた \ 区切りのパス（プロジェクトを移したとき）
+        f = fp if os.path.isabs(fp) else os.path.join(base, fp)
         m = load_mm(f)                          # STEP（メートル）も mm にそろえる
         if sc.get("up", "z") == "y":
             m.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0]))
@@ -209,7 +234,7 @@ def section(sc, parts, out, at, zoom, lang="ja"):
     ax.set_axisbelow(True)
     ax.grid(True, color="#dde3de", lw=0.6)
     if zoom:
-        z = [float(v) for v in zoom.split(",")]
+        z = zoom
         ax.set_xlim(z[0], z[1])
         if len(z) >= 4:
             ax.set_ylim(z[2], z[3])
@@ -223,31 +248,60 @@ def section(sc, parts, out, at, zoom, lang="ja"):
     print(out)
 
 
+def numbers(vals):
+    """--plan-z・--zoom の値。45,80 と 45 80 のどちらも受ける（PowerShell はカンマの所で分けて渡す）"""
+    return [float(v) for s in vals for v in s.split(",") if v.strip()] if vals else None
+
+
+NUMS = re.compile(r"-?(\d+\.?\d*|\.\d+)(,-?(\d+\.?\d*|\.\d+))*")
+
+
+def join_lists(argv):
+    """--plan-z・--zoom の値を、--zoom=-10,40 のように1つの引数にまとめる。PowerShell は --zoom=0,40 を --zoom=0 と 40 に
+    分けて渡す。--zoom -10,40 は、そのままだと - で始まるのでオプションと間違えられる。どちらも同じ値になる"""
+    out = []
+    for s in argv:
+        if out and out[-1] in ("--plan-z", "--zoom") and NUMS.fullmatch(s):
+            out[-1] += "=" + s
+        elif out and out[-1].startswith(("--plan-z=", "--zoom=")) and NUMS.fullmatch(s):
+            out[-1] += "," + s
+        else:
+            out.append(s)
+    return out
+
+
 def main():
+    for _s in (sys.stdout, sys.stderr):        # Windows のパイプは ANSI コードページになるので UTF-8 にそろえる
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     ja = help_lang(sys.argv[1:]) == "ja"
     ap = argparse.ArgumentParser()
     ap.add_argument("--scene", required=True)
     ap.add_argument("--plan")
-    ap.add_argument("--plan-z", help="平面図の断面の高さ（mm、カンマ区切り）。例: 45,80。省くと各部品の高さの中央" if ja
-                    else "heights to cut the plan at (mm, comma-separated), e.g. 45,80. Default: mid-height of each part")
+    ap.add_argument("--plan-z", nargs="+", help="平面図の断面の高さ（mm）。例: 45 80（45,80 でもよい）。省くと各部品の高さの中央" if ja
+                    else "heights to cut the plan at (mm), e.g. 45 80 (or 45,80). Default: mid-height of each part")
     ap.add_argument("--section")
     ap.add_argument("--at", default=None, help="x=値 または y=値（既定：Yの中央）" if ja else "x=value or y=value (default: middle of Y)")
-    ap.add_argument("--zoom")
+    ap.add_argument("--zoom", nargs="+", help="断面図を拡大する範囲（mm）。横 a b、または 横 a b 高さ c d。例: -10 40" if ja
+                    else "range to zoom the section to (mm): horizontal a b, or a b c d with height. e.g. -10 40")
     ap.add_argument("--lang", choices=["ja", "en"], help="見出し・凡例の言葉（既定：scene.json の lang ＞ 環境変数 MONOZUKURI_LANG ＞ ja）" if ja
                     else "language of titles and legends (default: scene.json lang > MONOZUKURI_LANG > ja)")
-    a = ap.parse_args()
+    a = ap.parse_args(join_lists(sys.argv[1:]))
+    for k in ("scene", "plan", "section"):     # PowerShell は ~ をそのまま渡す
+        if getattr(a, k):
+            setattr(a, k, os.path.expanduser(getattr(a, k)))
     setup_font()
     sc, parts = load(a.scene)
     lang = resolve_lang(a.lang, sc.get("lang"))
     if a.plan:
-        plan(sc, parts, a.plan, [float(z) for z in a.plan_z.split(",")] if a.plan_z else None, lang)
+        plan(sc, parts, a.plan, numbers(a.plan_z), lang)
     if a.section:
         at = a.at
         if not at:
             lo = min(m.bounds[0][1] for _, _, m in parts)
             hi = max(m.bounds[1][1] for _, _, m in parts)
             at = f"y={(lo + hi) / 2:.2f}"
-        section(sc, parts, a.section, at, a.zoom, lang)
+        section(sc, parts, a.section, at, numbers(a.zoom), lang)
 
 
 if __name__ == "__main__":
