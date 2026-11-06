@@ -38,7 +38,7 @@ English: [README.en.md](README.en.md)
 
 | スキル | こう頼むと動く | すること |
 |---|---|---|
-| monozukuri-setup | 「モックの環境を整えて」「レンダリングできるようにして」「Mac でレンダリングできるようにして」 | レンダリング・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）を入れ、テストレンダリングまで確かめる。Mac では `~/.monozukuri/venv` に入れる。スクリプトが足りないもので止まったときも使う |
+| monozukuri-setup | 「モックの環境を整えて」「レンダリングできるようにして」「Mac でレンダリングできるようにして」「Windows でレンダリングできるようにして」 | レンダリング・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）を入れ、テストレンダリングまで確かめる。Mac と Windows では `~/.monozukuri/venv` に入れる。スクリプトが足りないもので止まったときも使う |
 | monozukuri-new-project | 「新しいものづくりを始めたい」「テストピースを作って」「カーフを測りたい」「インサートの穴径は」「この材料はレーザーカットしていい？」「ツールを更新して」「サポートが要る所を調べて」「英語にして」 | テンプレートからプロジェクトを作り、最初のモックをレンダリングする。テストピース・はめあい・材料の可否の相談にも答える。プラグインを更新したら、既存プロジェクトのツールを新しくする。プロジェクトの言語（日本語／英語）を決め、切り替える |
 | monozukuri-review-page | 「この版の確認ページを作って」「前の版と比べて」「Fusionで作ったモデルを見せて」「フィードバックを読んで」「フィードバックを反映して」「ブラウザで確認ページを開いて」「外観だけ見せて」 | モックや人が作ったモデルをレンダリングし、前の版と比べ、プロジェクトごとの確認ページ（同じURL）に版を追加して、PC のブラウザで開く（Claude アプリではアーティファクトとしても公開できる）。書かれたフィードバックを読み、反映したものを閉じる |
 
@@ -84,7 +84,7 @@ review/                    確認ページの情報（URL など）
 - **英語になるもの**：確認ページの文言、図の文字（ビュー名・スケールバー）、寸法表とテストピースの手順書、スクリプトの表示、プロジェクトの文書。部品名や寸法の `label` は、パラメータファイルや `mock.py` に書いた言葉のまま。
 - **前の版**：作り終えた版の図は、作ったときの言語のまま。
 - **ツールの更新**：`scaffold.py --update-tools` が置く `mock.py.new` も、プロジェクトの言語（いちばん新しいパラメータファイルの `meta.lang`）になる。
-- **monozukuri-setup**：プロジェクトを持たないので、環境変数 `MONOZUKURI_LANG`（`ja`／`en`）で決める。英語で頼めば AI が `MONOZUKURI_LANG=en` を付ける。英語でも日本語フォントは入れる。
+- **monozukuri-setup**：プロジェクトを持たないので、`--lang ja|en`（無ければ環境変数 `MONOZUKURI_LANG`）で決める。英語で頼めば AI が `--lang en` を付ける。英語でも日本語フォントは入れる。
 - **決める順**：スクリプトの `--lang ja|en` ＞ 処理するデータの言語（パラメータファイルの `meta.lang`、`scene.json`・manifest・`review/board.json` の `lang`）＞ 環境変数 `MONOZUKURI_LANG` ＞ `ja`。確認ページの言語は `review/board.json` の `lang` に残る。
 - **加工パラメータの status**：英語のパラメータファイルでは英語で書く（`initial`・`measured`・`guideline`・`standard`・`calculated` など）。
 
@@ -173,13 +173,18 @@ monozukuri-new-project の参照資料（`skills/monozukuri-new-project/referenc
 
 ## 必要なもの
 
-- Python 3.10 以上、Node.js（three.js を入れるため）。monozukuri-setup スキルが残りをそろえる。
+- Python 3.10 以上（Windows は 3.12 がいちばん確実）、Node.js（three.js を入れるため）。Windows では Git も（Claude Code が Git Bash を使うため）。monozukuri-setup スキルが残りをそろえる。
+- macOS・Linux・Windows（PowerShell・Git Bash・WSL）で動く。Windows のままで動かすのは 0.8.0 から（実機ではまだ試していない）。入れ方は [リポジトリの README](../../README.md) の「対応環境」と「Windows の場合」。
 - 外部サービスの接続や環境変数は不要。
 
 ## スクリプトを直接使うとき
 
-各スキルの `scripts/` と、テンプレートの `tools/` にある。どれも `--help` で使い方が出る。表示の言語は `--lang ja|en` で変えられる（無ければデータの言語、上の「言語」）。
+各スキルの `scripts/` と、テンプレートの `tools/` にある。どれも `--help` で使い方が出る（check_env.py だけは `--help` が無く、そのまま確かめを始める）。表示の言語は `--lang ja|en` で変えられる（無ければデータの言語、上の「言語」）。
 
+実行する Python は、monozukuri-setup が記録したもの（`check_env.py` の最後の行「monozukuri のスクリプトは次の Python で実行する: <パス>」か、`~/.cache/monozukuri/env.json` の `python`）。mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`、Linux は `python3`。
+
+- `setup.py`（monozukuri-setup）：環境のセットアップ。どの OS でも python で動く（mac・Linux は `python3 scripts/setup.py`（`bash scripts/setup.sh` でも同じ）、Windows は `python scripts/setup.py` か `py -3.12 scripts/setup.py`）。`--no-cad`・`--lang`・`--venv`・`--no-venv`・`--python`
+- `check_env.py`（monozukuri-setup）：入っているものとテストレンダリングの確かめだけ
 - `render_model.py`：STL/OBJ/3MF/GLB/STEP をシェーディングしてレンダリング（複数の視点を1枚に）、GLB のエクスポート
 - `slices.py`：平面図（部品の断面と、上面から見た外形の重ね合わせ。`--plan-z` で断面の高さ）と断面図
 - `compare.py`：前後の画像を並べ、変わった所を赤で強調

@@ -11,9 +11,9 @@ description: >
   that the agent reads back from review/feedback_local.json. Where artifacts can be published (Claude apps),
   the same page can also be published as an artifact.
 license: MIT
-compatibility: macOS と Linux（Windows は WSL）。Python 3.10 以上と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python 3.10 以上（Windows は 3.12 がいちばん確実）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
 metadata:
-  version: "0.7.1"
+  version: "0.8.0"
 ---
 
 # 確認ページ（確認ボード）
@@ -22,7 +22,9 @@ metadata:
 1つのプロジェクトに1つのページ（同じ URL）を持ち、版を重ねるたびに追加していく。ページには版の切り替え、外観・図、前の版との比較スライダー、寸法の変化、3Dビュー、STL / STEP のエクスポート、フィードバック欄がある。
 
 スクリプトはこのスキルの `scripts/`、ページのテンプレートは `assets/board.html`（ページの決まりに合わせて作ってあるので手で書き直さない）。
-環境が足りないとき（import エラー、three.js がない）は先に monozukuri-setup スキルを実行する。PC（mac）では、コマンドの `python3` を monozukuri-setup が示した Python（`~/.monozukuri/venv/bin/python`）に読み替える。
+環境が足りないとき（import エラー、three.js がない）は先に monozukuri-setup スキルを実行する。
+コマンドの `<python>` は、monozukuri-setup が記録した Python。check_env.py の最後の行（「monozukuri のスクリプトは次の Python で実行する: <パス>」）か、`~/.cache/monozukuri/env.json` の `python`（Windows では区切りを / にした `python_posix`）。例：mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`、Linux（クラウドの作業環境）は `python3`。PowerShell では、引用符で囲んだパスで始まるコマンドの前に `&` を付ける（`& "C:/Users/山田 太郎/.monozukuri/venv/Scripts/python.exe" <scripts>/status.py <プロジェクト>`）。
+`<scripts>`・`<プロジェクト>` のパスは、Windows でも区切りを / にする（`C:/work/stand`。Git Bash は引用符の外の \ を消すため）。空白を含むパスは " で囲む。
 
 日本語の文（manifest の文・問い・LOG.md・決定事項・会話の返事）は、monozukuri-new-project スキルの `references/ai-words-ja.md`（AI ワード辞書）に従う。
 
@@ -38,7 +40,7 @@ metadata:
 ## 手順
 
 ### 1. プロジェクトと版を確かめる
-- **会話の始め（続きから）**：まず `python3 <scripts>/status.py <プロジェクト>` を実行し、その出力（30行ほど）で状況をつかむ：バージョン履歴、最新の版の要点、確認ページの場所、未対応のフィードバック（PC のページ）、問いの答えと決定、仮の寸法・根拠の無い寸法・テストピースで測る値、LOG の「次に試す」。`review/board.json`・パラメータファイル・`LOG.md`・`docs/決定事項.md` を丸ごと読まない（要る所だけ grep や行の範囲で読む）。
+- **会話の始め（続きから）**：まず `<python> <scripts>/status.py <プロジェクト>` を実行し、その出力（30行ほど）で状況をつかむ：バージョン履歴、最新の版の要点、確認ページの場所、未対応のフィードバック（PC のページ）、問いの答えと決定、仮の寸法・根拠の無い寸法・テストピースで測る値、LOG の「次に試す」。`review/board.json`・パラメータファイル・`LOG.md`・`docs/決定事項.md` を丸ごと読まない（要る所だけ、ファイルを読む機能の行の範囲や検索（grep。PowerShell では Select-String）で読む）。
 - プロジェクトのフォルダ（`params/` や `review/` がある所）と、載せる版 `vNN`・前の版 `vPP` を決める。
 - `review/board.json` があれば、ページはもうある（版を足す）。無ければ初回。`review/artifact.json` があれば、アーティファクトとしても公開してある（URL が入っている）。
 - 版の種類（`stage`）を決める：`モック`／`モデル（Fusion）`／`試作品` など（英語のプロジェクトは `Mock`／`Model (Fusion)`／`Prototype`）。
@@ -53,9 +55,10 @@ metadata:
 - 詳しい形と更新の仕方は `references/feedback.md`。
 
 ### 3. 版を作る（1回のコマンドで）
-パラメータファイル `params/params_vNN.json`（`meta.parent` に元の版）と、要れば `tools/mock.py` を直したら、版の文だけの manifest `out/vNN/manifest.json`（`stage`・`summary`・`changes`・`questions`。任意で `notes`・`compare`・足す `images`。書き方は手順4）を先に書いて、1回で作る：
+パラメータファイル `params/params_vNN.json`（`meta.parent` に元の版）と、要れば `tools/mock.py` を直したら、版の文だけの manifest `out/vNN/manifest.json`（`stage`・`summary`・`changes`・`questions`。任意で `notes`・`compare`・足す `images`。書き方は手順4）を先に書いて、1回で作る。
+manifest・パラメータファイルなど AI が書くファイルは、ファイルを書く機能（Claude の Write・Edit、Codex の apply_patch など）で UTF-8 で書く。PowerShell の `>`・`Set-Content`・`Out-File` では書かない（UTF-16 や BOM 付きになる）。
 ```bash
-python3 <scripts>/make_version.py <プロジェクト> vNN      # 1〜2分かかることがある。コマンドのタイムアウトを5分ほどにする（Claude Code では timeout 300000）
+<python> <scripts>/make_version.py <プロジェクト> vNN      # 1〜2分かかることがある。コマンドのタイムアウトを5分ほどにする（Claude Code では timeout 300000）
 ```
 - mock → 外観（GLB も）→ 平面図・断面 → 寸法の差 → manifest の空いている欄を埋める → `build_page.py` まで進み、要約だけを出す（全部の出力は `out/vNN/make.log`）。埋める欄は `references/manifest.md`（make_version.py の冒頭にもある）。
 - 要約の「注意」「問いの候補」「全体の大きさ」と寸法の差を確かめ、できた画像を見る（下の2つ）。直したら同じコマンドをもう一度（同じ版は置き換わる）。画像は変えずに文だけ直すときは `--page-only`。
@@ -75,17 +78,17 @@ make_version.py を使うときは、文の欄（`stage`・`summary`・`changes`
 ### 5. PC のブラウザで開く
 AI がクラウドの作業環境で動いていて（Claude アプリなど）、ユーザーの PC のブラウザから localhost に届かないときは、serve_review.py を使わない。アーティファクトを公開できれば `references/publish-artifact.md` で公開し、できなければ画像（`out/vNN/preview.png` など）で確かめてもらう。localhost の URL は渡さない。
 ```bash
-python3 <scripts>/serve_review.py <プロジェクト>        # サーバーは別に動き続け、URL を出してすぐ戻る（バックグラウンドで実行しなくてよい）
+<python> <scripts>/serve_review.py <プロジェクト>        # サーバーは別に動き続け、URL を出してすぐ戻る（バックグラウンドで実行しなくてよい）
 ```
-- `review/` を localhost の空いているポートで配信し、ブラウザで開く（macOS は `open`、Linux は `xdg-open`）。3Dモデルの読み込みは file:// では動かないので、サーバーで配信する。すでに動いていれば、そのページを開くだけ。
+- `review/` を localhost の空いているポートで配信し、既定のブラウザで開く（Windows・macOS・Linux。開けないときは URL を出す）。3Dモデルの読み込みは file:// では動かないので、サーバーで配信する。すでに動いていれば、そのページを開くだけ。
 - フィードバックと問いの答えは `review/feedback_local.json` に保存され、「エクスポート」はふつうのダウンロードになる。
 - `review/artifact.json` があり、アーティファクトを公開できるとき（Claude アプリなど）は、公開したページも `references/publish-artifact.md` で再公開する。公開できない環境では、公開したページはこの版に更新されないことをユーザーに伝える。
-- ユーザーには、ページの URL（serve_review.py が出す localhost の URL）と「ブラウザで確認し、終わったら『フィードバックを読んで』と頼んでください」（英語なら "Check it in the browser, and when you're done, ask me to read the feedback."）と伝え、止め方（`python3 <scripts>/serve_review.py <プロジェクト> --stop`）も伝える。
+- ユーザーには、ページの URL（serve_review.py が出す localhost の URL）と「ブラウザで確認し、終わったら『フィードバックを読んで』と頼んでください」（英語なら "Check it in the browser, and when you're done, ask me to read the feedback."）と伝え、止め方（`<python> <scripts>/serve_review.py <プロジェクト> --stop`。serve_review.py が出す「止めるとき」の行をそのまま伝えてよい）も伝える。
 - 版を足したら `build_page.py` をもう一度実行するだけでよい（サーバーはそのまま）。開いているページは3秒ごとに変わったかを見て、新しい版は自動で読み直し、AI がファイルに書いた返信・決定もそのまま出る（書きかけの文があるときは「読み込む」ボタンを出して待つ）。
-- 外観だけ手早く見たいとき（「外観だけ見せて」）は、レンダリングした PNG を開くだけでもよい（macOS は `open out/vNN/preview.png`、Linux は `xdg-open`。開けない環境ではパスを伝える）。
+- 外観だけ手早く見たいとき（「外観だけ見せて」）は、レンダリングした PNG を開くだけでもよい（macOS は `open out/vNN/preview.png`、Linux は `xdg-open`、Windows は `Start-Process out/vNN/preview.png`（PowerShell）・`start out/vNN/preview.png`（Git Bash）。開けない環境ではパスを伝える）。
 
 ### 6. 反映したフィードバックを閉じる
-この版で対応したフィードバックだけ、`review/feedback_local.json` の該当するドキュメントに書き足す：`status`（`applied` 反映済み／`answered` 回答済み／`declined` 見送り）、`resolvedIn: "vNN"`、`reply`（何をどうしたかを1文。プロジェクトの言語で書く）。対応していないものは触らない。書く直前にファイルを読み直す（ページが同時に書いた分を消さない）。ページを開いていれば数秒で表示される。
+この版で対応したフィードバックだけ、`review/feedback_local.json` の該当するドキュメントに書き足す：`status`（`applied` 反映済み／`answered` 回答済み／`declined` 見送り）、`resolvedIn: "vNN"`、`reply`（何をどうしたかを1文。プロジェクトの言語で書く）。対応していないものは触らない。書く直前にファイルを読み直す（ページが同時に書いた分を消さない）。書くのは手順3と同じく、ファイルを書く機能で UTF-8 で（PowerShell の `>`・`Set-Content`・`Out-File` は使わない）。ページを開いていれば数秒で表示される。
 - 選ぶ問いでユーザーが決めたものは、同じファイルの `decisions` に足す（ページに「決定：B案」が付く。形は `references/feedback.md`）。
 - アーティファクトとして公開したページ（`review/artifact.json` がある）で書かれたものは、`references/publish-artifact.md` の手順で閉じる。
 
@@ -99,7 +102,7 @@ python3 <scripts>/serve_review.py <プロジェクト>        # サーバーは�
 2つ以上の案を並べて試したいとき（`v04a`・`v04b`）は、`references/branches.md` を読む。
 
 ## 決まり
-- トークンを節約する：会話が長いほど、AI を呼ぶたびに読み直す量が増える。1つの版は1つの会話で進め、次の版は新しい会話で `status.py` から始める。大きなファイル（`review/board.json`、パラメータファイル全体、`tools/mock.py` 全体、monozukuri-new-project の `references/fab-research-report.md`）は丸ごと読まず、grep や行の範囲で要る所だけ読む。続けて実行できるコマンドは1回にまとめる。
+- トークンを節約する：会話が長いほど、AI を呼ぶたびに読み直す量が増える。1つの版は1つの会話で進め、次の版は新しい会話で `status.py` から始める。大きなファイル（`review/board.json`、パラメータファイル全体、`tools/mock.py` 全体、monozukuri-new-project の `references/fab-research-report.md`）は丸ごと読まず、ファイルを読む機能の行の範囲や検索（grep。PowerShell では Select-String）で要る所だけ読む。続けて実行できるコマンドは1回にまとめる（Windows PowerShell 5.1 には `&&` が無いので `;` で区切る）。
 - 段階（stage）は4つのステージゲートに合わせる：モック／テストピース／部分試作／モデル（Fusion）／試作品（英語のプロジェクトは Mock／Coupons／Partial prototype／Model (Fusion)／Prototype）。テストピースや部分試作の写真も版として載せてよい（images に写真を入れる）。
 - 1つの版で変える条件はなるべく1つ。複数変えるなら、変えたことを全部 `changes` に書く。
 - 画像は版番号付きのパス（`out/vNN/…`）で作る。前の版の画像を上書きしない。

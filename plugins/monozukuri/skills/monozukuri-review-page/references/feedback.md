@@ -18,6 +18,7 @@
 ```
 - ページから書けるのは `feedback` と `answers` だけ（`decisions` は AI だけが書く）。
 - サーバーが動いている間に書き換えるときは、書く直前にもう一度読み直してから書く（ページが同時に書いた分を消さない）。
+- AI が書くときは、ファイルを書く機能（Claude の Write・Edit、Codex の apply_patch など）で UTF-8 で書く。PowerShell の `>`・`Set-Content`・`Out-File` では書かない（UTF-16 や BOM 付きになる）。`docs/決定事項.md` に足すときも同じ。
 
 ## フィードバック（`feedback`）1件の形
 | フィールド | 中身 |

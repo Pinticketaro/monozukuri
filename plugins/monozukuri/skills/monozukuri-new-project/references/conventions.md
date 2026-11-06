@@ -17,6 +17,7 @@
 - テストピースで測ったら、値・status・basis（測った日と条件）を書き換えて版を上げる。測定の生データは `measurements/試し片記録.csv`。測った値は `shelf.py record` でライブラリにも残す。
 - 部品ライブラリから入れた寸法の basis は「部品ライブラリ：<部品>（元の根拠）」、ライブラリの実測から入れた fab は「実測（<元のプロジェクト> <版>・<日付>）。ライブラリ：materials/<材料>（<機材>）」。
 - 新しい版は、前の版のファイルをコピーして版番号を上げ、変える値だけを書き換える。
+- パラメータファイル・`tools/mock.py`・`LOG.md`・決定事項などは、ファイルを書く機能（Claude の Write・Edit、Codex の apply_patch など）で UTF-8 で書く。PowerShell の `>`・`Set-Content`・`Out-File` では書かない（UTF-16 や BOM 付きになる）。
 
 ## 寸法の根拠と資料
 - **寸法ごとに根拠を残す**：`params` の項目にも `basis`（どこから来た値か）を書く。図面・データシートなら名前とページ（例「公式図面 Raspberry Pi 4 mechanical drawing p.1」）、実測なら「実測（measurements/実測.md）」、決めた値なら「決定事項（v03）」。資料のファイルか URL があれば `ref` に書く（`"ref": "refs/rpi4-mechanical.pdf"`）。

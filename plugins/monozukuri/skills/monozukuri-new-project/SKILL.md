@@ -13,21 +13,24 @@ description: >
   material safety, a personal library of machines, materials and parts, and tool updates after a plugin update.
   Flags FDM overhangs that need support. Projects are Japanese or English, switched through chat.
 license: MIT
-compatibility: macOS と Linux（Windows は WSL）。Python 3.10 以上と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python 3.10 以上（Windows は 3.12 がいちばん確実）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
 metadata:
-  version: "0.7.1"
+  version: "0.8.0"
 ---
 
 # 新規プロジェクトのテンプレート
 
 モックで形と比率を決め、確認ページのフィードバックで版を重ね、固まったら人がモデル化する、という流れのプロジェクトを作る。
-コマンドの `scripts/` はこのスキルのフォルダからの相対パス（`--dest` や `<プロジェクト>` は絶対パスで渡す）。テンプレートは `templates/`（言語によらないツールなどは `project/`、言語ごとの文書・パラメータファイル・例の mock.py は `lang/<ja|en>/`、加工方法ごとの例は `variants/<加工方法>/<ja|en>/`）、作成は `scripts/scaffold.py`。参照資料：
+コマンドの `scripts/` はこのスキルのフォルダからの相対パス（`--dest` や `<プロジェクト>` は絶対パスで渡す。Windows でも区切りは / でよい：`C:/work/stand`。空白を含むパスは " で囲む。`~` はスクリプトが展開する）。テンプレートは `templates/`（言語によらないツールなどは `project/`、言語ごとの文書・パラメータファイル・例の mock.py は `lang/<ja|en>/`、加工方法ごとの例は `variants/<加工方法>/<ja|en>/`）、作成は `scripts/scaffold.py`。参照資料：
 - `references/conventions.md`：モックの細かさ、パラメータファイル、寸法の根拠と資料、反復の仕方
 - `references/fab-requirements.md`：レーザー・3Dプリント・データ形式・組み立ての技術要件（数値は「初期値＋信頼度＋測り方」）
 - `references/fab-safety.md`：レーザーカットしてはいけない材料（全面禁止／ラボ次第）
 - `references/fab-research-report.md`：上の要件の出典つき全文（数値の根拠を示すときに読む）
 - `references/ai-words-ja.md`：AI ワード辞書（日本語で書くときに使わない言い方と、代わりに使う言い方）。日本語の文を書くときはいつもこれに従う
 - たまに使うもの：`references/language.md`（英語のプロジェクト・言語の切り替え）、`references/library.md`（ライブラリ）、`references/workplace.md`（PC とクラウドの作業場所）、`references/update-tools.md`（プラグインを更新したら）
+
+コマンドの `<python>` は、monozukuri-setup が記録した Python。check_env.py の最後の行（「monozukuri のスクリプトは次の Python で実行する: <パス>」）か、`~/.cache/monozukuri/env.json` の `python`（Windows では区切りを / にした `python_posix`）。例：mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`、Linux（クラウドの作業環境）は `python3`。PowerShell では、引用符で囲んだパスで始まるコマンドの前に `&` を付ける（`& "C:/Users/山田 太郎/.monozukuri/venv/Scripts/python.exe" tools/mock.py v01`）。
+AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.md`・`docs/決定事項.md` など）は、ファイルを書く機能（Claude の Write・Edit、Codex の apply_patch など）で UTF-8 で書く。PowerShell の `>`・`Set-Content`・`Out-File` では書かない（UTF-16 や BOM 付きになる）。
 
 前提として持っておく考え方：公開されている数値は初期値。出典どうしのずれが圧入とガタの差ほどあるので、カーフ・実板厚・クリアランス・インサート穴はテストピースで測った値を使う。
 
@@ -39,13 +42,13 @@ metadata:
 ユーザーが書いた言語で答える。プロジェクトの言語はパラメータファイルの `meta.lang`（`ja`／`en`、無ければ `ja`）。英語のプロジェクト（ファイル名・status の読み替え）と、言語の切り替え（「英語にして」）は `references/language.md` を読む。
 
 ## ライブラリ
-機材・材料・既製品の寸法を置く個人のライブラリ（`~/.monozukuri/shelf/`。任意で、無くても手順はそのまま動く）。`python3 scripts/shelf.py list` で見て、選択肢に使う。ライブラリを作る・部品を登録する・コマンドの一覧は `references/library.md`（`shelf.py --help` でも出る）。
+機材・材料・既製品の寸法を置く個人のライブラリ（`~/.monozukuri/shelf/`。任意で、無くても手順はそのまま動く）。`<python> scripts/shelf.py list` で見て、選択肢に使う。ライブラリを作る・部品を登録する・コマンドの一覧は `references/library.md`（`shelf.py --help` でも出る）。
 
 ## 手順
 
 ### 1. 決めることを集める
 依頼文・添付（スケッチ、写真、寸法メモ）から読み取り、足りないものだけを、上の「聞き方」に沿ってまとめて聞く。
-先に `python3 scripts/shelf.py list` でライブラリを見て、ライブラリにある機材・材料・部品を選択肢に使う（ライブラリが無ければ今までどおりの選択肢で聞き、「ライブラリを作りますか」を1問足してよい）。
+先に `<python> scripts/shelf.py list` でライブラリを見て、ライブラリにある機材・材料・部品を選択肢に使う（ライブラリが無ければ今までどおりの選択肢で聞き、「ライブラリを作りますか」を1問足してよい）。
 - 名前と、何を作るか（1行）：依頼文から決められないときだけ聞く（自由入力になるので「その他」で受ける）
 - **加工方法**（いつも聞く。依頼文で明らかなら確かめるだけ）：「3Dプリントだけ」／「レーザーだけ」／「両方（例：板はレーザー、枠は3Dプリント）」。ここから `--process` を決める（`fdm`／`laser`／`both`）
 - 使うプリンター：ライブラリのプリンターを選択肢にする（例「Ender-3 S1 Pro（220×220×270）」）。ライブラリが無ければ造形範囲で聞く：「220×220（Ender-3 など）」／「256×256（Bambu Lab など）」／「300×300」。レーザー加工機もライブラリにあれば選ぶ（加工範囲は分かれば）
@@ -56,16 +59,16 @@ metadata:
 
 
 ### 作業場所の決め方（手順2の前に）
-- PC のフォルダに置き、PC にレンダリング環境がそろっていれば（monozukuri-setup の表がすべて OK）、PC で直接作り、レンダリングも PC でする。コマンドの `python3` は monozukuri-setup が示した Python に読み替える（mac では `~/.monozukuri/venv/bin/python`）。
+- PC のフォルダに置き、PC にレンダリング環境がそろっていれば（monozukuri-setup の表がすべて OK）、PC で直接作り、レンダリングも PC でする。
 - クラウドの作業環境だけで作るときは、その中に作る（確認ページは、アーティファクトを公開できればそれで作り、できなければ画像で確かめてもらう）。
 - PC のフォルダに置くがレンダリングはクラウドでするとき（Claude アプリで、PC にレンダリング環境が無い）は、`references/workplace.md` を読む。
 
 ### 2. テンプレートからプロジェクトを作る
 ```bash
-python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<1行>" \
-  --methods "<加工方法>" --process <laser|fdm|both> --bed 220x220 [--origin "<原点と向き>"] [--lang <ja|en>] [--git] \
-  [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
+<python> scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<1行>" --methods "<加工方法>" --process <laser|fdm|both> --bed 220x220 [--origin "<原点と向き>"] [--lang <ja|en>] [--git] [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
 ```
+- 1行で書く（PowerShell では行末の `\` で行を続けられない）。`[ ]` の引数は要るときだけ付ける。
+- `--name`・`--summary`・`--methods`・`--origin` の文に半角の `"` を入れない（「」を使う）。空の値（`""`）は渡さず、引数ごと省く（Windows PowerShell 5.1 が崩す）。
 - ライブラリの機材・材料を選んだら `--printer`・`--laser`・`--material` で渡し、`--bed` は省く（実測があれば `fab` に最初から入る）。引数の詳しい説明は `scaffold.py --help`。
 - `--name`・`--summary`・`--methods`・`--origin` はプロジェクトの言語で書く。`--methods` は自由な説明として文書に残る（例「本体：3Dプリント（PETG）／ふた：アクリル3mm」）。
 - 既存のフォルダに中身があると止まる（上書きしない）。環境が足りなければ monozukuri-setup スキルを先に実行する。
@@ -86,9 +89,9 @@ python3 scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<
 
 ### 4. 1回目の画像を作って見る
 ```bash
-python3 tools/mock.py v01        # CadQuery があれば out/v01/step/ に STEP も出る
-python3 tools/render_model.py --scene out/v01/scene.json --out out/v01/preview.png --glb out/v01/model.glb
-python3 tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --section out/v01/section.png
+<python> tools/mock.py v01        # CadQuery があれば out/v01/step/ に STEP も出る
+<python> tools/render_model.py --scene out/v01/scene.json --out out/v01/preview.png --glb out/v01/model.glb
+<python> tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --section out/v01/section.png
 ```
 - 画像を見る機能で1回ずつ開いて（Claude は Read）、依頼の形になっているか確かめる。崩れていれば1回直す。見られない環境では、ユーザーに開いてもらい、気になる所を聞く。
 - README の「決まり」（英語のプロジェクトは「Rules」）の原点・向きを、実際の mock.py に合わせて書き直す。
@@ -97,11 +100,11 @@ python3 tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --sec
 ### 5. テストピースを用意する（2つめのステージゲート）
 形がおおよそ決まったら（または最初から材料が決まっているなら）、テストピースを作って渡す。
 ```bash
-python3 tools/coupons.py v01
+<python> tools/coupons.py v01
 ```
 - `out/coupons/` に、パラメータファイルの `fab` にある加工方法の分だけ、レーザー用 SVG（カーフテスト・スロットのコーム・タブ）、3Dプリント用 STL（はめあいテストピース・インサート穴テストピース）と、手順と番号表 `coupons.md` ができる。
 - ユーザーがカット・印刷して測った値を `measurements/試し片記録.csv`（英語のプロジェクトは `measurements/coupon_log.csv`）に書き、パラメータファイルの `fab` を書き換えて status を「実測」（英語のプロジェクトは `measured`）にする（版を上げる）。basis に測った日（YYYY-MM-DD）と条件を書く。
-- 測った値はライブラリに残す：`python3 scripts/shelf.py record <プロジェクト>`（`meta` に機材・材料が無い古いプロジェクトは `--machine <ライブラリの機材> --material <材料>`。レーザーの値と3Dプリントの値は機材ごとに分けて2回）。次のプロジェクトでは `scaffold.py --printer … --material …` で最初から入る。
+- 測った値はライブラリに残す：`<python> scripts/shelf.py record <プロジェクト>`（`meta` に機材・材料が無い古いプロジェクトは `--machine <ライブラリの機材> --material <材料>`。レーザーの値と3Dプリントの値は機材ごとに分けて2回）。次のプロジェクトでは `scaffold.py --printer … --material …` で最初から入る。
 - 次は部分試作（ケースの一角：USB切り欠き・ネジボス1つ・中身の角）。mock.py で該当部分を取り出すか、モデル化後に Fusion で取り出す。
 - 段階ごとの確認はテンプレートの `docs/チェックリスト.md`（英語のプロジェクトは `docs/checklist.md`）。
 
@@ -110,7 +113,7 @@ python3 tools/coupons.py v01
 `--git` で作った場合は最初のコミットまでできている。GitHub に上げるのはユーザーが望んだときだけ。
 
 ## プラグインを更新したら
-既存のプロジェクトの `tools/` は古いままなので、「ツールを更新して」と頼まれたら `references/update-tools.md` を読んで `python3 scripts/scaffold.py --update-tools <プロジェクトのフォルダ>` を実行する。
+既存のプロジェクトの `tools/` は古いままなので、「ツールを更新して」と頼まれたら `references/update-tools.md` を読んで `<python> scripts/scaffold.py --update-tools <プロジェクトのフォルダ>` を実行する。
 
 ## 報告
 2〜3文：何を作ったか、最初のモックで見てほしい所、実測をお願いしたい値。フォルダの中身の列挙はしない。

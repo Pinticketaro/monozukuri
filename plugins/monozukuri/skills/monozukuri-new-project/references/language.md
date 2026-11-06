@@ -33,6 +33,6 @@ monozukuri-new-project と monozukuri-review-page の両方の、英語のプロ
 確認ページに切り替えのボタンは無い。チャットで頼まれたときに行う（例「英語にして」「switch this project to Japanese」）。
 1. いちばん新しいパラメータファイル（`params/params_vNN.json` の NN が最大のもの）の `meta.lang` を書き換える。前の版のパラメータファイルは変えない（その版の記録として残す）。
 2. 同じパラメータファイルの label・basis を新しい言語に書き直し、`status` を上の対応どおりに置き換える。キーと値は変えない。
-3. 最新の版を作り直す：`python3 tools/mock.py vNN` → `render_model.py`・`slices.py` → manifest の文（`stage`・`summary`・`changes`・`questions`）を新しい言語に直して（manifest に `"lang"` を書いてあれば、それも直す）`build_page.py`（monozukuri-review-page スキルの手順3〜4）。問いの並びは変えない（答えは問いの番号で結び付いている）。公開しているなら、いつもどおり再公開する。
+3. 最新の版を作り直す：`<python> tools/mock.py vNN` → `render_model.py`・`slices.py` → manifest の文（`stage`・`summary`・`changes`・`questions`）を新しい言語に直して（manifest に `"lang"` を書いてあれば、それも直す）`build_page.py`（monozukuri-review-page スキルの手順3〜4）。問いの並びは変えない（答えは問いの番号で結び付いている）。公開しているなら、いつもどおり再公開する。
 4. ページの画面の言葉は `review/board.json` の `lang` に従う（`build_page.py` が scene.json の `lang` から入れる）。前の版の画像や文はその版の言語のまま残る。
 - 文書のファイルは改名しない。いまあるほうの名前のファイルに書き足す（`docs/決定事項.md` があればそこへ）。訳して名前を変えるのは、ユーザーが望んだときだけ。

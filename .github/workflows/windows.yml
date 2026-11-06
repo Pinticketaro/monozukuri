@@ -1,0 +1,112 @@
+# Windows のまま（PowerShell・Git Bash）で monozukuri が動くかを確かめる。
+# セットアップ → 新しいプロジェクト → 版づくり（モック・レンダリング・確認ページ）→ status → 確認ページのサーバーの起動と停止。
+# windows-latest は英語の環境（cp1252）なので、日本語の出力が文字コードで落ちないかも確かめられる。
+# デスクトップアプリ（Codex・Claude Code）からの使い方は、ここでは確かめられない（実機で確かめる）。
+name: windows
+
+on:
+  push:
+    branches: [main, v0.6, windows]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: セットアップ（PowerShell 7）
+        shell: pwsh
+        run: |
+          python plugins/monozukuri/skills/monozukuri-setup/scripts/setup.py --lang en
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: 記録した Python とプロジェクトの場所
+        shell: pwsh
+        run: |
+          $envjson = Get-Content -Raw -Encoding utf8 (Join-Path $HOME ".cache/monozukuri/env.json") | ConvertFrom-Json
+          if (-not (Test-Path $envjson.python)) { throw "env.json の python がありません: $($envjson.python)" }
+          # 空白と日本語の入ったフォルダに作る
+          $proj = Join-Path $env:RUNNER_TEMP "mz test\スタンド"
+          "MZPY=$($envjson.python)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "PROJ=$proj" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "SK=$((Resolve-Path plugins/monozukuri/skills).Path)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: 新しいプロジェクト（PowerShell 7）
+        shell: pwsh
+        run: |
+          & $env:MZPY "$env:SK/monozukuri-new-project/scripts/scaffold.py" --dest $env:PROJ --name "スマホスタンド" --summary "CI のテスト" --process fdm --lang ja
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: manifest を BOM 付きで書く（Windows PowerShell 5.1）
+        shell: powershell
+        run: |
+          $d = Join-Path $env:PROJ "out\v01"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          # Windows PowerShell 5.1 reads this script as ANSI, so keep it ASCII only.
+          # Set-Content -Encoding UTF8 in 5.1 writes a BOM: make_version.py must still read the manifest.
+          '{"stage": "Mock", "summary": "CI", "changes": ["first version"], "questions": [{"q": "OK?", "type": "yesno"}]}' |
+            Set-Content -Encoding UTF8 (Join-Path $d "manifest.json")
+
+      - name: 版を作る（PowerShell 7）
+        shell: pwsh
+        run: |
+          & $env:MZPY "$env:SK/monozukuri-review-page/scripts/make_version.py" $env:PROJ v01
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          foreach ($f in "out\v01\preview.png", "out\v01\plan.png", "out\v01\section.png", "out\v01\model.glb", "review\index.html", "review\board.json") {
+            if (-not (Test-Path (Join-Path $env:PROJ $f))) { throw "できていません: $f" }
+          }
+
+      - name: status（Git Bash。Claude Code と同じ）
+        shell: bash
+        run: |
+          "$MZPY" "$SK/monozukuri-review-page/scripts/status.py" "$PROJ"
+
+      - name: 確認ページのサーバーを立てる
+        shell: pwsh
+        run: |
+          & $env:MZPY "$env:SK/monozukuri-review-page/scripts/serve_review.py" $env:PROJ --no-open
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: サーバーが動き続けているか・フィードバック・停止
+        shell: pwsh
+        run: |
+          $srv = "$env:SK/monozukuri-review-page/scripts/serve_review.py"
+          $st = Get-Content -Raw -Encoding utf8 (Join-Path $env:PROJ "review\.serve.json") | ConvertFrom-Json
+          $r = Invoke-WebRequest -UseBasicParsing $st.url
+          if ($r.StatusCode -ne 200) { throw "ページが返りません: $($st.url)" }
+          $base = $st.url -replace "index.html$", ""
+          Invoke-RestMethod -Method Post -Uri "${base}feedback" -ContentType "application/json; charset=utf-8" `
+            -Body ([Text.Encoding]::UTF8.GetBytes('{"collection": "feedback", "doc": {"kind": "fix", "text": "テスト", "version": "v01"}}')) | Out-Null
+          $fb = Get-Content -Raw -Encoding utf8 (Join-Path $env:PROJ "review\feedback_local.json") | ConvertFrom-Json
+          if (@($fb.feedback.PSObject.Properties).Count -ne 1) { throw "フィードバックが保存されていません" }
+          # 2回目の起動は、新しく立てずに「すでに動いています」
+          & $env:MZPY $srv $env:PROJ --no-open
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & $env:MZPY "$env:SK/monozukuri-review-page/scripts/status.py" $env:PROJ
+          & $env:MZPY $srv $env:PROJ --stop
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Start-Sleep -Seconds 2
+          if (Test-Path (Join-Path $env:PROJ "review\.serve.json")) { throw ".serve.json が残っています" }
+          if (Get-Process -Id $st.pid -ErrorAction SilentlyContinue) { throw "サーバーが止まっていません（pid $($st.pid)）" }
+
+      - name: 結果を残す
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-result
+          path: |
+            ${{ runner.temp }}/mz test/スタンド/out/v01/*.png
+            ${{ runner.temp }}/mz test/スタンド/out/v01/make.log
+            ${{ runner.temp }}/mz test/スタンド/review/.serve.log
+          if-no-files-found: warn

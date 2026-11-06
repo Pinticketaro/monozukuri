@@ -28,17 +28,31 @@ Claude（Claude Code・Claude アプリ）ではプラグインとして、Codex
 
 Codex など、`~/.agents/skills/` からスキルを読む AI では、このリポジトリを置いて、3つのスキルのフォルダをリンクします。
 
+mac・Linux（WSL の中も）：
+
 ```bash
 git clone https://github.com/Pinticketaro/monozukuri.git ~/monozukuri-skills
 mkdir -p ~/.agents/skills
 ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skills/
 ```
 
+Windows（PowerShell）：3つのフォルダのディレクトリジャンクションを作ります。管理者の権限は要りません。
+
+```powershell
+git clone https://github.com/Pinticketaro/monozukuri.git $HOME\monozukuri-skills
+New-Item -ItemType Directory -Force $HOME\.agents\skills | Out-Null
+foreach ($s in "monozukuri-setup", "monozukuri-new-project", "monozukuri-review-page") {
+  New-Item -ItemType Junction -Path "$HOME\.agents\skills\$s" -Target "$HOME\monozukuri-skills\plugins\monozukuri\skills\$s"
+}
+```
+
 - 3つのスキル（`monozukuri-setup`・`monozukuri-new-project`・`monozukuri-review-page`）は、同じフォルダに並べて入れてください。スキルどうしで参照資料とスクリプトを使い合います。
 - `git pull` で新しい版になります。入れたら AI を起動し直してください。
-- 前に monozukuri-codex（Codex 版）を入れていた場合も、上のコマンドで同じ名前のリンクがこちらに置き換わります。
+- 前に monozukuri-codex（Codex 版）を入れていた場合も、mac・Linux では上のコマンドで同じ名前のリンクがこちらに置き換わります。
 - Codex では `$monozukuri-setup` のように `$` を付けて名前を書くか、`/skills` から選びます。依頼の文が説明に合えば、名前を書かなくても選ばれます。
-- Windows では、WSL（Windows の中の Linux）の中で AI と上のコマンドを動かします（下の「対応環境」）。
+- Windows：Codex がジャンクションをたどってスキルを読むかは、まだ確かめていません。スキルが出てこないときは、3つのフォルダを `Copy-Item -Recurse` で `$HOME\.agents\skills\` にコピーしても動きます。コピーしたときは、`git pull` のたびにコピーし直してください。
+- Windows：前からあるジャンクション（同じ名前のリンク）は、エクスプローラーで消すか、`cmd /c rmdir <リンク>` で消してから作り直します。PowerShell 5.1 の `Remove-Item -Recurse` では消さないでください。リンク先（リポジトリ）の中身まで消えることがあります。
+- WSL の中で使うときは、mac・Linux のコマンドを Ubuntu の中で実行します（下の「Windows の場合」）。
 
 ## 対応環境
 
@@ -46,8 +60,8 @@ ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skil
 | --- | --- | --- |
 | macOS | ⭕️ | Python 3.10 以上と Node.js（`brew install python@3.12 node`） |
 | Linux | ⭕️ | Python 3.10 以上、Node.js、日本語フォント（Ubuntu なら `fonts-noto-cjk`） |
-| Windows の WSL（Ubuntu など） | 🔺（Linux として動きます | AI も WSL の中で動かし、プロジェクトは WSL 側のフォルダ（`~/` の下）に置きます |
-| Windows のまま（PowerShell） | ❌(今直してます)| セットアップのスクリプトが動きません |
+| Windows の WSL（Ubuntu など） | 🔺（Linux として動きます） | AI も WSL の中で動かし、プロジェクトは WSL 側のフォルダ（`~/` の下）に置きます |
+| Windows のまま（PowerShell・Git Bash） | 🔺（0.8.0 から。実機ではまだ試していません） | Python 3.12（python.org の x64 版か `winget install -e --id Python.Python.3.12`）、Node.js（`winget install -e --id OpenJS.NodeJS.LTS`）、Git（`winget install -e --id Git.Git`） |
 
 | AI | 確認ページ | 決めてほしいことの聞き方 | スキルの呼び方 |
 | --- | --- | --- | --- |
@@ -60,12 +74,17 @@ ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skil
 ### Windows の場合
 
 - **いちばん手軽なのは Claude アプリで使うことです**。レンダリングなどの処理は Claude のクラウドの作業環境（Linux）で動くので、Windows でも Mac と同じ手順で使えます。新しい会話のたびに「モックの環境を整えて」が必要です。
-- **パソコンで直接動かすなら、WSL（Windows の中の Linux）の中で AI（Claude Code・Codex など）を使ってください**。
-  1. PowerShell で `wsl --install` を実行し、Windows を再起動します（Ubuntu が入ります。管理者の権限が要ります）。
-  2. Ubuntu の中に、使う AI（Claude Code か Codex）、Node.js、日本語フォント（`sudo apt install fonts-noto-cjk`）を入れます。Codex では、上の「Codex とほかの AI」のコマンドも Ubuntu の中で実行します。
-  3. プロジェクトは Ubuntu 側のフォルダ（`~/` の下）に置きます。Windows のフォルダ（`/mnt/c/` の下）でも動きますが、ファイルの読み書きが遅くなります。
-- **WSL を使わずに、Windows のまま（PowerShell）で使うことは、まだできません**。セットアップやレンダリングの途中で止まることが分かっています。
-- Claude アプリでプロジェクトを PC のフォルダに置くときは、OneDrive で同期しない浅い場所（例：`C:\work\`）にしてください。同期中のファイルの書き換えや、長すぎるパスで失敗することがあります。
+- **パソコンで直接動かすなら、Windows のまま使えます**（0.8.0 から。実機ではまだ試していません）。Codex は PowerShell で動かします。Claude Code は Git Bash を使って動きます（Git を入れると入ります）。
+  1. PowerShell で Python 3.12、Node.js、Git を入れます。
+     ```powershell
+     winget install -e --id Python.Python.3.12
+     winget install -e --id OpenJS.NodeJS.LTS
+     winget install -e --id Git.Git
+     ```
+  2. AI のアプリ（またはターミナル）を開き直してから（PATH を読み直すため）、「モックの環境を整えて」と頼みます。仮想環境は `~/.monozukuri/venv` に作られます。Codex では、先に上の「Codex とほかの AI」の Windows のコマンドを実行します。
+  3. プロジェクトは、OneDrive で同期しない浅いフォルダ（例：`C:\work\`）に置きます。同期中のファイルの書き換えや、長すぎるパスで失敗することがあります。
+- **WSL（Windows の中の Linux）の中で AI を使うこともできます**（今までどおり）。PowerShell で `wsl --install` を実行して Windows を再起動し（管理者の権限が要ります）、Ubuntu の中に AI、Node.js、日本語フォント（`sudo apt install fonts-noto-cjk`）を入れます。プロジェクトは Ubuntu 側のフォルダ（`~/` の下）に置きます。
+- Claude アプリでプロジェクトを PC のフォルダに置くときも、OneDrive で同期しない浅い場所（例：`C:\work\`）にしてください。
 
 ## セットアップ
 
@@ -88,13 +107,22 @@ ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skil
 
 迷ったら「次は何をすればいい？」と聞いてください。プロジェクトのチェックリストを見て案内します。
 
-## できること（v0.7.0）
+## できること（v0.8.0）
 
 | スキル | こう頼むと動く | すること |
 | --- | --- | --- |
-| monozukuri-setup | 「モックの環境を整えて」「Mac でレンダリングできるようにして」 | レンダリング・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）をまとめて入れ、テストレンダリングまで確かめる。Mac ではプロジェクトの外の仮想環境（`~/.monozukuri/venv`）に入れる |
+| monozukuri-setup | 「モックの環境を整えて」「Mac でレンダリングできるようにして」「Windows でレンダリングできるようにして」 | レンダリング・断面・比較に必要なもの（shapely、manifold3d、trimesh、networkx、cascadio、cadquery、playwright＋Chromium、three.js、日本語フォント）をまとめて入れ、テストレンダリングまで確かめる。Mac と Windows ではプロジェクトの外の仮想環境（`~/.monozukuri/venv`）に入れる |
 | monozukuri-new-project | 「新しいものづくりを始めたい」「テストピースを作って」「ツールを更新して」「英語にして」 | パラメータファイル（形の寸法＋加工パラメータと信頼度）、モック生成（1つの形の定義から STL と STEP。STEP は本物の円弧・円柱・円錐を持ち、Fusion で部品ごとのコンポーネントとして開ける）、テストピースの生成、レンダリング・断面・比較・寸法表のスクリプト、段階チェックリスト、引き継ぎ資料、Git 設定のテンプレートを作り、最初のモックをレンダリングする。加工方法（レーザー／3Dプリント／両方）に合わせて加工パラメータと手順を絞り、3Dプリントでサポートが要りそうな面を自動で知らせる。プロジェクトの言語（日本語／英語）を決め、切り替える |
 | monozukuri-review-page | 「この版の確認ページを作って」「フィードバックを読んで」「ブラウザで確認ページを開いて」 | モックや人が作ったモデル（STL / OBJ / STEP）をレンダリングして前の版と比べ、プロジェクトごとの確認ページに版を追加して、PC のブラウザで開く（Claude アプリではアーティファクトとしても公開できる）。ページに書かれたフィードバックと答えを AI が読み、反映したら返信や「決定」を付ける |
+
+### 0.8.0 で変わったこと
+
+- **Windows のまま（PowerShell・Git Bash）使えるようにしました**（実機ではまだ試していません）。入れ方は上の「Codex とほかの AI」と「Windows の場合」
+- セットアップは `setup.py` になりました。どの OS でも python で動きます（mac・Linux の `bash scripts/setup.sh` もそのまま使えます）
+- スキルの手順のコマンドは `<python>` と書くようにしました。AI が monozukuri-setup の記録した Python（mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`）で実行します
+- 確認ページのサーバーが動いているかの確かめ方を直しました。コピーしたプロジェクトで元のサーバーと取り違えたり、Windows で確かめるときにサーバーを止めたりしていました
+- `--no-cad` でセットアップしたとき、scipy が入らずにテストレンダリングが失敗していたのを直しました
+- 今までのプロジェクトは、プラグインを更新してから「ツールを更新して」と頼むと新しいツールになります。`tools/geom.py` などに手を加えたプロジェクトは、monozukuri-new-project の `references/update-tools.md` を見てください
 
 ### 0.7.0 で変わったこと
 
@@ -171,7 +199,7 @@ ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skil
 README.en.md                      英語の説明
 .claude-plugin/marketplace.json   マーケットプレイスの定義
 plugins/monozukuri/               プラグイン本体
-  skills/monozukuri-setup/        環境セットアップ
+  skills/monozukuri-setup/        環境セットアップ（scripts/setup.py。どの OS でも python で動く）
   skills/monozukuri-new-project/  テンプレート・テストピース・技術要件の参照資料
   skills/monozukuri-review-page/  レンダリング・比較・確認ページ・フィードバック
 dist/monozukuri.plugin            Claude アプリ用のパッケージ

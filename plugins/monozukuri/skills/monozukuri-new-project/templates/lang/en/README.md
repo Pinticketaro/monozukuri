@@ -17,21 +17,23 @@ Work through 4 gates: **mock → coupon → partial prototype → final** (`docs
 
 ## Commands
 
+`<python>` in the commands is the Python recorded by monozukuri-setup (the last line of the setup shows it). For example, `~/.monozukuri/venv/bin/python` on a Mac, `~/.monozukuri/venv/Scripts/python.exe` on Windows, `python3` on Linux (in PowerShell, put `&` before a Python path in quotes).
+
 ```
-python3 tools/mock.py vNN                     # mock → out/vNN/parts/*.stl, out/vNN/scene.json, out/vNN/step/*.step (when CadQuery is installed)
-python3 tools/render_model.py --scene out/vNN/scene.json --out out/vNN/preview.png --glb out/vNN/model.glb
-python3 tools/slices.py --scene out/vNN/scene.json --plan out/vNN/plan.png --section out/vNN/section.png
-python3 tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/compare.png --labels vPP vNN --lang en
-python3 tools/params_diff.py params/params_vPP.json params/params_vNN.json --json out/vNN/params_diff.json
-python3 tools/dims_sheet.py vNN               # dimension sheet for handoff → docs/dims_vNN.md and docs/fusion_params_vNN.csv
-python3 tools/coupons.py vNN                  # coupons → out/coupons/ (laser SVG / 3D print STL depending on the process, plus coupons.md)
+<python> tools/mock.py vNN            # mock → out/vNN/parts/*.stl, out/vNN/scene.json, out/vNN/step/*.step (when CadQuery is installed)
+<python> tools/render_model.py --scene out/vNN/scene.json --out out/vNN/preview.png --glb out/vNN/model.glb
+<python> tools/slices.py --scene out/vNN/scene.json --plan out/vNN/plan.png --section out/vNN/section.png
+<python> tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/compare.png --labels vPP vNN --lang en
+<python> tools/params_diff.py params/params_vPP.json params/params_vNN.json --json out/vNN/params_diff.json
+<python> tools/dims_sheet.py vNN      # dimension sheet for handoff → docs/dims_vNN.md and docs/fusion_params_vNN.csv
+<python> tools/coupons.py vNN         # coupons → out/coupons/ (laser SVG / 3D print STL depending on the process, plus coupons.md)
 ```
 
 The mock STEP (`out/vNN/step/assembly_vNN.step`) opens in Fusion with one component per part, so it can be the starting point for modeling. You can also save STL / STEP as a ZIP from "Export" on the review page.
 
-To view a model made in Fusion or similar: `python3 tools/render_model.py frame.step:#d9d4cb top.stl:#bcd6e4:0.6 --out out/vNN/model_preview.png`
+To view a model made in Fusion or similar: `<python> tools/render_model.py frame.step:#d9d4cb top.stl:#bcd6e4:0.6 --out out/vNN/model_preview.png`
 
-Requirements: `pip install -r tools/requirements.txt`, three.js (installed by the monozukuri-setup skill)
+Requirements: the packages in `tools/requirements.txt` (`<python> -m pip install -r tools/requirements.txt`) and three.js, both installed by the monozukuri-setup skill
 
 ## Folders
 

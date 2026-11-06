@@ -17,21 +17,23 @@
 
 ## 生成コマンド
 
+コマンドの `<python>` は monozukuri-setup が記録した Python（セットアップの最後の行に出る）。例：mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`、Linux は `python3`（Python のパスを " で囲んだときは、PowerShell では前に `&` を付ける）。
+
 ```
-python3 tools/mock.py vNN                     # モック → out/vNN/parts/*.stl, out/vNN/scene.json, out/vNN/step/*.step（CadQuery があるとき）
-python3 tools/render_model.py --scene out/vNN/scene.json --out out/vNN/preview.png --glb out/vNN/model.glb
-python3 tools/slices.py --scene out/vNN/scene.json --plan out/vNN/plan.png --section out/vNN/section.png
-python3 tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/compare.png --labels vPP vNN
-python3 tools/params_diff.py params/params_vPP.json params/params_vNN.json --json out/vNN/params_diff.json
-python3 tools/dims_sheet.py vNN               # 引き継ぎ用の寸法表 → docs/寸法表_vNN.md と docs/fusion_params_vNN.csv
-python3 tools/coupons.py vNN                  # テストピース → out/coupons/（加工方法に応じてレーザーのSVG・3DプリントのSTLと、説明 coupons.md）
+<python> tools/mock.py vNN            # モック → out/vNN/parts/*.stl, out/vNN/scene.json, out/vNN/step/*.step（CadQuery があるとき）
+<python> tools/render_model.py --scene out/vNN/scene.json --out out/vNN/preview.png --glb out/vNN/model.glb
+<python> tools/slices.py --scene out/vNN/scene.json --plan out/vNN/plan.png --section out/vNN/section.png
+<python> tools/compare.py out/vPP/preview.png out/vNN/preview.png --out out/vNN/compare.png --labels vPP vNN
+<python> tools/params_diff.py params/params_vPP.json params/params_vNN.json --json out/vNN/params_diff.json
+<python> tools/dims_sheet.py vNN      # 引き継ぎ用の寸法表 → docs/寸法表_vNN.md と docs/fusion_params_vNN.csv
+<python> tools/coupons.py vNN         # テストピース → out/coupons/（加工方法に応じてレーザーのSVG・3DプリントのSTLと、説明 coupons.md）
 ```
 
 モックの STEP（`out/vNN/step/assembly_vNN.step`）は Fusion で開くと部品ごとのコンポーネントになり、モデル化の出発点に使える。確認ページの「エクスポート」からも STL / STEP を ZIP で保存できる。
 
-Fusion などで作ったモデルを見るとき：`python3 tools/render_model.py frame.step:#d9d4cb top.stl:#bcd6e4:0.6 --out out/vNN/model_preview.png`
+Fusion などで作ったモデルを見るとき：`<python> tools/render_model.py frame.step:#d9d4cb top.stl:#bcd6e4:0.6 --out out/vNN/model_preview.png`
 
-必要なもの：`pip install -r tools/requirements.txt`、three.js（monozukuri-setup スキルで入る）
+必要なもの：`tools/requirements.txt` のパッケージ（`<python> -m pip install -r tools/requirements.txt`）、three.js。どちらも monozukuri-setup スキルで入る
 
 ## フォルダ
 

@@ -2,7 +2,7 @@
 
 `tools/` はプロジェクトにコピーされるので、プラグインを更新しても既存のプロジェクトは古いツールのままになる。更新したら、まずツールを新しくする。
 ```bash
-python3 scripts/scaffold.py --update-tools <プロジェクトのフォルダ>
+<python> scripts/scaffold.py --update-tools <プロジェクトのフォルダ>
 ```
 - 上書きするのはプラグインが管理するファイルだけ（`geom.py`・`common.py`・`coupons.py`・`dims_sheet.py`・`render_model.py`・`slices.py`・`compare.py`・`params_diff.py`・`requirements.txt`）。元は `tools/.backup-<日時>/` に残る。
 - `mock.py` は上書きしない（利用者の `build()` があるため）。新しいテンプレートが `tools/mock.py.new` に置かれ、`build()` の外の違いが表示される。新しい枠組みを使うときは、`mock.py.new` の `build()` をプロジェクトの `build()` に置き換えて `mock.py` にする。

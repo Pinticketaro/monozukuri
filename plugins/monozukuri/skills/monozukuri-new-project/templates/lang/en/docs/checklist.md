@@ -8,7 +8,7 @@ Reasons and sources: `references/fab-requirements.md` in the monozukuri plugin (
 - [ ] Checked size, proportions and layout, and got feedback on the review page
 - [ ] Wrote the decisions in `docs/decisions.md` with reasons
 
-## 2. Coupons (`python3 tools/coupons.py`)
+## 2. Coupons (`<python> tools/coupons.py`)
 <!-- laser -->
 Laser
 - [ ] Measured the thickness of the sheet you will use at the 4 corners and the center, and replaced `t_*`
