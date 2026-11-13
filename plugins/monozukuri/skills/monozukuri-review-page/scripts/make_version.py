@@ -116,8 +116,12 @@ def main():
     if prev and exists(f"params/params_{prev}.json") and exists(f"params/params_{ver}.json"):
         diff = R.step("params_diff.py", [py, os.path.join(HERE, "params_diff.py"), f"params/params_{prev}.json",
                                          f"params/params_{ver}.json", "--json", o("params_diff.json")])
-        say.append(f"  寸法の差（{prev} → {ver}）: {len(diff)}件")
-        say += ["    " + ln.lstrip("- ") for ln in diff[:12]] + ([f"    ほか {len(diff) - 12}件"] if len(diff) > 12 else [])
+        rows = load(os.path.join(root, o("params_diff.json")), []) or []   # 件数は書いた JSON の行から数える（出力の行数は「変わった値はありません」も1行）
+        if rows:
+            say.append(f"  寸法の差（{prev} → {ver}）: {len(rows)}件" if lang == "ja" else f"  Parameter changes ({prev} -> {ver}): {len(rows)}")
+            say += ["    " + ln.lstrip("- ") for ln in diff[:12]] + ([f"    ほか {len(diff) - 12}件"] if len(diff) > 12 else [])
+        else:
+            say += ["  " + ln for ln in diff]            # 変わった値はありません（1行だけ）
 
     # 読めなかったファイル（JSON の書き方・文字コード）
     bad = lambda: [f"  !! 読めないファイル（JSON の書き方か文字コード（UTF-8）を直す）: {os.path.relpath(p, root)}（{e}）"
@@ -131,7 +135,8 @@ def main():
             say.append(f"  manifest（{o('manifest.json')}）が読めないのでページは作っていません（{man_bad}）。"
                        "JSON の書き方か文字コード（UTF-8）を直して --page-only")
         elif not man:
-            say.append(f"  manifest（{o('manifest.json')}）が無いのでページは作っていません。文（stage・summary・changes・questions）を書いて --page-only")
+            say.append(f"  manifest（{o('manifest.json')}）が無いのでページは作っていません。文（stage・summary・changes・questions）を書いて --page-only" if lang == "ja" else
+                       f"  No manifest ({o('manifest.json')}), so no page was made. Write the text (stage, summary, changes, questions), then run with --page-only")
         say.append(f"  見る画像: {o('preview.png')}（ほか plan.png・section.png）")
         print("\n".join(say + bad()))
         return
@@ -173,8 +178,9 @@ def main():
     R.save()
 
     # 3. ページの届け先
-    art = load(os.path.join(root, "review", "artifact.json"), {}) or {}
-    srv = load(os.path.join(root, "review", ".serve.json"), {}) or {}
+    art = load(os.path.join(root, "review", "artifact.json"), {})
+    srv = load(os.path.join(root, "review", ".serve.json"), {})
+    art, srv = (x if isinstance(x, dict) else {} for x in (art, srv))   # [] ・ "" ・ null でも止まらない（読めないことは status.py が知らせる）
     if art.get("url"):
         say.append(f"  アーティファクトを公開できる環境なら: review/publish_{ver}.json の files で再公開する（{art['url']}、capabilities は3つとも）。"
                    "できない環境では、公開したページはこの版に更新されない")

@@ -5,7 +5,8 @@
   {"meta": {...}, "params": {"outer_w": {"value": 160, "unit": "mm", "label": "外形の幅"}, ...}}
 値だけの形 {"outer_w": 160, ...} や、入れ子の JSON でも比べられる（キーを a.b.c とつなげる）。
 表示の言葉は --lang ja|en、無ければ新しい版の meta.lang、環境変数 MONOZUKURI_LANG、どれも無ければ ja。
---json の中身（キーの名前）は言葉によらず同じ。
+増えた値は「（追加）46°」、無くなった値は「32mm →（削除）」と出す（英語は "(added) 46°"・"32mm → (removed)"）。
+--json の中身（キーの名前）は言葉によらず同じ。文は入れず、値のまま（kind が added なら before は null、removed なら after は null）。
 """
 import argparse
 import json
@@ -102,7 +103,14 @@ def main():
             json.dump(rows, f, ensure_ascii=False, indent=1)
     if not rows:
         print("変わった値はありません" if lang == "ja" else "No values changed")
+    added, removed = ("（追加）", "（削除）") if lang == "ja" else ("(added) ", " (removed)")
     for r in rows:
+        if r["kind"] == "added":
+            print(f"- {r['label']}: {added}{r['after']}{r['unit']}")
+            continue
+        if r["kind"] == "removed":
+            print(f"- {r['label']}: {r['before']}{r['unit']} →{removed}")
+            continue
         if lang == "ja":
             d = f"（{r['delta']:+g}{r['unit']}）" if "delta" in r else ""
         else:

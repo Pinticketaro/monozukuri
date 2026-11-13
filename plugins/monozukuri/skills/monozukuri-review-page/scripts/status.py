@@ -6,8 +6,9 @@
 出すもの
   バージョン履歴（どの版から作ったか・続けなかった案）、最新の版の要点、確認ページの場所、
   未対応のフィードバック（PC のページ。アーティファクトとして公開したページは references/publish-artifact.md の手順で読む）、
-  最新の版の問いと答え・決定、答えはあるが決まっていない前の版の問い、
-  仮の寸法・根拠の無い寸法・テストピースで測る値（初期値）、LOG.md の最後の版の「次に試す」、決定事項の数と最後の行。
+  最新の版の問いと答え・決定、答えはあるが決まっていない前の版の問い
+  （答え・決定は PC のページの分。review/artifact.json があるときは、公開したページの答え・決定は読めないことを1回だけ書き添える）、
+  仮の寸法・根拠の無い寸法・テストピースで測る値（初期値）、LOG.md の最新の版の節の「次に試す」、決定事項の数と最後の行。
 読むファイル（どれも無くてよい）: params/params_v*.json、review/board.json、review/feedback_local.json、
   review/artifact.json、review/.serve.json、LOG.md、docs/決定事項.md（英語のプロジェクトは docs/decisions.md）
 """
@@ -23,7 +24,8 @@ if HERE not in sys.path:
 from oscompat import serving  # noqa: E402
 
 VER_RE = r"v\d+[a-z]*"
-TENTATIVE = re.compile(r"^\s*(仮|tentative|placeholder)|要確認|要実測|to be (confirmed|measured)", re.I)
+# 仮の寸法の見分け方。label と basis の両方に当てる。new-project の shelf.py の PROVISIONAL と同じ文にしておく（直すときは両方）
+PROVISIONAL = re.compile(r"^\s*仮|(?<=[\s（(、。・,;:])仮(?=[）)。、,;:\s・]|$)|provisional|tentative|placeholder|要確認|要実測|to be (confirmed|measured)", re.I)
 INITIAL = ("初期値", "initial")
 
 
@@ -102,7 +104,8 @@ def q_label(q):
     if isinstance(q, str):
         return "文字", q
     t = q.get("type") or ("options" if q.get("options") else "text")
-    return {"yesno": "はい/いいえ", "options": "選ぶ"}.get(t, "文字"), q.get("q", "")
+    # board.json の案から選ぶ問いは "choice"（build_page.py が manifest の options から作る）
+    return {"yesno": "はい/いいえ", "options": "選ぶ", "choice": "選ぶ"}.get(t, "文字"), q.get("q", "")
 
 
 def main():
@@ -147,8 +150,14 @@ def main():
         L.append("パラメータファイルだけあって、まだページに載せていない版: " + "・".join(extra))
 
     # 確認ページ
-    art = load(os.path.join(rv, "artifact.json"), {}) or {}
-    srv = load(os.path.join(rv, ".serve.json"), {}) or {}
+    art_p = os.path.join(rv, "artifact.json")
+    has_art = os.path.exists(art_p)               # アーティファクトとしても公開してある（答え・決定の一部はそちらにある）
+    art = load(art_p, {})                         # 「or {}」を付けない：[] ・ "" ・ null も下で読めないファイルとして知らせる
+    srv = load(os.path.join(rv, ".serve.json"), {})
+    for p, x in ((art_p, art), (os.path.join(rv, ".serve.json"), srv)):
+        if not isinstance(x, dict):                # 読めても形が違う（[] など）
+            BAD.append((p, "not a JSON object"))
+    art, srv = (x if isinstance(x, dict) else {} for x in (art, srv))
     page = []
     if art.get("url"):
         page.append(f"公開 {art['url']}（アーティファクト。フィードバックは references/publish-artifact.md の手順で読む）")
@@ -172,6 +181,12 @@ def main():
 
     # 問い：最新の版の全部と、答えはあるのに決まっていない前の版の問い
     answers, decisions = store.get("answers", {}), store.get("decisions", {})
+    # 公開したページの答え・決定は feedback_local.json に無い。「答え: なし」「決定: まだ」が公開したページでもそうだと読まれないよう、最初の見出しに1回だけ書く
+    art_note = ["公開したページの答え・決定はこのスクリプトでは読めない。references/publish-artifact.md の手順で読む"] if has_art else []
+
+    def head(title, sub=""):
+        parts = ([sub] if sub else []) + ([f"ここから下の答え・決定は PC のページの分。{art_note.pop()}"] if art_note else [])
+        return title + (f"（{'。'.join(parts)}）" if parts else "") + ":"
 
     def q_line(v, i, q):
         kind, text = q_label(q)
@@ -183,22 +198,28 @@ def main():
         s = f"  {v}~q{i} {kind}: {short(text, 70)}"
         if kind != "文字":
             s += "  答え: " + ("、".join(f"{lab} {n}" for lab, n in cnt.items()) if cnt else "なし")
-            s += f"  決定: {d.get('choice')}" if d else "  決定: まだ"
+            s += f"  決定: {d.get('choice') if isinstance(d, dict) else d}" if d else "  決定: まだ"
         return s, bool(cnt), bool(d), kind
 
     lines = [q_line(latest, i, q) for i, q in enumerate(bvers.get(latest, {}).get("questions", []))]
     if lines:
-        L.append(f"{latest} の問い:")
+        L.append(head(f"{latest} の問い"))
         L += [s for s, *_ in lines]
-    pend = []
+    pend, undecided = [], []
     for v in built[:-1]:
         for i, q in enumerate(bvers[v].get("questions", [])):
             s, has_a, has_d, kind = q_line(v, i, q)
             if has_a and not has_d and kind != "文字":
                 pend.append(s)
+            if not has_d and kind != "文字":
+                undecided.append(f"{v}~q{i}")
     if pend:
-        L.append("答えはあるが決定していない問い（前の版）:")
+        L.append(head("答えはあるが決定していない問い", "前の版"))
         L += pend[:6] + ([f"  ほか {len(pend) - 6}件"] if len(pend) > 6 else [])
+    elif has_art and undecided:                   # 見出しを出さなかったときも、答え・決定が公開したページにだけあるかもしれない
+        ids = "、".join(undecided[:8]) + (f" ほか{len(undecided) - 8}" if len(undecided) > 8 else "")
+        L.append(f"PC のページで決定が無い問い（はい/いいえ・選ぶ。前の版）: {len(undecided)}件（{ids}）"
+                 + (f"。{art_note.pop()}" if art_note else ""))
 
     # パラメータファイル：仮・根拠なし・テストピースで測る値
     if params:
@@ -210,7 +231,7 @@ def main():
                 basis = it.get("basis", "")
                 if not basis:
                     nob.append(k)
-                elif TENTATIVE.search(basis):
+                if PROVISIONAL.search(str(it.get("label", ""))) or PROVISIONAL.search(str(basis)):   # 根拠なしとは別に調べる
                     tent.append(f"{k} {it.get('value')}{it.get('unit', '')}")
                 if sec == "fab" and it.get("status") in INITIAL:
                     init.append(k)
@@ -226,8 +247,10 @@ def main():
     # LOG.md の最後の版の節と、決定事項
     log = os.path.join(root, "LOG.md")
     if os.path.exists(log):
-        secs = re.split(r"(?m)^(?=## )", read_text(log))
-        last = secs[-1].strip().splitlines() if len(secs) > 1 else []
+        secs = [s for s in re.split(r"(?m)^(?=## )", read_text(log)) if s.startswith("## ")]
+        # 最新の版（ページに載せた最後の版）の名前が見出しにある節。無ければ最後の節
+        named = [s for s in secs if re.search(rf"(?<![0-9A-Za-z]){re.escape(latest)}(?![0-9A-Za-z])", s.splitlines()[0])]
+        last = (named or secs or [""])[-1].strip().splitlines()
         if last:
             L.append(f"LOG の最後: {last[0].lstrip('# ').strip()}")
             L += ["  " + short(x, 140) for x in last[1:] if re.match(r"-\s*(次|Next)", x.strip())]
