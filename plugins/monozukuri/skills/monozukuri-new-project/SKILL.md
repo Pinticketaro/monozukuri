@@ -51,7 +51,7 @@ AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.
 先に `<python> scripts/shelf.py list` でライブラリを見て、ライブラリにある機材・材料・部品を選択肢に使う（ライブラリが無ければ今までどおりの選択肢で聞き、「ライブラリを作りますか」を1問足してよい）。
 - 名前と、何を作るか（1行）：依頼文から決められないときだけ聞く（自由入力になるので「その他」で受ける）
 - **加工方法**（いつも聞く。依頼文で明らかなら確かめるだけ）：「3Dプリントだけ」／「レーザーだけ」／「両方（例：板はレーザー、枠は3Dプリント）」。ここから `--process` を決める（`fdm`／`laser`／`both`）
-- 使うプリンター：ライブラリのプリンターを選択肢にする（例「Ender-3 S1 Pro（220×220×270）」）。ライブラリが無ければ造形範囲で聞く：「220×220（Ender-3 など）」／「256×256（Bambu Lab など）」／「300×300」。レーザー加工機もライブラリにあれば選ぶ（加工範囲は分かれば）
+- 使うプリンター（3Dプリントを使うとき）：ライブラリのプリンターを選択肢にする（例「Ender-3 S1 Pro（220×220×270）」）。ライブラリが無ければ造形範囲で聞く：「220×220（Ender-3 など）」／「256×256（Bambu Lab など）」／「300×300」。レーザー加工機もライブラリにあれば選ぶ（加工範囲は分かれば。パラメータファイルの `laser_x`・`laser_y` に入れる）
 - 中に入れる物・組み合わせる既製品の大きさ：部品ライブラリにあればそれを選択肢の先頭にする（`shelf.py use` で入れる。図面を探し直さない）。無ければよくある大きさを選択肢にする（例：350ml／500ml／250ml 缶）。実物があれば実測をお願いする
 - 使う材料：ライブラリの材料（実測があるもの）を先に出す。無ければフィラメントなら「PLA」／「PETG」／「TPU」、板なら「アクリル 3mm」／「シナベニヤ 4mm」など。レーザーカットする材料は `references/fab-safety.md` に照らし、「全面禁止」なら別の材料を提案、「ラボ次第」なら所属ラボのリストで確かめるよう伝える
 - 置き場所：「このPCのフォルダ」／「GitHub のリポジトリ」／「この作業環境だけ」
@@ -65,24 +65,29 @@ AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.
 
 ### 2. テンプレートからプロジェクトを作る
 ```bash
-<python> scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<1行>" --methods "<加工方法>" --process <laser|fdm|both> --bed 220x220 [--origin "<原点と向き>"] [--lang <ja|en>] [--git] [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
+<python> scripts/scaffold.py --dest <フォルダ> --name "<名前>" --summary "<1行>" --methods "<加工方法>" --process <laser|fdm|both> [--bed 220x220] [--origin "<原点と向き>"] [--lang <ja|en>] [--git] [--printer <ライブラリのプリンター>] [--laser <ライブラリのレーザー加工機>] [--material <ライブラリの材料> ...]
 ```
 - 1行で書く（PowerShell では行末の `\` で行を続けられない）。`[ ]` の引数は要るときだけ付ける。
+- `--bed` は3Dプリントを使うとき（`fdm`・`both`）だけ付ける。`laser` の例のパラメータファイルには造形範囲（`bed_*`）が無い（レーザー加工機の加工範囲は、作った後に `laser_x`・`laser_y` を書き換える）。
 - `--name`・`--summary`・`--methods`・`--origin` の文に半角の `"` を入れない（「」を使う）。空の値（`""`）は渡さず、引数ごと省く（Windows PowerShell 5.1 が崩す）。
 - ライブラリの機材・材料を選んだら `--printer`・`--laser`・`--material` で渡し、`--bed` は省く（実測があれば `fab` に最初から入る）。引数の詳しい説明は `scaffold.py --help`。
 - `--name`・`--summary`・`--methods`・`--origin` はプロジェクトの言語で書く。`--methods` は自由な説明として文書に残る（例「本体：3Dプリント（PETG）／ふた：アクリル3mm」）。
 - 既存のフォルダに中身があると止まる（上書きしない）。環境が足りなければ monozukuri-setup スキルを先に実行する。
 
 ### 3. 最初のモックを、ユーザーの形に書き換える
-テンプレートの `params/params_v01.json` と `tools/mock.py` の `build()` は例。`laser`・`both` は「アクリル板2枚でPLAの枠を挟む箱」、`fdm` は「缶を入れる底つきの筒＋ストラップホール付きのラグ」。依頼の形に書き換える。
-- 形の関数（`tools/geom.py`）：押し出し `slab`、円柱 `cyl`、直方体 `box`、筒 `tube`、円錐台 `cone`、回転体 `revolve`、ストラップホール付きのラグ `lug_with_slot`。組み合わせは `+`・`-`・`&`、`.translate()`・`.rotate_z()`。
+テンプレートの `params/params_v01.json` と `tools/mock.py` の `build()` は例で、加工方法ごとに違う。依頼の形に書き換える（似た形の例から始めると早い）。
+- `laser`：タブとスロットで組むアクリルの小物入れ（3mm の板5枚：底板・前・後ろ・左右の側板。前後の板を側板より外へ出し、スロットの外に縁距離を残す）
+- `both`：アクリル板2枚で PLA の枠を挟む箱
+- `fdm`：缶ケース（缶を入れる底つきの筒＋ストラップホール付きのラグ）
+
+- 形の関数（`tools/geom.py`）：押し出し `slab`、X・Y・Z の向きの押し出し `prism`（側板・リブなど。断面の点は描いた座標のまま）、円柱 `cyl`、直方体 `box`、筒 `tube`、円錐台 `cone`、回転体 `revolve`、ストラップホール付きのラグ `lug_with_slot`、レーザーの板のタブとスロット `tab`（板にタブを結合し、受ける板から同じ大きさのスロットを抜く。呼び寸法のまま）。組み合わせは `+`・`-`・`&`、`.translate()`・`.rotate_z()`・`.rotate_x()`・`.rotate_y()`（側面の形を XY に描いて押し出し、`rotate_x(90)` で立てる）。
 - 寸法はパラメータファイルだけに書き、項目ごとに `label` と `basis`（どこから来た値か）を付ける。資料（図面・データシート・写真）は `refs/` に置き、`refs/資料.md` に出典を書く。調べずに入れた値は `basis` に「仮（記憶・要確認）」。書き方は `references/conventions.md` の「寸法の根拠と資料」。
 - 部品ライブラリにある部品は `shelf.py use` で入れ、図面で確かめた既製品の寸法はユーザーに確かめてから `shelf.py add-part` で登録する（`references/library.md`）。
-- パラメータファイルは `params`（形の寸法）と `fab`（加工パラメータ：実板厚 `t_*`・`kerf`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算／経験則。英語のプロジェクトは initial／measured／guideline／standard／calculated／rule of thumb）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
+- パラメータファイルは `params`（形の寸法）と `fab`（加工パラメータ：実板厚 `t_*`・`kerf`・`slot_fit`・`clr_*`・`insert_hole` など）に分かれる。`fab` は各項目に `status`（初期値／実測／指針／規格／計算／経験則。英語のプロジェクトは initial／measured／guideline／standard／calculated／rule of thumb）と `basis`（根拠）を持たせる。使う材料・ネジに合わせて項目を足し引きし、初期値は `references/fab-requirements.md` から取る。
 - 細部は作らない。形・大きさ・比率・配置がわかる粗さにとどめる（`references/conventions.md`）。
-- 寸法から機械的にわかる問題（造形範囲を超える、中身が入らない）は notes に出す。
+- 寸法から機械的にわかる問題（造形範囲・レーザーの加工範囲を超える、中身が入らない、スロットの縁距離が板厚より小さい）は notes に出す。
 - ユーザーに決めてほしいことは、notes に問いの候補として構造で書く：`{"q": "抜け止めを付けますか", "type": "yesno", "why": "缶が逆さで落ちる"}`、`{"q": "ラグの位置", "type": "options", "options": ["上端", "中ほど"], "why": "…"}`。確認ページでボタンで答えられる問いになる。問いの文はプロジェクトの言語で書く（`"type"` の値は言語によらない）。
-- 3Dプリントする部品は、サポートが要りそうなオーバーハング面（水平から `overhang_deg`＝45° より浅い面）が自動で notes に出る。中身・既製品・レーザーの板など印刷しない部品は、部品の6つめに `{"print": False}` を付けて外す。印刷の向きを変えるときは `{"up": "-z"}` など（パラメータファイルの `meta.print_up` でもよい）。`--process laser` のプロジェクトでは調べない。
+- 3Dプリントする部品は、サポートが要りそうなオーバーハング面（水平から `overhang_deg`＝45° より浅い面）と、ブリッジ（両端が支えられた面。`bridge_max`＝5mm より長いものはサポートが要りそうな方に入る）が自動で notes に出る。支えから 1mm より短いオーバーハングは出さない（経験則・出典なし）。下につながる所が無いまとまりは「空中から印刷が始まる」と出る。中身・既製品・レーザーの板など印刷しない部品は、部品の6つめに `{"print": False}` を付けて外す。印刷の向きを変えるときは `{"up": "-z"}` など（パラメータファイルの `meta.print_up` でもよい）。`--process laser` のプロジェクトでは調べない。
 - わからない寸法は仮の値で進め、パラメータファイルの label に「仮」（英語のプロジェクトは「provisional」）と書き、ユーザーに実測をお願いする項目として報告に入れる。
 
 （案を2つ以上並べて試すときは、版をブランチに分ける：`params_v04a.json`・`params_v04b.json`、`meta.parent` に分けた元。手順は monozukuri-review-page スキルの `references/branches.md`。）
@@ -93,6 +98,7 @@ AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.
 <python> tools/render_model.py --scene out/v01/scene.json --out out/v01/preview.png --glb out/v01/model.glb
 <python> tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --section out/v01/section.png
 ```
+- 確認ページまで1回で作ってもよい：先に版の説明 `out/v01/manifest.json`（`stage`・`summary`・`changes`・`questions`。書き方は monozukuri-review-page の手順4）を書き、`<python> <review-page の scripts>/make_version.py <プロジェクト> v01` を実行する（モック → 外観・平面図・断面 → 確認ページ。上の3つのコマンドは要らない）。`<review-page の scripts>` は monozukuri-review-page スキルの `scripts/`（このスキルのフォルダからは `../monozukuri-review-page/scripts`）。
 - 画像を見る機能で1回ずつ開いて（Claude は Read）、依頼の形になっているか確かめる。崩れていれば1回直す。見られない環境では、ユーザーに開いてもらい、気になる所を聞く。
 - README の「決まり」（英語のプロジェクトは「Rules」）の原点・向きを、実際の mock.py に合わせて書き直す。
 - `docs/決定事項.md` に、ここまでに決まったこと（加工方法、造形範囲など）を理由付きで書く。
@@ -109,7 +115,7 @@ AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.
 - 段階ごとの確認はテンプレートの `docs/チェックリスト.md`（英語のプロジェクトは `docs/checklist.md`）。
 
 ### 6. 確認ページへ進む
-外観画像をユーザーに見せ（ファイルを送る機能があれば送る。Claude の SendUserFile など。無ければ `out/v01/preview.png` のパスを伝える）、monozukuri-review-page スキルで確認ページを作る。以後は monozukuri-review-page の手順で反復する（2つ目の版からは monozukuri-review-page の `make_version.py` で、モックからページまで1回で作る）。
+外観画像をユーザーに見せ（ファイルを送る機能があれば送る。Claude の SendUserFile など。無ければ `out/v01/preview.png` のパスを伝える）、monozukuri-review-page スキルで確認ページを作る（手順4で make_version.py を使ったときはページができているので、開くところから）。以後は monozukuri-review-page の手順で反復する（2つ目の版からは monozukuri-review-page の `make_version.py` で、モックからページまで1回で作る）。
 `--git` で作った場合は最初のコミットまでできている。GitHub に上げるのはユーザーが望んだときだけ。
 
 ## プラグインを更新したら

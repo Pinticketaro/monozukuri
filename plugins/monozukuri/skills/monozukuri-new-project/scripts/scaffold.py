@@ -24,6 +24,7 @@ import difflib
 import glob
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -102,7 +103,8 @@ MSG = {
         "backup": "  元のファイル：tools/.backup-{stamp}/",
         "mock_new": "\nmock.py はそのままです（build() があるため）。新しいテンプレートを tools/mock.py.new に置きました",
         "mock_same": "  build() の外は同じです。差し替えは要りません",
-        "mock_diff": "  build() の外の違い（{n}行。新しい枠組みを使うときは、mock.py.new の build() を今の build() に置き換えて使う）：",
+        "mock_diff": "  build() の外の違い（{n}行。新しい枠組みを使うときは、mock.py.new の build() を今の build() に置き換える。"
+                     "冒頭の from geom import … の行も今のものを残し、mock.py.new の行で使っている名前があれば足す）：",
         "run_mock": "   ※ 新しい mock.py は main() を持たず、最後で common.run_mock(build) を呼びます。今の mock.py の"
                     " def main() から下を消し、if __name__ == \"__main__\": common.run_mock(build) にすると、"
                     "サポートが要る面の確認などの新しい機能が使えます",
@@ -113,7 +115,9 @@ MSG = {
         "known_recorded": "{path} に {v} を記録しました",
         "need_args": "--dest と --name（新しく作る）か、--update-tools（ツールを更新する）を指定してください",
         "h_process": "加工方法：laser（レーザー）、fdm（3Dプリント）、both（両方。既定）",
-        "h_bed": "プリンターの造形範囲 例 220x220",
+        "h_bed": "プリンターの造形範囲 例 220x220（--process fdm・both のとき。laser では使わない）",
+        "bed_bad": "--bed は 幅x奥行 の数字で指定してください（例 220x220）。受け取った値：{v}",
+        "bed_ignored": "  --bed は、この加工方法（{process}）のパラメータファイルに造形範囲が無いので使いません",
         "h_lang": "言語：ja（日本語）、en（英語）。既定は環境変数 MONOZUKURI_LANG、無ければ ja。"
                   "--update-tools ではプロジェクトの meta.lang に従い、--lang は表示だけを変える",
         "h_git": "git init と最初のコミットまで行う",
@@ -165,7 +169,8 @@ MSG = {
         "mock_new": "\nmock.py was left as is (it has your build()). The new template is in tools/mock.py.new",
         "mock_same": "  Nothing differs outside build(). No need to switch",
         "mock_diff": "  Differences outside build() ({n} lines. To use the new framework, take mock.py.new and"
-                     " replace its build() with your current build()):",
+                     " replace its build() with your current build(). Keep your own 'from geom import ...' line too,"
+                     " adding any names the line in mock.py.new uses):",
         "run_mock": "   Note: the new mock.py has no main(); it calls common.run_mock(build) at the end. Delete"
                     " everything from def main() down in your mock.py and end it with"
                     " if __name__ == \"__main__\": common.run_mock(build) to get the new features,"
@@ -177,7 +182,9 @@ MSG = {
         "known_recorded": "Recorded {v} in {path}",
         "need_args": "Give --dest and --name (create a new project), or --update-tools (update the tools)",
         "h_process": "Process: laser (laser cutting), fdm (3D printing), both (default)",
-        "h_bed": "Printer bed size, e.g. 220x220",
+        "h_bed": "Printer bed size, e.g. 220x220 (for --process fdm or both; not used with laser)",
+        "bed_bad": "--bed must be WIDTHxDEPTH in numbers (e.g. 220x220). Got: {v}",
+        "bed_ignored": "  --bed is ignored: the parameter file for this process ({process}) has no bed size",
         "h_lang": "Language: ja (Japanese), en (English). Default: env MONOZUKURI_LANG, else ja. "
                   "With --update-tools the project's meta.lang is used; --lang changes only the messages",
         "h_git": "Run git init and make the first commit",
@@ -264,7 +271,7 @@ def top_defs(path):
 
 
 def without_build(path, lang="ja"):
-    """mock.py から冒頭の説明と build() を除いた行（枠組みだけを比べるため）"""
+    """mock.py から冒頭の説明・build()・from geom import … の行を除いた行（枠組みだけを比べるため）"""
     src = read_text(path, errors="replace").splitlines()
     try:
         tree = ast.parse("\n".join(src))
@@ -274,6 +281,8 @@ def without_build(path, lang="ja"):
     if tree.body and isinstance(tree.body[0], ast.Expr) and isinstance(getattr(tree.body[0], "value", None), ast.Constant):
         cut.append((tree.body[0].lineno - 1, tree.body[0].end_lineno, []))
     for n in tree.body:
+        if isinstance(n, ast.ImportFrom) and n.module == "geom" and n.level == 0:
+            cut.append((n.lineno - 1, n.end_lineno, []))     # from geom import … は build() に合わせて変わるので比べない
         if isinstance(n, ast.FunctionDef) and n.name == "build":
             start = (n.decorator_list[0].lineno if n.decorator_list else n.lineno) - 1
             cut.append((start, n.end_lineno, [MSG[lang]["build_cut"]]))
@@ -484,11 +493,13 @@ def apply_shelf(d, plan, T, bed_given):
     if "fdm" in machines and not bed_given:
         key, m = machines["fdm"]
         bed = m.get("bed") or []
+        wrote = False
         for i, k in enumerate(("bed_x", "bed_y", "bed_z")):
             if k in d["params"] and i < len(bed) and bed[i] is not None:
                 d["params"][k]["value"] = bed[i]
                 d["params"][k]["basis"] = T["bed_basis"].format(key=key, title=m.get("title", key))
-        if bed and None not in bed:
+                wrote = True
+        if wrote and None not in bed:
             lines.append(T["bed_shelf"].format(bed="×".join(str(v) for v in bed), key=key))
     # 「同上」の根拠は、上の項目を書き換えると意味が変わるので、書き換えた項目の下の「同上」は元の文にする
     orig, prev = {}, ""
@@ -559,8 +570,14 @@ def create(a, lang):
     d["fab"] = {k: v for k, v in base["fab"].items() if set(v.get("process", ["laser", "fdm"])) & keep}
     shelf_lines = apply_shelf(d, plan, T, bool(a.bed)) if plan else []
     if a.bed:
-        bx, by = (float(x) for x in a.bed.lower().split("x"))
-        d["params"]["bed_x"]["value"], d["params"]["bed_y"]["value"] = bx, by
+        bx, by = a.bed_xy
+        wrote = False
+        for k, v in (("bed_x", bx), ("bed_y", by)):
+            if k in d["params"]:
+                d["params"][k]["value"] = v
+                wrote = True
+        if not wrote:
+            print(T["bed_ignored"].format(process=a.process))
     dump_params(d, pp)
 
     rep = {"{{NAME}}": a.name, "{{SUMMARY}}": a.summary or a.name,
@@ -652,6 +669,15 @@ def main():
     elif a.update_tools:
         update_tools(a.update_tools, a.force, a.lang)
     elif a.dest and a.name:
+        a.bed_xy = None
+        if a.bed:                                # フォルダを作る前に確かめる
+            try:
+                xy = [float(x) for x in a.bed.lower().replace("×", "x").split("x")]
+                if len(xy) != 2 or not all(math.isfinite(v) and v > 0 for v in xy):
+                    raise ValueError
+            except ValueError:
+                ap.error(MSG[lang]["bed_bad"].format(v=a.bed))
+            a.bed_xy = tuple(xy)
         create(a, lang)
     else:
         ap.error(MSG[lang]["need_args"])

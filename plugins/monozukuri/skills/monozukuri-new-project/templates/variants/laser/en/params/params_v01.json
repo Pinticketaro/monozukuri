@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "version": "v01",
+    "title": "{{NAME}}",
+    "lang": "en",
+    "note": "Template example (all laser cut): an open-top tray of five 3mm acrylic plates (bottom, front, back, left and right sides) joined with tabs and slots. Rewrite each item to fit your own shape. scaffold fills in fab (the fabrication values) for the chosen process. All plates use the fab value t_bottom as their thickness (cut from the same sheet)",
+    "colors": {"plate": "#bcd6e4", "side": "#9fc3d6"}
+  },
+  "params": {
+    "outer_w":    {"value": 120, "unit": "mm", "label": "Bottom plate width (X) (provisional)", "basis": "Tentative (to be confirmed): A typical size for a desk tray"},
+    "outer_d":    {"value": 80,  "unit": "mm", "label": "Bottom plate depth (Y) (provisional)", "basis": "Tentative (to be confirmed): Same as above"},
+    "corner_r":   {"value": 3,   "unit": "mm", "label": "Bottom plate corner radius (provisional)", "basis": "Tentative (to be confirmed): Softens corners that touch the hand"},
+    "wall_h":     {"value": 40,  "unit": "mm", "label": "Wall height (above the bottom plate) (provisional)", "basis": "Tentative (to be confirmed): High enough that small items stay in when they tip over"},
+    "margin":     {"value": 4,   "unit": "mm", "label": "Bottom plate edge to the outside of the walls (edge distance of the bottom plate slots) (provisional)", "basis": "Tentative (to be confirmed): For acrylic, keep the edge distance at least the sheet thickness (rule of thumb)"},
+    "end_margin": {"value": 3,   "unit": "mm", "label": "How far the front and back plates run past the side plates (edge distance of their slots) (provisional)", "basis": "Tentative (to be confirmed): Same as the sheet thickness. For acrylic, keep the edge distance at least the sheet thickness (rule of thumb)"},
+    "tab_w":      {"value": 15,  "unit": "mm", "label": "Tab width (provisional)", "basis": "Tentative (to be confirmed): 5× the sheet thickness. Tabs narrower than 3× the thickness break easily (rule of thumb)"},
+    "laser_x":    {"value": 300, "unit": "mm", "label": "Laser work area X (provisional)", "basis": "Tentative (to be confirmed): Assumes a small K40-class machine (set it to your machine)"},
+    "laser_y":    {"value": 200, "unit": "mm", "label": "Laser work area Y (provisional)", "basis": "Tentative (to be confirmed): Same as above"}
+  }
+}

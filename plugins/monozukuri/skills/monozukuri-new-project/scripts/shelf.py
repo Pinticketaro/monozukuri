@@ -31,9 +31,8 @@ import urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ("parts", "machines", "materials")
 MEASURED = ("実測", "measured")
-# 仮の寸法の見分け方（status.py と同じ。label の「仮」「provisional」も見る）
-TENTATIVE = re.compile(r"^\s*(仮|tentative|placeholder)|要確認|要実測|to be (confirmed|measured)", re.I)
-TENTATIVE_LABEL = re.compile(r"(^|[（(、。\s・])仮([）)。、\s・]|$)|provisional", re.I)
+# 仮の寸法の見分け方。label と basis の両方に当てる。review-page の status.py の PROVISIONAL と同じ文にしておく（直すときは両方）
+PROVISIONAL = re.compile(r"^\s*仮|(?<=[\s（(、。・,;:])仮(?=[）)。、,;:\s・]|$)|provisional|tentative|placeholder|要確認|要実測|to be (confirmed|measured)", re.I)
 LAB_LASER = "lab_laser"
 
 README = """# ライブラリ（monozukuri）
@@ -534,11 +533,12 @@ def cmd_add_part(a):
     for k, it in params.items():
         if not isinstance(it, dict) or "value" not in it:
             continue
+        tent = PROVISIONAL.search(str(it.get("label", ""))) or PROVISIONAL.search(str(it.get("basis", "")))
         if not it.get("basis"):
             skip_nob.append(k)
-        elif TENTATIVE.search(str(it["basis"])) or TENTATIVE_LABEL.search(str(it.get("label", ""))):
+        if tent:                                   # 根拠なしとは別に調べる
             skip_tent.append(k)
-        else:
+        if it.get("basis") and not tent:
             ok_keys.append(k)
     if not a.keys:
         print(f"{os.path.basename(proj)} {ver} の寸法のうち、根拠があり仮でないもの（部品ライブラリに登録できる候補）：")
