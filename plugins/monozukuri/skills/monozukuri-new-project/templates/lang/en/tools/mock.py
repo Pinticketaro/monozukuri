@@ -18,8 +18,10 @@ Template example: a box with a PLA frame between two acrylic plates, holding an 
   notes can hold text warnings, and also question candidates for things the user should decide (on the review page they become questions answered with buttons):
     {"q": "Add a retainer?", "type": "yesno", "why": "The can falls out when upside down"}
     {"q": "Lug position", "type": "options", "options": ["Top edge", {"label": "Middle", "note": "extra detail"}], "why": "…"}
-  Outlines: RRect (rounded rectangle), Circle (circle), Poly (polygon). Solids: slab (extrusion + holes), cyl (cylinder), box (cuboid).
-  Combine: + add, - subtract, & intersect, .translate(x, y, z). Do not model fine details (fillets, threads, etc.).
+  Outlines: RRect (rounded rectangle), Circle (circle), Poly (polygon). Solids: slab (extrusion + holes), prism (extrusion along X, Y or Z),
+  cyl (cylinder), box (cuboid). Laser plates: tab (adds a tab to a plate and cuts a slot of the same size in the receiving plate).
+  Combine: + add, - subtract, & intersect, .translate(x, y, z), .rotate_z(angle), .rotate_x(angle), .rotate_y(angle)
+  (draw a side profile on XY, extrude it and stand it up with rotate_x(90)). Do not model fine details (fillets, threads, etc.).
 """
 import os
 import sys

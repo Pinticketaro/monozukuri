@@ -6,12 +6,24 @@
            （CadQuery が入っていないときは STEP を飛ばす。monozukuri-setup スキルで入る。Windows の ARM64 版 Python には無い）
 
 使い方（tools/mock.py の build() の中で）
-    from geom import RRect, Circle, Poly, slab, cyl, box, tube, cone, revolve, lug_with_slot
+    from geom import RRect, Circle, Poly, slab, prism, cyl, box, tube, cone, revolve, lug_with_slot, tab
     outer = RRect(180, 110, r=8)                      # 角丸の長方形（中心 0,0）
     plate = slab(outer, z0=0, t=3, holes=[Circle(3.4, cx=85, cy=50)])
     frame = slab(outer, 3, 16, holes=[RRect(162, 92, r=2)])
     left  = frame & box(-100, -60, 0, 100, 120, 40)    # & は交差（共通部分）、+ は結合、- は切り取り
     part  = plate.translate(0, 0, 10).rotate_z(30)     # 移動、Z軸まわりに30°回転
+
+    # X軸・Y軸まわりの回転（軸の + の側から見て反時計回りが正）
+    side  = slab(Poly([(0, 0), (60, 0), (0, 40)]), 0, 80).rotate_x(90)   # 側面の形を XY に描いて押し出し、X軸まわりに90°回転して立てる（Y→Z、Z→−Y）
+    lean  = box(0, 0, 0, 3, 40, 80).rotate_y(-10, cx=0, cz=0)           # Y軸（中心 x=0, z=0）まわりに −10° 回転して、上を −X 側へ傾ける（rotate_y(90) は Z→X、X→−Z）
+
+    # 横向きの押し出し（断面を描いた座標のまま、X・Y・Z のどれかの向きに押し出す）
+    rib   = prism([(0, 0), (40, 0), (0, 30)], "x", 0, 5)   # 断面 (y, z) を x=0〜5 に押し出す。"y" なら断面 (x, z) を Y の向きに、"z" なら slab と同じ
+
+    # レーザーの板のタブとスロット（大きさは呼び寸法のまま。カーフは入れない）
+    bottom = box(0, 0, 0, 100, 60, 3)                       # 底板（3mm）
+    front  = box(0, 3, 3, 100, 3, 40)                       # 底板に立てる前板
+    front, bottom = tab(front, bottom, 20, 3, 0, 10, 3, 3)  # 前板の下にタブ 10×3×3 を結合し、底板に同じ大きさのスロットを抜く
 
     # 回転体・筒の部品
     cup   = tube(0, 0, 72, 68, 0, 90) + cyl(0, 0, 72, 0, 2)          # 筒（外径72・内径68・高さ90）＋底
@@ -33,8 +45,19 @@ Outlines (2D): RRect(w, d, r, cx, cy) rounded rectangle, Circle(d, cx, cy), Poly
 Solids: slab(outline, z0, t, holes) extrude with holes, cyl(cx, cy, d, z0, h) cylinder, box(x0, y0, z0, w, d, h),
   tube(cx, cy, d_out, d_in, z0, h) hollow cylinder, cone(cx, cy, d0, d1, z0, h) truncated cone,
   revolve([(radius, height), ...], z0) solid of revolution around Z,
-  lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t) strap lug on a tube.
-Combine: a + b union, a - b cut, a & b intersection; .translate(x, y, z), .rotate_z(deg).
+  lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t) strap lug on a tube,
+  prism(points, axis, start, length, holes) extrude an outline along X, Y or Z. The points keep their coordinates
+    (nothing is mirrored): axis "x" takes (y, z) points and fills x = start..start+length, "y" takes (x, z) points
+    and fills y = start..start+length, "z" takes (x, y) points like slab.
+    e.g. rib = prism([(0, 0), (40, 0), (0, 30)], "x", 0, 5)
+Laser plates: tab(plate, receiver, x, y, z, dx, dy, dz) adds box(x, y, z, dx, dy, dz) to plate as a tab and cuts the
+  same box from receiver as a slot; returns (plate, receiver). Nominal size: kerf is not applied.
+    e.g. front, bottom = tab(front, bottom, 20, 3, 0, 10, 3, 3)
+Combine: a + b union, a - b cut, a & b intersection; .translate(x, y, z), .rotate_z(deg, cx, cy),
+  .rotate_x(deg, cy, cz), .rotate_y(deg, cx, cz) (counterclockwise seen from the + end of the axis is positive).
+    e.g. side = slab(Poly([(0, 0), (60, 0), (0, 40)]), 0, 80).rotate_x(90) stands up a side profile drawn on XY
+    (rotate_x(90): Y becomes Z, Z becomes -Y); box(0, 0, 0, 3, 40, 80).rotate_y(-10) leans the top toward -X
+    (rotate_y(90): Z becomes X, X becomes -Z).
 Export: export_stl, export_step, export_assembly (one STEP with named, colored parts), check_step (re-reads the STEP
   and checks its size against the mesh, a units check), to_trimesh, has_cad.
 In STEP, rounded corners are real arcs, circles are real circles, and cylinders, cones and revolved shapes are real
@@ -155,6 +178,15 @@ class Solid:
         """Z軸（中心 cx, cy）まわりに deg 度回転する（反時計回りが正）"""
         return Solid("rotz", self, (float(deg), float(cx), float(cy)))
 
+    def rotate_x(self, deg, cy=0.0, cz=0.0):
+        """X軸（中心 cy, cz）まわりに deg 度回転する（X の正の向きから見て反時計回りが正）。
+        側面の形を XY に描いて押し出し、rotate_x(90) で立てる、という使い方ができる（Y→Z、Z→−Y）"""
+        return Solid("rot", self, ((1.0, 0.0, 0.0), float(deg), (0.0, float(cy), float(cz))))
+
+    def rotate_y(self, deg, cx=0.0, cz=0.0):
+        """Y軸（中心 cx, cz）まわりに deg 度回転する（Y の正の向きから見て反時計回りが正。Z→X、X→−Z）"""
+        return Solid("rot", self, ((0.0, 1.0, 0.0), float(deg), (float(cx), 0.0, float(cz))))
+
     # メッシュ（manifold3d）
     def mf(self):
         if self._mf is None:
@@ -189,6 +221,10 @@ class Solid:
             elif self.op == "rotz":
                 deg, cx, cy = a[1]
                 self._mf = a[0].mf().translate([-cx, -cy, 0]).rotate([0, 0, deg]).translate([cx, cy, 0])
+            elif self.op == "rot":
+                ax, deg, c = a[1]
+                self._mf = (a[0].mf().translate([-c[0], -c[1], -c[2]])
+                            .rotate([ax[0] * deg, ax[1] * deg, ax[2] * deg]).translate(list(c)))
         return self._mf
 
     # ソリッド（CadQuery）
@@ -227,12 +263,42 @@ class Solid:
             elif self.op == "rotz":
                 deg, cx, cy = a[1]
                 self._cq = a[0].cq().rotate((cx, cy, 0), (cx, cy, 1), deg)
+            elif self.op == "rot":
+                ax, deg, c = a[1]
+                self._cq = a[0].cq().rotate(c, (c[0] + ax[0], c[1] + ax[1], c[2] + ax[2]), deg)
         return self._cq
 
 
 def slab(outer, z0, t, holes=()):
-    """輪郭 outer を z0 から厚さ t だけ押し出し、holes（輪郭のリスト）を抜く"""
-    return Solid("extrude", outer, float(z0), float(t), list(holes))
+    """輪郭 outer を z0 から厚さ t だけ押し出し、holes（輪郭のリスト）を抜く。
+    t が負なら z0+t〜z0 に押し出す（メッシュと STEP で同じ形になるよう、ここで向きをそろえる）"""
+    z0, t = float(z0), float(t)
+    if t < 0:
+        z0, t = z0 + t, -t
+    return Solid("extrude", outer, z0, t, list(holes))
+
+
+def prism(pts, axis, start, length, holes=()):
+    """輪郭を X・Y・Z のどれかの向きに押し出す（横向きの角柱・リブ・レーザーの側板など）。
+      axis="x" … pts は (y, z) の点。x = start〜start+length に押し出す
+      axis="y" … pts は (x, z) の点。y = start〜start+length に押し出す
+      axis="z" … pts は (x, y) の点。z = start〜start+length に押し出す（slab と同じ）
+    pts は点の並び（閉じなくてよい）か輪郭（RRect・Circle・Poly）。holes は抜く輪郭か点の並びのリスト（pts と同じ座標で書く）。
+    点は書いた座標のまま置かれる（ミラーにならない）。length が負なら start+length〜start に押し出す"""
+    outer = pts if isinstance(pts, Outline) else Poly(pts)
+    holes = [h if isinstance(h, Outline) else Poly(h) for h in holes]
+    start, length, ax = float(start), float(length), str(axis).lower()
+    if length < 0:
+        start, length = start + length, -length
+    if ax == "z":
+        return slab(outer, start, length, holes)
+    if ax == "x":
+        # 断面 (u, v) を w = start〜start+length に押し出し、(u, v, w) → rotate_x(90) → (u, −w, v) → rotate_z(90) → (w, u, v)
+        return slab(outer, start, length, holes).rotate_x(90).rotate_z(90)
+    if ax == "y":
+        # (u, v, w) → rotate_x(90) → (u, −w, v)。w を −(start+length)〜−start に置くと y = start〜start+length
+        return slab(outer, -(start + length), length, holes).rotate_x(90)
+    raise ValueError(f'prism の axis は "x"・"y"・"z" のどれか（axis must be "x", "y" or "z"）: {axis!r}')
 
 
 def cyl(cx, cy, d, z0, h):
@@ -251,7 +317,7 @@ def box(x0, y0, z0, w, d, h):
 
 
 def tube(cx, cy, d_out, d_in, z0, h):
-    """筒（中空の円柱）：中心 (cx, cy)、外径 d_out・内径 d_in、z0 から高さ h。底を付けるときは cyl を足す"""
+    """筒（中空の円柱）：中心 (cx, cy)、外径 d_out・内径 d_in、z0 から高さ h。底を付けるときは cyl を結合する"""
     return cyl(cx, cy, d_out, z0, h) - cyl(cx, cy, d_in, z0 - EPS, h + 2 * EPS)
 
 
@@ -277,6 +343,15 @@ def lug_with_slot(r, angle, w, out, h, z0, slot_w, slot_t, slot_at=None, embed=2
     if angle:
         lug = lug.rotate_z(angle)
     return lug.translate(cx, cy, 0) if (cx or cy) else lug
+
+
+def tab(plate, receiver, x, y, z, dx, dy, dz):
+    """タブとスロット（レーザーの板を組む）：plate に直方体 box(x, y, z, dx, dy, dz) をタブとして結合し、
+    受ける板 receiver から同じ直方体をスロットとして抜く。戻り値は (タブ付きの板, スロット付きの板)。
+    大きさは呼び寸法のまま（カーフ・slot_fit は入れない）。
+    例：front, bottom = tab(front, bottom, 20, 3, 0, 10, 3, 3)"""
+    b = box(x, y, z, dx, dy, dz)
+    return plate + b, receiver - b
 
 
 # ---------------------------------------------------------------- エクスポート

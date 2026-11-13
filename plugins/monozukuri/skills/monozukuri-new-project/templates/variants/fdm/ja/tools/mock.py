@@ -18,9 +18,10 @@
   notes には文字の注意のほか、決めてほしいことを問いの候補として書ける（確認ページでボタンで答えられる問いになる）：
     {"q": "抜け止めを付けますか", "type": "yesno", "why": "缶が逆さで落ちる"}
     {"q": "ラグの位置", "type": "options", "options": ["上端", {"label": "中ほど", "note": "補足"}], "why": "…"}
-  輪郭：RRect（角丸の長方形）・Circle（円）・Poly（多角形）。立体：slab（押し出し＋穴）・cyl（円柱）・box（直方体）・
-  tube（筒）・cone（円錐台）・revolve（回転体）・lug_with_slot（ストラップホール付きのラグ）。
-  組み合わせ：+ 結合、- 切り取り、& 交差、.translate(x, y, z)、.rotate_z(角度)。細部（フィレット・ネジ山など）は作らない。
+  輪郭：RRect（角丸の長方形）・Circle（円）・Poly（多角形）。立体：slab（押し出し＋穴）・prism（X・Y・Z の向きに押し出し）・
+  cyl（円柱）・box（直方体）・tube（筒）・cone（円錐台）・revolve（回転体）・lug_with_slot（ストラップホール付きのラグ）。
+  組み合わせ：+ 結合、- 切り取り、& 交差、.translate(x, y, z)、.rotate_z(角度)・.rotate_x(角度)・.rotate_y(角度)
+  （側面の形を XY に描いて押し出し、rotate_x(90) で立てる）。細部（フィレット・ネジ山など）は作らない。
 """
 import os
 import sys
