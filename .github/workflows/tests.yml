@@ -1,0 +1,26 @@
+# setup.py のテスト（tests/test_setup.py）を mac と Linux で動かす。Windows は windows.yml の中で動かす。
+# 速いテストだけ（pip でパッケージを入れない）。uv があれば、uv で Python 3.12 の仮想環境を作るテストも通る。
+name: tests
+
+on:
+  push:
+    branches: [main, windows]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  setup-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - name: setup.py のテスト
+        run: python tests/test_setup.py

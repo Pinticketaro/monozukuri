@@ -173,7 +173,7 @@ monozukuri-new-project の参照資料（`skills/monozukuri-new-project/referenc
 
 ## 必要なもの
 
-- Python 3.10 以上（Windows は 3.12 がいちばん確実）、Node.js（three.js を入れるため）。Windows では Git も（Claude Code が Git Bash を使うため）。monozukuri-setup スキルが残りをそろえる。
+- Python（版は合わせなくてよい）、Node.js（three.js を入れるため）。Windows では Git も（Claude Code が Git Bash を使うため）。monozukuri-setup スキルが残りをそろえる。PC の Python が STEP のエクスポートまで使える範囲（3.11〜3.13）の外なら、setup.py が uv で monozukuri 用の Python 3.12 を `~/.monozukuri/python` に用意して仮想環境を作る（PC の Python には触らない）。Linux の既定（仮想環境なし）は 3.10 以上。
 - macOS・Linux・Windows（PowerShell・Git Bash・WSL）で動く。Windows のままで動かすのは 0.8.0 から（実機ではまだ試していない）。入れ方は [リポジトリの README](../../README.md) の「対応環境」と「Windows の場合」。
 - 外部サービスの接続や環境変数は不要。
 
@@ -183,8 +183,8 @@ monozukuri-new-project の参照資料（`skills/monozukuri-new-project/referenc
 
 実行する Python は、monozukuri-setup が記録したもの（`check_env.py` の最後の行「monozukuri のスクリプトは次の Python で実行する: <パス>」か、`~/.cache/monozukuri/env.json` の `python`）。mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`、Linux は `python3`。
 
-- `setup.py`（monozukuri-setup）：環境のセットアップ。どの OS でも python で動く（mac・Linux は `python3 scripts/setup.py`（`bash scripts/setup.sh` でも同じ）、Windows は `python scripts/setup.py` か `py -3.12 scripts/setup.py`）。`--no-cad`・`--lang`・`--venv`・`--no-venv`・`--python`
-- `check_env.py`（monozukuri-setup）：入っているものとテストレンダリングの確かめだけ
+- `setup.py`（monozukuri-setup）：環境のセットアップ。どの OS でも python で動く（mac・Linux は `python3 scripts/setup.py`（`bash scripts/setup.sh` でも同じ）、Windows は `python scripts/setup.py`。Python が無ければ `uv run --python 3.12 --no-project scripts/setup.py`）。`--no-cad`・`--lang`・`--venv`・`--no-venv`・`--python`・`--rebuild-venv`（仮想環境を消して作り直す）・`--no-uv`（uv を使わない）
+- `check_env.py`（monozukuri-setup）：入っているものとテストレンダリングの確かめだけ（Python の版が STEP まで使える範囲の中かと、cadquery が使えないときの直し方も出す）
 - `render_model.py`：STL/OBJ/3MF/GLB/STEP をシェーディングしてレンダリング（複数の視点を1枚に）、GLB のエクスポート
 - `slices.py`：平面図（部品の断面と、上面から見た外形の重ね合わせ。`--plan-z` で断面の高さ）と断面図
 - `compare.py`：前後の画像を並べ、変わった所を赤で強調

@@ -49,7 +49,7 @@ monozukuri is **made for Mac and Linux**. Its rendering and other scripts are wr
 ## First time only
 
 1. **Start a new conversation**: plugins load when a conversation starts. A conversation that was already open before you added the plugin cannot use it.
-2. **Ask "Set up the mock environment"**: this installs what rendering needs and checks it with a test render.
+2. **Ask "Set up the mock environment"**: this installs what rendering needs and checks it with a test render. You do not need to match your Python version: if your Python cannot install what STEP export needs (cadquery; today that means outside 3.11-3.13, such as 3.15), setup uses [uv](https://docs.astral.sh/uv/) to get Python 3.12 for monozukuri in `~/.monozukuri/python`. Your own Python is left as it is.
 
 ## How it works
 
@@ -158,6 +158,7 @@ plugins/monozukuri/               The plugin
   skills/monozukuri-new-project/  Templates, coupons, technical requirement references
   skills/monozukuri-review-page/  Rendering, comparison, review page, feedback
 dist/monozukuri.plugin            Package for the Claude app
+tests/test_setup.py               Setup tests (python tests/test_setup.py; --full runs setup end to end)
 ```
 
 ## License

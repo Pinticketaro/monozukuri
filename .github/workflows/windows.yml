@@ -2,6 +2,8 @@
 # セットアップ → 新しいプロジェクト → 版づくり（モック・レンダリング・確認ページ）→ status → 確認ページのサーバーの起動と停止。
 # windows-latest は英語の環境（cp1252）なので、日本語の出力が文字コードで落ちないかも確かめられる。
 # デスクトップアプリ（Codex・Claude Code）からの使い方は、ここでは確かめられない（実機で確かめる）。
+# Python は2つ：3.12（STEP まで使える範囲の中。その Python で仮想環境を作る）と、
+# 3.15（範囲の外。setup.py が uv で Python 3.12 を用意して仮想環境を作る）。どちらも STEP までエクスポートできることを確かめる。
 name: windows
 
 on:
@@ -14,16 +16,32 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.12"
+            source: base
+          - python: "3.15"
+            source: uv
+    name: windows (Python ${{ matrix.python }})
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: setup.py のテスト（速いもの。tests/test_setup.py）
+        shell: pwsh
+        run: |
+          python tests/test_setup.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: セットアップ（PowerShell 7）
         shell: pwsh
@@ -36,6 +54,12 @@ jobs:
         run: |
           $envjson = Get-Content -Raw -Encoding utf8 (Join-Path $HOME ".cache/monozukuri/env.json") | ConvertFrom-Json
           if (-not (Test-Path $envjson.python)) { throw "env.json の python がありません: $($envjson.python)" }
+          # 範囲の外の Python（3.15）からでも、仮想環境は uv の Python 3.12 で作られ、cadquery が読み込める
+          "python_version=$($envjson.python_version) python_source=$($envjson.python_source)"
+          if (-not "$($envjson.python_version)".StartsWith("3.12.")) { throw "仮想環境の Python が 3.12 ではありません: $($envjson.python_version)" }
+          if ($envjson.python_source -ne "${{ matrix.source }}") { throw "python_source が ${{ matrix.source }} ではありません: $($envjson.python_source)" }
+          & $envjson.python -c "import cadquery, OCP; print('cadquery', cadquery.__version__)"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           # 空白と日本語の入ったフォルダに作る
           $proj = Join-Path $env:RUNNER_TEMP "mz test\スタンド"
           "MZPY=$($envjson.python)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -63,7 +87,7 @@ jobs:
         run: |
           & $env:MZPY "$env:SK/monozukuri-review-page/scripts/make_version.py" $env:PROJ v01
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          foreach ($f in "out\v01\preview.png", "out\v01\plan.png", "out\v01\section.png", "out\v01\model.glb", "review\index.html", "review\board.json") {
+          foreach ($f in "out\v01\preview.png", "out\v01\plan.png", "out\v01\section.png", "out\v01\model.glb", "out\v01\step\index.json", "review\index.html", "review\board.json") {
             if (-not (Test-Path (Join-Path $env:PROJ $f))) { throw "できていません: $f" }
           }
 
@@ -104,7 +128,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-result
+          name: windows-result-py${{ matrix.python }}
           path: |
             ${{ runner.temp }}/mz test/スタンド/out/v01/*.png
             ${{ runner.temp }}/mz test/スタンド/out/v01/make.log

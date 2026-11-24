@@ -58,10 +58,12 @@ foreach ($s in "monozukuri-setup", "monozukuri-new-project", "monozukuri-review-
 
 | 環境 | 使えるか | 要るもの・注意 |
 | --- | --- | --- |
-| macOS | ⭕️ | Python 3.10 以上と Node.js（`brew install python@3.12 node`） |
+| macOS | ⭕️ | Python（mac に最初から入っている `python3` でよい）と Node.js（`brew install node`） |
 | Linux | ⭕️ | Python 3.10 以上、Node.js、日本語フォント（Ubuntu なら `fonts-noto-cjk`） |
 | Windows の WSL（Ubuntu など） | 🔺（Linux として動きます） | AI も WSL の中で動かし、プロジェクトは WSL 側のフォルダ（`~/` の下）に置きます |
-| Windows のまま（PowerShell・Git Bash） | 🔺（0.8.0 から。実機ではまだ試していません） | Python 3.12（python.org の x64 版か `winget install -e --id Python.Python.3.12`）、Node.js（`winget install -e --id OpenJS.NodeJS.LTS`）、Git（`winget install -e --id Git.Git`） |
+| Windows のまま（PowerShell・Git Bash） | 🔺（0.8.0 から。実機ではまだ試していません） | Python（python.org の x64 版か `winget install -e --id Python.Python.3.12`。版はどれでもよい）、Node.js（`winget install -e --id OpenJS.NodeJS.LTS`）、Git（`winget install -e --id Git.Git`） |
+
+Python の版は合わせなくて大丈夫です。PC の Python では STEP のエクスポートに要るもの（cadquery）が入らないとき（今は 3.11〜3.13 の外。3.15 など）は、セットアップが [uv](https://docs.astral.sh/uv/) で monozukuri 用の Python 3.12 を `~/.monozukuri/python` に用意して、それを使います。PC の Python には触りません。
 
 | AI | 確認ページ | 決めてほしいことの聞き方 | スキルの呼び方 |
 | --- | --- | --- | --- |
@@ -75,7 +77,7 @@ foreach ($s in "monozukuri-setup", "monozukuri-new-project", "monozukuri-review-
 
 - **いちばん手軽なのは Claude アプリで使うことです**。レンダリングなどの処理は Claude のクラウドの作業環境（Linux）で動くので、Windows でも Mac と同じ手順で使えます。新しい会話のたびに「モックの環境を整えて」が必要です。
 - **パソコンで直接動かすなら、Windows のまま使えます**（0.8.0 から。実機ではまだ試していません）。Codex は PowerShell で動かします。Claude Code は Git Bash を使って動きます（Git を入れると入ります）。
-  1. PowerShell で Python 3.12、Node.js、Git を入れます。
+  1. PowerShell で Python、Node.js、Git を入れます（Python は、もう入っていればその版のままでかまいません）。
      ```powershell
      winget install -e --id Python.Python.3.12
      winget install -e --id OpenJS.NodeJS.LTS
@@ -89,7 +91,7 @@ foreach ($s in "monozukuri-setup", "monozukuri-new-project", "monozukuri-review-
 ## セットアップ
 
 1. **新しい会話を始める**：プラグインは会話の開始時に読み込まれます。追加する前から開いていた会話では使えません。
-2. **「モックの環境を整えて」と頼む**：レンダリングに必要なものがそろい、テストレンダリングまで確かめます。
+2. **「モックの環境を整えて」と頼む**：レンダリングに必要なものがそろい、テストレンダリングまで確かめます。Python の版を合わせる作業は要りません（STEP が使えない版なら、monozukuri 用の Python 3.12 を自動で用意します）。
 
 ## 使い方
 
@@ -203,6 +205,7 @@ plugins/monozukuri/               プラグイン本体
   skills/monozukuri-new-project/  テンプレート・テストピース・技術要件の参照資料
   skills/monozukuri-review-page/  レンダリング・比較・確認ページ・フィードバック
 dist/monozukuri.plugin            Claude アプリ用のパッケージ
+tests/test_setup.py               セットアップのテスト（python tests/test_setup.py。--full で最後まで通す）
 ```
 
 ## English

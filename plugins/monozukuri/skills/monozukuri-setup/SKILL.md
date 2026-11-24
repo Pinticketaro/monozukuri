@@ -9,7 +9,7 @@ description: >
   review-page scripts need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery for STEP output,
   playwright + Chromium, three.js, CJK font) and runs a test render. On macOS and Windows it installs into ~/.monozukuri/venv.
 license: MIT
-compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python 3.10 以上（Windows は 3.12 がいちばん確実）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。STEP に要る 3.11〜3.13 でなければ、setup.py が uv で monozukuri 用の Python 3.12 を用意する。Linux の既定（仮想環境なし）は 3.10 以上）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
 metadata:
   version: "0.8.0"
 ---
@@ -37,14 +37,17 @@ metadata:
    - AI がユーザーの PC（Mac・Windows・Linux）で動いているなら（Claude Code・Codex など）、PC に入れる。プロジェクトを PC のフォルダに置くなら、レンダリングも PC でするのがいちばん手間が少ない（クラウドとの同期が要らない）。
    - クラウドの作業環境で動いているなら（Claude アプリなど）、そこに入れる。セッションが新しくなるたびに入れ直しが要る。
    - 置き場所：macOS と Windows では Python のパッケージをプロジェクトの外の仮想環境 `~/.monozukuri/venv` に入れる（`--venv <フォルダ>` で変更可）。Linux（クラウド）では今までどおり、setup.py を実行した Python に入れる。特定の Python に直接入れたいときは `--python <Python>`（conda なら `--python python`）、仮想環境を使わないときは `--no-venv`。
+   - Python の版は合わせなくてよい。仮想環境を作るとき、PC の Python が STEP のエクスポートまで使える範囲（3.11〜3.13）の外なら、setup.py が uv で monozukuri 用の Python 3.12 を `~/.monozukuri/python` に用意して、それで仮想環境を作る（PC の Python には触らない。uv が無ければ `~/.monozukuri/bin` に入れる）。`--python` と `--no-uv` のときは uv を使わない。
 
 2. **セットアップを実行する**（このスキルの基準ディレクトリからの相対パス）
    ```bash
    python3 scripts/setup.py    # mac・Linux（前からの bash scripts/setup.sh でも同じ）
-   python scripts/setup.py     # Windows（python が無い、または Microsoft Store が開くときは py -3.12 scripts/setup.py）
+   python scripts/setup.py     # Windows（python が無い、または Microsoft Store が開くときは下の uv の行）
+   uv run --python 3.12 --no-project scripts/setup.py   # Python が無く、uv がある PC（どの OS でも）
    ```
-   - 通常は cadquery も入れる（モックを STEP でもエクスポートできる）。STL だけでよいときは `--no-cad` を付ける（cadquery は数百MBあり、入れるのに数分かかる）。ほかのオプションは `--lang en`・`--venv <フォルダ>`・`--no-venv`・`--python <Python>`（`--help` で説明が出る）。
-   - コマンドのタイムアウトは長め（10分）にする（Claude Code では timeout 600000）。cadquery・cascadio・Chromium・three.js のダウンロードに時間がかかる。
+   - 通常は cadquery も入れる（モックを STEP でもエクスポートできる）。STL だけでよいときは `--no-cad` を付ける（cadquery は数百MBあり、入れるのに数分かかる）。ほかのオプションは `--lang en`・`--venv <フォルダ>`・`--no-venv`・`--python <Python>`・`--rebuild-venv`（仮想環境を消して作り直す。PC の Python で実行する。仮想環境の Python で実行すると、Windows では消せないので止まる）・`--no-uv`（uv を使わない）（`--help` で説明が出る）。
+   - コマンドのタイムアウトは長め（10分）にする（Claude Code では timeout 600000）。cadquery・cascadio・Chromium・three.js と、uv が用意する Python のダウンロードに時間がかかる。
+   - 「monozukuri 用に Python 3.12 を用意します」と出たら、PC の Python では STEP が使えないので、uv が用意した Python で仮想環境を作っている（ユーザーに聞く必要はない）。uv が Python をダウンロードできないときは、PC の Python で仮想環境を作って進める（STL のモックと確認ページは使える）。ダウンロードできる所でもう一度 setup.py を実行すると、uv で作り直す。
    - 何度実行しても安全。入っているものは飛ばす。
 
 3. **結果の表を読む**
@@ -60,22 +63,24 @@ metadata:
 | 症状 | 対処 |
 |---|---|
 | `externally-managed-environment` | setup.py が自動で `--break-system-packages` を付けて再試行する。それでも失敗したら仮想環境を使う（`python3 scripts/setup.py --venv ~/.monozukuri/venv`） |
-| mac で仮想環境が作れない（Python 3.10 以上が無い） | `brew install python@3.12` のあと `python3.12 scripts/setup.py`（仮想環境は setup.py を実行した Python から作る） |
+| mac で Python が古い（mac に最初から入っている python3 は 3.9） | そのまま `python3 scripts/setup.py` でよい。setup.py が uv で Python 3.12 を用意して仮想環境を作る。「uv を入れられませんでした」と出たら、表示された公式のインストーラ（mac は `curl -LsSf https://astral.sh/uv/install.sh \| sh`）で uv を入れて、もう一度実行する |
 | mac で STEP をエクスポートすると落ちる（Segmentation fault / Abort trap） | cascadio と CadQuery の読み込み順の問題。テンプレートの `geom.py` は CadQuery を先に読むので、古いプロジェクトは monozukuri-new-project の `scaffold.py --update-tools` でツールを新しくする |
 | Chromium が起動しない | `<python> -m playwright install chromium`。クラウドの作業環境では入っているはずなので、`PLAYWRIGHT_BROWSERS_PATH` を確認 |
 | three.js が入らない（npm がない） | mac は `brew install node`、Windows は `winget install -e --id OpenJS.NodeJS.LTS` のあと AI のアプリを開き直す（PATH を読み直すため）。入れられない環境では、作業環境（クラウド）側でレンダリングする |
 | 日本語フォントが見つからない | mac はヒラギノ、Linux は `fonts-noto-cjk` を入れる（Windows は游ゴシック・メイリオが最初から入っている）。入れられない場合、図の日本語が□になるだけでレンダリング自体はできる |
-| cadquery が入らない | Python のバージョンに合う版が無いことがある（3.10〜3.12 が確実）。入らなくても STL のモックと確認ページは使える。STEP が要るときは conda（`conda install -c conda-forge cadquery`）を試す |
-| Windows で `python` が無い・Microsoft Store が開く | python.org の Python 3.12（x64）か `winget install -e --id Python.Python.3.12` で入れ、AI のアプリを開き直してから `py -3.12 scripts/setup.py` |
+| cadquery が入らない・読み込めない（`No module named 'OCP'` など） | Python の版に合う cadquery のパッケージが無い（3.11〜3.13 が確実。3.15 には無い）。check_env.py の cadquery の行に直し方が出る：古い仮想環境なら `setup.py --rebuild-venv`（uv で Python 3.12 の仮想環境に作り直す）、`--python`・仮想環境なしなら `--venv ~/.monozukuri/venv` を付けて実行する。入らなくても STL のモックと確認ページは使える。uv が使えないときは conda（`conda install -c conda-forge cadquery`）を試す |
+| Windows で `python` が無い・Microsoft Store が開く | uv を入れる（`winget install -e --id astral-sh.uv`）。AI のアプリを開き直してから `uv run --python 3.12 --no-project scripts/setup.py`。または python.org の Python（x64。版はどれでもよい）か `winget install -e --id Python.Python.3.12` で入れ、開き直してから `python scripts/setup.py` |
 | ARM64 の Windows | x64 版の Python（python.org の「Windows installer (64-bit)」）で実行する（ARM64 版の Python では setup.py が止めて案内する） |
 | Windows で「DLL load failed」「読み込めません」 | Microsoft Visual C++ 再頒布可能パッケージを入れる：`winget install -e --id Microsoft.VCRedist.2015+.x64` |
-| Windows で cadquery・cascadio が入らない（Python 3.13 以降） | Python 3.12 で仮想環境を作り直す：古い仮想環境のフォルダ（`~/.monozukuri/venv`）を消してから `py -3.12 scripts/setup.py` |
+| Windows で cadquery・cascadio が入らない（0.8.0 までに新しい Python で作った仮想環境） | PC の Python で `python scripts/setup.py --rebuild-venv`（仮想環境を消して、uv で用意した Python 3.12 で作り直す）。`~/.monozukuri/venv` の Python では実行しない。フォルダを手で消さなくてよい |
+| uv が Python をダウンロードできない（社内のネットワーク・プロキシ、GitHub に届かない） | 証明書のエラーなら、setup.py が OS の証明書でもう一度試す。プロキシの環境は `HTTPS_PROXY` を設定する。GitHub に届かないネットワークでは、uv の `UV_PYTHON_INSTALL_MIRROR` に社内のミラーを設定するか、`--no-uv` で PC の Python のまま使う（STEP は使えないことがある） |
 | Windows でファイルが見つからない・書けない（プロジェクトが OneDrive の中、パスが長い） | プロジェクトを `C:/work/` のような浅い場所に置く |
 | Windows で「仮想環境を作れませんでした」と出て、確認ページのサーバーが動いている | `<python> <scripts>/serve_review.py <プロジェクト> --stop`（`<scripts>` は monozukuri-review-page スキルの `scripts/`）で止めてから、もう一度実行する |
-| AI のサンドボックスでダウンロードや `~/` への書き込みが止められる（Codex の既定の設定など。mac・Windows とも） | setup.py はネットワークと、`~/.monozukuri/`・`~/.cache/monozukuri/` への書き込みが要る。ユーザーの許可を得て、サンドボックスの外で実行する（またはユーザーに、手順2のコマンドを setup.py の絶対パスにして実行してもらう） |
+| AI のサンドボックスでダウンロードや `~/` への書き込みが止められる（Codex の既定の設定など。mac・Windows とも） | setup.py はネットワークと、`~/.monozukuri/`・`~/.cache/monozukuri/` への書き込みが要る。uv が Python をダウンロードするとき（GitHub から取ってくる）もネットワークが要る。ユーザーの許可を得て、サンドボックスの外で実行する（またはユーザーに、手順2のコマンドを setup.py の絶対パスにして実行してもらう） |
 | テストレンダリングがタイムアウト | WebGL がソフトウェアレンダリング（SwiftShader）で遅い環境。もう一度だけ実行し、それでもだめなら幅を小さく（`--width 1200`） |
 
 ## 置き場所
 - three.js と環境の記録は `~/.cache/monozukuri/`（`MONOZUKURI_CACHE` で変更可）。`~` は、Windows ではユーザーのフォルダ（`C:/Users/<名前>`）。
-- 環境の記録 `env.json` に日本語フォントの場所と、使う Python（`python`。Windows では区切りを / にした `python_posix` も）が入る。比較画像・断面図はそのフォントを使う。
+- 環境の記録 `env.json` に日本語フォントの場所と、使う Python（`python`。Windows では区切りを / にした `python_posix` も）とその版（`python_version`）が入る。比較画像・断面図はそのフォントを使う。
 - macOS と Windows の Python のパッケージは `~/.monozukuri/venv`（プロジェクトの外。`--venv` で変更可）。Python は mac が `bin/python`、Windows が `Scripts/python.exe`。
+- uv が用意した Python は `~/.monozukuri/python`、setup.py が入れた uv は `~/.monozukuri/bin`。どちらで仮想環境を作ったか（`uv`／`base`）は、`env.json` の `python_source` と、仮想環境の中の `monozukuri.json` に入る。

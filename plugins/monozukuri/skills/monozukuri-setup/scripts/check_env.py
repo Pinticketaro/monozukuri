@@ -1,11 +1,15 @@
 """monozukuri の環境チェック。足りないものと、テストレンダリングの結果を表で出す。
 結果は ~/.cache/monozukuri/env.json にも保存する（環境変数 MONOZUKURI_CACHE があればそこ。
-日本語フォントの場所、three.js の場所、使う Python。python_posix は区切りを / にした同じパス）。
+日本語フォントの場所、three.js の場所、使う Python。python_posix は区切りを / にした同じパス。python_version は版、
+python_source はその Python の作り方：uv（setup.py が uv で用意した Python の仮想環境）／base（元の Python から作った
+仮想環境）／direct（仮想環境ではない。--python・Linux の既定））。
+Python の版が STEP まで使える範囲（setup.py の SUPPORTED）の中かも表に出す。
 最後の行に、monozukuri のスクリプトを実行する Python を出す（「…次の Python で実行する: <パス>」。空白があれば " で囲む）。
 使い方: python check_env.py [--no-render] [--lang ja|en]
   言葉（表・メッセージ・テストレンダリング）は --lang、無ければ環境変数 MONOZUKURI_LANG、どれも無ければ ja。
 """
 import importlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -16,6 +20,7 @@ import tempfile
 CACHE = os.path.abspath(os.path.expanduser(os.environ.get("MONOZUKURI_CACHE") or "~/.cache/monozukuri"))
 SKILLS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # スキルのフォルダが並ぶ所
 RENDER = os.path.join(SKILLS, "monozukuri-review-page", "scripts", "render_model.py")
+SETUP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "setup.py")
 
 # 日本語が出せるフォント（見つかった順に使う）。Meiryo・BIZ UDGothic・MS Gothic は Windows で Yu Gothic が無いとき
 CJK_FONTS = ["Noto Sans CJK JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "IPAexGothic",
@@ -63,6 +68,69 @@ def import_note(mod, e):
     return L("読み込めない: ", "cannot load: ") + f"{type(e).__name__}: {msg}"[:300]
 
 
+def setup_consts():
+    """setup.py（Python の版の範囲 SUPPORTED・PREFERRED・MARKER を1か所で持つ）。読めなければ None"""
+    try:
+        spec = importlib.util.spec_from_file_location("monozukuri_setup", SETUP)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m if hasattr(m, "SUPPORTED") else None
+    except Exception:
+        return None
+
+
+def read_marker(marker):
+    """仮想環境の中の記録（setup.py が書く。python_source・wanted_uv）。仮想環境でないか、無ければ {}"""
+    if sys.prefix == getattr(sys, "base_prefix", sys.prefix):
+        return {}
+    try:
+        with open(os.path.join(sys.prefix, marker or "monozukuri.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def python_source(mk):
+    """この Python の作り方：uv／base／direct。setup.py が渡した値（--python・仮想環境なしのとき direct）、
+    仮想環境の中の記録、前の env.json（同じ Python のとき）の順に見る。どれも無ければ、仮想環境なら base、ほかは direct"""
+    sources = ("uv", "base", "direct")
+    v = os.environ.get("MONOZUKURI_PYTHON_SOURCE")
+    if v in sources:
+        return v
+    if mk.get("python_source") in sources:
+        return mk["python_source"]
+    try:
+        with open(os.path.join(CACHE, "env.json"), encoding="utf-8") as f:
+            prev = json.load(f)
+        if prev.get("python") == sys.executable and prev.get("python_source") in sources:
+            return prev["python_source"]
+    except (OSError, ValueError, AttributeError):
+        pass
+    return "direct" if sys.prefix == getattr(sys, "base_prefix", sys.prefix) else "base"
+
+
+def cad_fix(src, inside, err, wanted_uv, preferred):
+    """cadquery が使えないときの直し方（1つ）。err は読み込めなかった例外"""
+    text = f"{type(err).__name__}: {err}"
+    if "DLL" in text:
+        return L("Microsoft Visual C++ 再頒布可能パッケージを入れる（winget install -e --id Microsoft.VCRedist.2015+.x64）",
+                 "install the Microsoft Visual C++ Redistributable (winget install -e --id Microsoft.VCRedist.2015+.x64)")
+    if ".so" in text and os.name != "nt":
+        return L("足りない共有ライブラリを入れる（libGL.so.1 なら Ubuntu は sudo apt install libgl1）",
+                 "install the missing shared library (for libGL.so.1 on Ubuntu: sudo apt install libgl1)")
+    missing = isinstance(err, ModuleNotFoundError) and err.name == "cadquery"
+    if inside and missing:
+        return L("setup.py（--no-cad を付けずに）", "setup.py (without --no-cad)")
+    if src == "direct":
+        return L("setup.py --venv ~/.monozukuri/venv（--python・--no-venv は付けない）",
+                 "setup.py --venv ~/.monozukuri/venv (without --python or --no-venv)")
+    if wanted_uv:
+        return L(f"Python {preferred} をダウンロードできる所で setup.py（uv で作り直す）",
+                 f"run setup.py where Python {preferred} can be downloaded (it rebuilds with uv)")
+    return L("setup.py --rebuild-venv（PC の Python で実行）", "setup.py --rebuild-venv (run with your own Python)")
+
+
 def find_cjk_font():
     """日本語フォントの (名前, ファイル)。同じ名前のファイルが複数ある（ウエイト違い）ときは標準のウエイト（400）に
     いちばん近いものを、同じならパスの順で選ぶ（findSystemFonts の順は実行ごとに変わるので並べ替える）"""
@@ -99,7 +167,20 @@ def main():
         import cadquery  # noqa: F401
     except Exception as e:
         early["cadquery"] = e          # 2回目の読み込みより、1回目のエラーのほうが元の理由
-    row("Python", sys.version_info[:2] >= (3, 10), f"{sys.version.split()[0]}  {sys.executable}")
+    S = setup_consts()
+    ver = sys.version.split()[0]
+    mk = read_marker(getattr(S, "MARKER", None))
+    src = python_source(mk)
+    inside = None
+    if S:
+        (a, b), (c, d) = S.SUPPORTED
+        inside = S.SUPPORTED[0] <= sys.version_info[:2] <= S.SUPPORTED[1]
+        span = f"{a}.{b}〜{c}.{d}" if LANG == "ja" else f"{a}.{b}-{c}.{d}"
+        where = L(f"（STEP まで使える範囲 {span} の{'中' if inside else '外'}）",
+                  f" ({'within' if inside else 'outside'} {span}, the range that can export STEP)")
+    else:
+        where = ""
+    row("Python", sys.version_info[:2] >= (3, 10), f"{ver}{where}  {sys.executable}")
     for mod, label, required in [("numpy", "numpy", True),
                                  ("shapely", L("shapely（2Dの形）", "shapely (2D shapes)"), True),
                                  ("matplotlib", L("matplotlib（断面・平面図）", "matplotlib (sections, plan views)"), True),
@@ -116,9 +197,21 @@ def main():
             m = importlib.import_module(mod)
             row(label, True, getattr(m, "__version__", ""))
         except Exception as e:
-            row(label, False if required else None, import_note(mod, early.get(mod, e)))
+            err = early.get(mod, e)
+            note = import_note(mod, err)
+            if mod == "cadquery" and S:
+                fix = cad_fix(src, inside, err, mk.get("wanted_uv"), S.PREFERRED)
+                if inside is False and isinstance(err, ModuleNotFoundError):
+                    # 範囲外の Python では、cadquery が入らないか、入っても OCP が無くて読み込めない（3.15 など）。
+                    # DLL・共有ライブラリのエラーは版のせいにしない
+                    note = L(f"使えません（{note}。Python {ver} は STEP まで使える範囲の外）→ {fix}",
+                             f"not available ({note}; Python {ver} is outside the range that can export STEP) -> {fix}")
+                else:
+                    note = f"{note} → {fix}" if LANG == "ja" else f"{note} -> {fix}"
+            row(label, False if required else None, note)
 
     env = {"python": sys.executable, "python_posix": sys.executable.replace(os.sep, "/"),
+           "python_version": ver, "python_source": src,
            "three_dir": None, "cjk_font": None, "cjk_font_path": None}
     three = os.path.join(CACHE, "three", "node_modules", "three")
     if os.path.isfile(os.path.join(three, "build", "three.module.js")):

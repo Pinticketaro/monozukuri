@@ -156,7 +156,7 @@ They are in the monozukuri-new-project reference files (`skills/monozukuri-new-p
 
 ## Requirements
 
-- Python 3.10 or later, and Node.js (to install three.js). The monozukuri-setup skill gets the rest.
+- Python (any version) and Node.js (to install three.js). The monozukuri-setup skill gets the rest. If your Python is outside the range that can export STEP (3.11-3.13), setup.py uses uv to get Python 3.12 for monozukuri in `~/.monozukuri/python` and builds the virtual environment with it (your own Python is left as it is). The Linux default (no virtual environment) needs Python 3.10 or later.
 - No external service connections or environment variables are required.
 
 ## Using the scripts directly

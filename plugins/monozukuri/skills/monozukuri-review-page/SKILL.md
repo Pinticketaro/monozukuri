@@ -11,7 +11,7 @@ description: >
   that the agent reads back from review/feedback_local.json. Where artifacts can be published (Claude apps),
   the same page can also be published as an artifact.
 license: MIT
-compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python 3.10 以上（Windows は 3.12 がいちばん確実）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。monozukuri-setup が、STEP に要る 3.11〜3.13 でなければ uv で Python 3.12 を用意する）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
 metadata:
   version: "0.8.0"
 ---
