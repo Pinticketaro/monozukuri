@@ -37,10 +37,10 @@ jobs:
         with:
           node-version: "20"
 
-      - name: setup.py のテスト（速いもの。tests/test_setup.py）
+      - name: テスト（速いもの。tests/）
         shell: pwsh
         run: |
-          python tests/test_setup.py
+          python -m unittest discover -s tests -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: セットアップ（PowerShell 7）

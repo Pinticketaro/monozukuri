@@ -11,7 +11,7 @@ description: >
   that the agent reads back from review/feedback_local.json. Where artifacts can be published (Claude apps),
   the same page can also be published as an artifact.
 license: MIT
-compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。monozukuri-setup が、STEP に要る 3.11〜3.13 でなければ uv で Python 3.12 を用意する）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。monozukuri-setup が、STEP に要る 3.11〜3.13 でなければ uv で Python 3.12 を用意する）と Node.js が要る。Claude Code・Claude アプリ・Codex・Antigravity・Gemini CLI などで動く（Antigravity・Gemini CLI は実機でまだ試していない）
 metadata:
   version: "0.8.0"
 ---
@@ -31,7 +31,7 @@ metadata:
 参照資料（要るときだけ読む）：`references/feedback.md`（フィードバックの形と更新の仕方）、`references/scripts.md`（個別のスクリプト・図の作り方・build_page.py）、`references/manifest.md`（make_version.py が埋める欄・エクスポート）、`references/publish-artifact.md`（アーティファクトとして公開する・公開したページのデータを読み書きする。Claude アプリ、Claude Code の claude-artifacts MCP）、`references/branches.md`（案を分ける）。
 
 ## 聞き方（選択式）
-足りない情報と決めてほしいことは、選択式の問いの画面があればそれで聞く（Claude の AskUserQuestion など）。無ければ、番号付きの選択肢を文字で添えて聞く（最後に「その他」を付け、「1-2, 2-1 のように番号で答えてください」と添える）。問いの候補（mock の notes の yesno／options）も、ページに載せるのと同じ選択肢で聞ける。
+足りない情報と決めてほしいことは、選択式の問いの画面があればそれで聞く（Claude の AskUserQuestion、Antigravity の ask_question など）。無ければ、番号付きの選択肢を文字で添えて聞く（最後に「その他」を付け、「1-2, 2-1 のように番号で答えてください」と添える）。問いの候補（mock の notes の yesno／options）も、ページに載せるのと同じ選択肢で聞ける。
 1回に4問まで（5問以上なら大事なものから2回に分ける）、1問に2〜4択。おすすめの案を先頭に置き、名前の最後に「（おすすめ）」を付ける（画面には「その他」が自動で付く）。寸法のような自由な値も、よくある値を2〜3個の選択肢にする。問いと選択肢はユーザーの言語で書く（英語なら「（おすすめ）」は「(Recommended)」）。答えは `docs/決定事項.md`（項目・決定・理由・版）と `LOG.md` に残す。
 
 ## 言語
@@ -65,7 +65,7 @@ manifest・パラメータファイルなど AI が書くファイルは、フ�
 - 別の向き・別の位置の断面が要るとき、人が作ったモデルを載せるとき（`--tool none`。自前のツールは `--tool tools/model.py`）は `references/scripts.md` を読む。
 - manifest を書かずに実行すると、画像と寸法の差まで作って止まる。
 - `render_model.py` が出す「全体の大きさ」（英語では「Overall size」）を既知の寸法と見比べる（単位チェック）。警告が出たら単位を直してから進む。
-- **できた画像は、画像を見る機能で一度ずつ開く**（Claude は Read）。部品の抜け、色の取り違え、レンダリングの失敗に気づいたら直してから進む（見るのは1回、直すのも1回）。見られない環境では、ユーザーに開いてもらい、気になる所を聞く。
+- **できた画像は、画像を見る機能で一度ずつ開く**（Claude の Read など）。部品の抜け、色の取り違え、レンダリングの失敗に気づいたら直してから進む（見るのは1回、直すのも1回）。見られない環境では、ユーザーに開いてもらい、気になる所を聞く。
 
 ### 4. 版の説明（manifest）を書く
 make_version.py を使うときは、文の欄（`stage`・`summary`・`changes`・`questions`、要れば `notes`）だけを書けばよい。ページも make_version.py が作る（`build_page.py`）。

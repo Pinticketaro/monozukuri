@@ -46,6 +46,26 @@ monozukuri is **made for Mac and Linux**. Its rendering and other scripts are wr
 - **Claude Code directly on Windows (without WSL) is not supported yet.** Setup and rendering are known to stop partway.
 - When the Claude app keeps a project in a folder on your PC, use a short path that OneDrive does not sync (for example `C:\work\`). Syncing and very long paths can make writes fail.
 
+### Codex, Gemini CLI and Antigravity
+
+- **Codex, the Antigravity CLI (`agy`) and Gemini CLI** read skills from `~/.agents/skills/`. Clone the repository and link the three skill folders (on Windows, make directory junctions instead). Skill loading was checked with `agy` 1.5.16; Gemini CLI has not been tried on a real machine.
+
+  ```bash
+  git clone https://github.com/Pinticketaro/monozukuri.git ~/monozukuri-skills
+  mkdir -p ~/.agents/skills
+  ln -sf ~/monozukuri-skills/plugins/monozukuri/skills/monozukuri-* ~/.agents/skills/
+  ```
+
+  Keep the three skills side by side: they read each other's references and scripts. To avoid a permission prompt each time, add the skills folder to the workspace: `agy --add-dir ~/monozukuri-skills/plugins/monozukuri/skills` (Gemini CLI: `--include-directories`).
+- **Antigravity app**: the `~/.agents/skills/` links work there too. To manage monozukuri as one plugin instead, add the repository's `plugins` folder to `~/.gemini/config/plugins.json` as an **absolute path** (`~/` is not accepted), for example:
+
+  ```json
+  { "entries": [ { "path": "/Users/you/monozukuri-skills/plugins" } ] }
+  ```
+
+  Antigravity finds the `monozukuri` folder (marked by `.antigravity-plugin/plugin.json`). Use only one of the two ways, or the skills appear twice. To remove it, delete the line from `plugins.json`; do not use Uninstall under Customizations, because the registered folder is your clone itself. If the skills do not appear in the app, restart Antigravity.
+- In these agents the review page opens in your PC's browser (`serve_review.py`). Publishing as a Claude artifact is only available in Claude.
+
 ## First time only
 
 1. **Start a new conversation**: plugins load when a conversation starts. A conversation that was already open before you added the plugin cannot use it.
@@ -158,7 +178,7 @@ plugins/monozukuri/               The plugin
   skills/monozukuri-new-project/  Templates, coupons, technical requirement references
   skills/monozukuri-review-page/  Rendering, comparison, review page, feedback
 dist/monozukuri.plugin            Package for the Claude app
-tests/test_setup.py               Setup tests (python tests/test_setup.py; --full runs setup end to end)
+tests/                            Tests (python -m unittest discover -s tests; python tests/test_setup.py --full runs setup end to end)
 ```
 
 ## License

@@ -1,4 +1,4 @@
-# setup.py のテスト（tests/test_setup.py）を mac と Linux で動かす。Windows は windows.yml の中で動かす。
+# テスト（tests/。setup.py とプラグインの目印）を mac と Linux で動かす。Windows は windows.yml の中で動かす。
 # 速いテストだけ（pip でパッケージを入れない）。uv があれば、uv で Python 3.12 の仮想環境を作るテストも通る。
 name: tests
 
@@ -22,5 +22,5 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
-      - name: setup.py のテスト
-        run: python tests/test_setup.py
+      - name: テスト（tests/）
+        run: python -m unittest discover -s tests -v

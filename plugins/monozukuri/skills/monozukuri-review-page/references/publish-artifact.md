@@ -1,7 +1,7 @@
 # アーティファクトとして公開する（Claude アプリ・Claude Code）
 
 公開は Claude アプリの `Artifact` ツール、公開したページのデータ（フィードバック・問いの答え・決定）の読み書きは Claude アプリの `ArtifactData` ツールか、Claude Code の claude-artifacts MCP（`db_list`・`db_query`・`db_get`・`db_write`・`db_profiles`・`get_artifact`。下の「Claude Code（claude-artifacts MCP）で読み書きする」）で行う。
-- どれも無い環境では使わず、SKILL.md の手順5「PC のブラウザで開く」だけにする。そのとき `review/artifact.json` があれば、公開したページの書き込みは読めず、公開したページも更新されないことをユーザーに伝える（Claude アプリで続けるか、書き込みを貼ってもらう）。
+- どれも無い環境（Codex・Antigravity・Gemini CLI など）では使わず、SKILL.md の手順5「PC のブラウザで開く」だけにする。そのとき `review/artifact.json` があれば、公開したページの書き込みは読めず、公開したページも更新されないことをユーザーに伝える（Claude アプリで続けるか、書き込みを貼ってもらう）。
 - claude-artifacts MCP だけがある環境（Claude Code）では、データは読み書きできる。ページの再公開はこの手順では行わないので、公開したページはこの版に更新されないことをユーザーに伝える。
 - `status.py` は公開したページのデータを読めない（問いの答え・決定は PC のページの分だけを出す）。`review/artifact.json` があるときは、ここの手順でも読む。
 

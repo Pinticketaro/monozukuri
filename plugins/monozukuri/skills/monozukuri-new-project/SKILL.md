@@ -13,7 +13,7 @@ description: >
   material safety, a personal library of machines, materials and parts, and tool updates after a plugin update.
   Flags FDM overhangs that need support. Projects are Japanese or English, switched through chat.
 license: MIT
-compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。monozukuri-setup が、STEP に要る 3.11〜3.13 でなければ uv で Python 3.12 を用意する）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。monozukuri-setup が、STEP に要る 3.11〜3.13 でなければ uv で Python 3.12 を用意する）と Node.js が要る。Claude Code・Claude アプリ・Codex・Antigravity・Gemini CLI などで動く（Antigravity・Gemini CLI は実機でまだ試していない）
 metadata:
   version: "0.8.0"
 ---
@@ -35,7 +35,7 @@ AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.
 前提として持っておく考え方：公開されている数値は初期値。出典どうしのずれが圧入とガタの差ほどあるので、カーフ・実板厚・クリアランス・インサート穴はテストピースで測った値を使う。
 
 ## 聞き方（選択式）
-足りない情報と決めてほしいことは、選択式の問いの画面があればそれで聞く（Claude の AskUserQuestion など）。無ければ、番号付きの選択肢を文字で添えて聞く（最後に「その他」を付け、「1-2, 2-1 のように番号で答えてください」と添える）。
+足りない情報と決めてほしいことは、選択式の問いの画面があればそれで聞く（Claude の AskUserQuestion、Antigravity の ask_question など）。無ければ、番号付きの選択肢を文字で添えて聞く（最後に「その他」を付け、「1-2, 2-1 のように番号で答えてください」と添える）。
 1回に4問まで（5問以上なら大事なものから2回に分ける）、1問に2〜4択。おすすめの案を先頭に置き、名前の最後に「（おすすめ）」を付ける。寸法のような自由な値も、よくある値を2〜3個の選択肢にする（画面には「その他」が自動で付く）。答えは `docs/決定事項.md`（項目・決定・理由・版）と `LOG.md` に残す。
 
 ## 言語
@@ -99,7 +99,7 @@ AI が書くファイル（パラメータファイル・`tools/mock.py`・`LOG.
 <python> tools/slices.py --scene out/v01/scene.json --plan out/v01/plan.png --section out/v01/section.png
 ```
 - 確認ページまで1回で作ってもよい：先に版の説明 `out/v01/manifest.json`（`stage`・`summary`・`changes`・`questions`。書き方は monozukuri-review-page の手順4）を書き、`<python> <review-page の scripts>/make_version.py <プロジェクト> v01` を実行する（モック → 外観・平面図・断面 → 確認ページ。上の3つのコマンドは要らない）。`<review-page の scripts>` は monozukuri-review-page スキルの `scripts/`（このスキルのフォルダからは `../monozukuri-review-page/scripts`）。
-- 画像を見る機能で1回ずつ開いて（Claude は Read）、依頼の形になっているか確かめる。崩れていれば1回直す。見られない環境では、ユーザーに開いてもらい、気になる所を聞く。
+- 画像を見る機能で1回ずつ開いて（Claude の Read など）、依頼の形になっているか確かめる。崩れていれば1回直す。見られない環境では、ユーザーに開いてもらい、気になる所を聞く。
 - README の「決まり」（英語のプロジェクトは「Rules」）の原点・向きを、実際の mock.py に合わせて書き直す。
 - `docs/決定事項.md` に、ここまでに決まったこと（加工方法、造形範囲など）を理由付きで書く。
 

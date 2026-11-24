@@ -9,7 +9,7 @@ description: >
   review-page scripts need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery for STEP output,
   playwright + Chromium, three.js, CJK font) and runs a test render. On macOS and Windows it installs into ~/.monozukuri/venv.
 license: MIT
-compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。STEP に要る 3.11〜3.13 でなければ、setup.py が uv で monozukuri 用の Python 3.12 を用意する。Linux の既定（仮想環境なし）は 3.10 以上）と Node.js が要る。Claude Code・Claude アプリ・Codex などで動く
+compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。STEP に要る 3.11〜3.13 でなければ、setup.py が uv で monozukuri 用の Python 3.12 を用意する。Linux の既定（仮想環境なし）は 3.10 以上）と Node.js が要る。Claude Code・Claude アプリ・Codex・Antigravity・Gemini CLI などで動く（Antigravity・Gemini CLI は実機でまだ試していない）
 metadata:
   version: "0.8.0"
 ---
@@ -23,7 +23,7 @@ metadata:
 コマンドの `<python>` は、monozukuri-setup（このスキル）が記録した Python。check_env.py の最後の行（「monozukuri のスクリプトは次の Python で実行する: <パス>」）か、`~/.cache/monozukuri/env.json` の `python`（Windows では区切りを / にした `python_posix`）。例：mac は `~/.monozukuri/venv/bin/python`、Windows は `~/.monozukuri/venv/Scripts/python.exe`、Linux（クラウドの作業環境）は `python3`。PowerShell では、引用符で囲んだパスで始まるコマンドの前に `&` を付ける（`& "C:/Users/山田 太郎/.monozukuri/venv/Scripts/python.exe" scripts/check_env.py`）。まだ記録が無いとき（最初のセットアップ）は、手順2のコマンドで setup.py を実行する。
 
 ## 聞き方
-決めてほしいこと（どこで動かすか、cadquery を入れるか）は、選択式の問いの画面があればそれで聞く（Claude の AskUserQuestion など）。無ければ、番号付きの選択肢を文字で添えて聞く。1回に4問まで、1問に2〜4択、おすすめの案を先頭に「（おすすめ）」付きで置く。画面には「その他」が自動で付くので選択肢に入れない（文字で聞くときは最後に「その他」を付ける）。
+決めてほしいこと（どこで動かすか、cadquery を入れるか）は、選択式の問いの画面があればそれで聞く（Claude の AskUserQuestion、Antigravity の ask_question など）。無ければ、番号付きの選択肢を文字で添えて聞く。1回に4問まで、1問に2〜4択、おすすめの案を先頭に「（おすすめ）」付きで置く。画面には「その他」が自動で付くので選択肢に入れない（文字で聞くときは最後に「その他」を付ける）。
 
 ## 言語（日本語・英語）
 - ユーザーが書いた言語で答える。問いと選択肢も、その言語で書く（英語なら「（おすすめ）」は「(Recommended)」）。
@@ -53,7 +53,7 @@ metadata:
 3. **結果の表を読む**
    - 最後に `check_env.py` が表を出す。`NG` が残ったら下の「つまずいたとき」で直し、`<python> scripts/check_env.py` だけを再実行する。
    - `任意` は無くても動く（cascadio は STEP を読むとき、cadquery はモックを STEP でエクスポートするときだけ必要。無ければモックは STL だけになる）。
-   - テストレンダリングの PNG のパスが出るので、画像を見る機能で開いて一度だけ確かめる（Claude は Read）：等角の図に影、右側面の図に段差と面取りの明暗が見えること。見られない環境では、ユーザーに開いてもらい、影と明暗が見えるかを聞く。
+   - テストレンダリングの PNG のパスが出るので、画像を見る機能で開いて一度だけ確かめる（Claude の Read など）：等角の図に影、右側面の図に段差と面取りの明暗が見えること。見られない環境では、ユーザーに開いてもらい、影と明暗が見えるかを聞く。
    - 最後の行「monozukuri のスクリプトは次の Python で実行する: <パス>」（英語では「Run the monozukuri scripts with this Python: <path>」）のパスが `<python>`。以後の monozukuri のコマンドは、その Python で実行する（例：`<python> tools/mock.py v01`）。Windows では区切りが / のパスが出て、空白があれば " で囲んである。
 
 4. **ユーザーへの報告は1〜2文**：準備できたこと、入らなかったものがあればその影響（例：「STEP は読めないので STL でエクスポートしてください」）。
@@ -76,7 +76,8 @@ metadata:
 | uv が Python をダウンロードできない（社内のネットワーク・プロキシ、GitHub に届かない） | 証明書のエラーなら、setup.py が OS の証明書でもう一度試す。プロキシの環境は `HTTPS_PROXY` を設定する。GitHub に届かないネットワークでは、uv の `UV_PYTHON_INSTALL_MIRROR` に社内のミラーを設定するか、`--no-uv` で PC の Python のまま使う（STEP は使えないことがある） |
 | Windows でファイルが見つからない・書けない（プロジェクトが OneDrive の中、パスが長い） | プロジェクトを `C:/work/` のような浅い場所に置く |
 | Windows で「仮想環境を作れませんでした」と出て、確認ページのサーバーが動いている | `<python> <scripts>/serve_review.py <プロジェクト> --stop`（`<scripts>` は monozukuri-review-page スキルの `scripts/`）で止めてから、もう一度実行する |
-| AI のサンドボックスでダウンロードや `~/` への書き込みが止められる（Codex の既定の設定など。mac・Windows とも） | setup.py はネットワークと、`~/.monozukuri/`・`~/.cache/monozukuri/` への書き込みが要る。uv が Python をダウンロードするとき（GitHub から取ってくる）もネットワークが要る。ユーザーの許可を得て、サンドボックスの外で実行する（またはユーザーに、手順2のコマンドを setup.py の絶対パスにして実行してもらう） |
+| AI のサンドボックスでダウンロードや `~/` への書き込みが止められる（Codex の既定の設定、Gemini CLI のサンドボックスなど。mac・Windows とも） | setup.py はネットワークと、`~/.monozukuri/`・`~/.cache/monozukuri/` への書き込みが要る。uv が Python をダウンロードするとき（GitHub から取ってくる）もネットワークが要る。ユーザーの許可を得て、サンドボックスの外で実行する（またはユーザーに、手順2のコマンドを setup.py の絶対パスにして実行してもらう） |
+| Antigravity・Gemini CLI で、ほかのスキルのファイル（参照資料など）を読むたびに許可を聞かれる・断られる | スキルのフォルダ（リポジトリの `plugins/monozukuri/skills`）をワークスペースに足す。Antigravity の CLI は `agy --add-dir <そのフォルダ>`、Gemini CLI は `--include-directories <そのフォルダ>`、Antigravity のアプリはプロジェクトにそのフォルダを足す |
 | テストレンダリングがタイムアウト | WebGL がソフトウェアレンダリング（SwiftShader）で遅い環境。もう一度だけ実行し、それでもだめなら幅を小さく（`--width 1200`） |
 
 ## 置き場所

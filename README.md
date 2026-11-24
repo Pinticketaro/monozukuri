@@ -53,6 +53,35 @@ foreach ($s in "monozukuri-setup", "monozukuri-new-project", "monozukuri-review-
 - Windows：Codex がジャンクションをたどってスキルを読むかは、まだ確かめていません。スキルが出てこないときは、3つのフォルダを `Copy-Item -Recurse` で `$HOME\.agents\skills\` にコピーしても動きます。コピーしたときは、`git pull` のたびにコピーし直してください。
 - Windows：前からあるジャンクション（同じ名前のリンク）は、エクスプローラーで消すか、`cmd /c rmdir <リンク>` で消してから作り直します。PowerShell 5.1 の `Remove-Item -Recurse` では消さないでください。リンク先（リポジトリ）の中身まで消えることがあります。
 - WSL の中で使うときは、mac・Linux のコマンドを Ubuntu の中で実行します（下の「Windows の場合」）。
+- Antigravity の CLI（`agy`）と Gemini CLI も `~/.agents/skills/` を読むので、上のコマンドで入ります（`agy` 1.5.16 で、スキルが読み込まれることを確かめました。Gemini CLI は実機ではまだ試していません）。
+- スキルどうしで参照資料を読むので、そのたびに読んでよいかを聞かれることがあります。スキルのフォルダをワークスペースに足すと聞かれません：`agy --add-dir ~/monozukuri-skills/plugins/monozukuri/skills`、Gemini CLI は `gemini --include-directories ~/monozukuri-skills/plugins/monozukuri/skills`。
+
+### Antigravity（Google の AI のアプリ）
+
+上の `~/.agents/skills/` に入れてあれば、Antigravity でもそのまま使えます。Antigravity だけで使うときや、Antigravity の設定の「Customizations」でまとめて止めたいときは、プラグインとして登録します。`~/.gemini/config/plugins.json` に、リポジトリの `plugins` フォルダを**絶対パス**で書きます（`~/` は使えません）。Antigravity はそこから `monozukuri` のフォルダ（`.antigravity-plugin/plugin.json` が目印）を見つけて、3つのスキルを読み込みます。両方で入れると同じ名前のスキルが2つになるので、どちらか一方にしてください。
+
+mac・Linux：
+
+```bash
+mkdir -p ~/.gemini/config
+[ -e ~/.gemini/config/plugins.json ] || printf '{\n  "entries": [\n    { "path": "%s/monozukuri-skills/plugins" }\n  ]\n}\n' "$HOME" > ~/.gemini/config/plugins.json
+```
+
+Windows（PowerShell）：
+
+```powershell
+$f = "$HOME\.gemini\config\plugins.json"
+if (-not (Test-Path $f)) {
+  New-Item -ItemType Directory -Force (Split-Path $f) | Out-Null
+  $p = (Join-Path $HOME "monozukuri-skills\plugins") -replace '\\', '/'
+  [IO.File]::WriteAllText($f, "{ `"entries`": [ { `"path`": `"$p`" } ] }")
+}
+```
+
+- `plugins.json` がもうあるときは、上のコマンドは何もしません。ファイルの `entries` に `{ "path": "<ホームの絶対パス>/monozukuri-skills/plugins" }` を手で足してください。
+- `agy` は次に起動したときから読み込みます（確かめました）。アプリで出てこなければ、Antigravity を起動し直してください。
+- 止めるときは「Customizations」でオフにします。外すときは `plugins.json` の行を消してください。Customizations の Uninstall は使わないでください（登録したのはリポジトリのフォルダそのものなので、中身まで消えるおそれがあります）。
+- 決めてほしいことは、Antigravity の選択式の問いの画面で聞きます。確認ページは PC のブラウザで開きます（`serve_review.py`）。アプリで版づくりまで通すのは、まだ試していません。
 
 ## 対応環境
 
@@ -70,6 +99,8 @@ Python の版は合わせなくて大丈夫です。PC の Python では STEP �
 | Claude Code | PC のブラウザ（`serve_review.py`） | 選択式の問いの画面 | `/monozukuri:monozukuri-setup` など |
 | Claude アプリ | アーティファクトとして公開するか、PC のブラウザ | 選択式の問いの画面 | ふつうの言葉で頼む |
 | Codex | PC のブラウザ（`serve_review.py`） | 文字で、番号付きの選択肢 | `$monozukuri-setup` など |
+| Antigravity（CLI でスキルの読み込みを確かめた。版づくりはまだ） | PC のブラウザ（`serve_review.py`） | 選択式の問いの画面 | ふつうの言葉で頼む |
+| Gemini CLI（実機ではまだ試していません） | PC のブラウザ（`serve_review.py`） | 文字で、番号付きの選択肢 | ふつうの言葉で頼む（使う前に許可を聞かれる） |
 
 どの AI でも同じ SKILL.md を使い、プロジェクトのファイルの形（パラメータファイル、`out/vNN/`、`review/`）も同じです。ある AI で作ったプロジェクトを、別の AI で続けられます（アーティファクトに書かれたフィードバックは、Claude アプリからしか読めません）。
 
@@ -205,7 +236,7 @@ plugins/monozukuri/               プラグイン本体
   skills/monozukuri-new-project/  テンプレート・テストピース・技術要件の参照資料
   skills/monozukuri-review-page/  レンダリング・比較・確認ページ・フィードバック
 dist/monozukuri.plugin            Claude アプリ用のパッケージ
-tests/test_setup.py               セットアップのテスト（python tests/test_setup.py。--full で最後まで通す）
+tests/                            テスト（python -m unittest discover -s tests。セットアップは python tests/test_setup.py --full で最後まで通す）
 ```
 
 ## English
