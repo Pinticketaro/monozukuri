@@ -1608,5 +1608,198 @@
     "build"
    ]
   }
+ },
+ "0.9.0": {
+  "geom.py": {
+   "sha256": [
+    "35f5ee33c30123ef637fe85063204586ba7dc9adda66537ededdf5814b129d0b"
+   ],
+   "defs": [
+    "Circle",
+    "Circle.__init__",
+    "Circle.cq_extrude",
+    "Circle.points",
+    "Outline",
+    "Outline.cq_extrude",
+    "Outline.points",
+    "Poly",
+    "Poly.__init__",
+    "Poly.cq_extrude",
+    "Poly.points",
+    "RRect",
+    "RRect.__init__",
+    "RRect.cq_extrude",
+    "RRect.points",
+    "Solid",
+    "Solid.__add__",
+    "Solid.__and__",
+    "Solid.__init__",
+    "Solid.__sub__",
+    "Solid.cq",
+    "Solid.mf",
+    "Solid.rotate_x",
+    "Solid.rotate_y",
+    "Solid.rotate_z",
+    "Solid.translate",
+    "box",
+    "check_step",
+    "cone",
+    "cyl",
+    "export_assembly",
+    "export_step",
+    "export_stl",
+    "has_cad",
+    "lug_with_slot",
+    "prism",
+    "revolve",
+    "slab",
+    "tab",
+    "to_trimesh",
+    "tube"
+   ]
+  },
+  "common.py": {
+   "sha256": [
+    "5dc23b7c6bc5d30767caf68bb7a14ac460cfe6f1545522bb5c5e96f4e78f4fb4"
+   ],
+   "defs": [
+    "_bridge_span",
+    "_closest_on_segs",
+    "_densify",
+    "_nearest",
+    "_sample_tris",
+    "lang_from_argv",
+    "latest",
+    "load",
+    "out_dir",
+    "overhang_notes",
+    "overhangs",
+    "prev_version",
+    "read_json",
+    "resolve_lang",
+    "run_mock",
+    "siblings",
+    "ver_key",
+    "version_from_argv",
+    "versions"
+   ]
+  },
+  "coupons.py": {
+   "sha256": [
+    "aed12550f8d2a3531260a91c5e785ef2c3e4b197e0a52efb19ce1ea9e4395124"
+   ],
+   "defs": [
+    "box",
+    "comb_path",
+    "cyl",
+    "dimples",
+    "fdm_fit",
+    "fdm_insert",
+    "finish",
+    "laser_svg",
+    "main",
+    "partial_lines",
+    "svg_dots",
+    "svg_rect",
+    "to_mesh"
+   ]
+  },
+  "dims_sheet.py": {
+   "sha256": [
+    "c3af49a307b933e18f29a0c5dcdd803973cf3f5b28ff95c521c00ab01f01fa31"
+   ],
+   "defs": [
+    "main",
+    "not_measured",
+    "write_text"
+   ]
+  },
+  "requirements.txt": {
+   "sha256": [
+    "fa64623bac2a9dbab2ec9305b7ae3a97cb8e9b6a0031d22bb6a8cec7995fce3b"
+   ],
+   "defs": []
+  },
+  "render_model.py": {
+   "sha256": [
+    "50a1bd0300820f13f84f4ba8e03b22e4f635e3cddbb4c0fbc8d9a7c966afc9a4"
+   ],
+   "defs": [
+    "_render_in",
+    "build_scene",
+    "help_lang",
+    "hex2rgba",
+    "layout",
+    "load_mesh",
+    "load_mm",
+    "main",
+    "parse_part",
+    "read_json",
+    "render",
+    "report_size",
+    "resolve_lang",
+    "three_dir",
+    "view_aspect"
+   ]
+  },
+  "slices.py": {
+   "sha256": [
+    "55162018c58ff507f4e3aaa493402cccea0bdaa8ef17a567fd023fa4d5b96d81"
+   ],
+   "defs": [
+    "darker",
+    "draw_shape",
+    "draw_silhouette",
+    "help_lang",
+    "join_lists",
+    "load",
+    "load_mm",
+    "loops_to_shape",
+    "main",
+    "numbers",
+    "plan",
+    "read_json",
+    "resolve_lang",
+    "section",
+    "setup_font",
+    "silhouette"
+   ]
+  },
+  "compare.py": {
+   "sha256": [
+    "9c879a854375d6499601d571fec7f30c39f9a5fc9c34be9575e40a31b93d8d7f"
+   ],
+   "defs": [
+    "diff_image",
+    "fit",
+    "font",
+    "help_lang",
+    "main",
+    "resolve_lang",
+    "split_labels"
+   ]
+  },
+  "params_diff.py": {
+   "sha256": [
+    "695ae09fea0d13d186be7b1cd36ea3f5e28aca96d112f3c8a015988b26e04218"
+   ],
+   "defs": [
+    "diff",
+    "flatten",
+    "help_lang",
+    "main",
+    "meta_lang",
+    "read_json",
+    "resolve_lang"
+   ]
+  },
+  "mock.py": {
+   "sha256": [
+    "9636ae041f7f04f510210bec9a96a80cbbb26623d80462aef9d0486dfdfb97b7"
+   ],
+   "defs": [
+    "build"
+   ]
+  }
  }
 }

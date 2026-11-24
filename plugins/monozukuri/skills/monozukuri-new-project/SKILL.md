@@ -15,7 +15,7 @@ description: >
 license: MIT
 compatibility: macOS・Linux・Windows（PowerShell・Git Bash・WSL）。Python（版は問わない。monozukuri-setup が、STEP に要る 3.11〜3.13 でなければ uv で Python 3.12 を用意する）と Node.js が要る。Claude Code・Claude アプリ・Codex・Antigravity・Gemini CLI などで動く（Antigravity・Gemini CLI は実機でまだ試していない）
 metadata:
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # 新規プロジェクトのテンプレート

@@ -34,7 +34,7 @@ monozukuri is **made for Mac and Linux**. Its rendering and other scripts are wr
 | Claude app (desktop and web) | Yes, on any OS. Rendering and other processing run in Claude's cloud workspace (Linux) |
 | Claude Code (Mac, Linux) | Yes |
 | Claude Code (WSL on Windows) | Yes (runs as Linux) |
-| Claude Code (Windows without WSL) | Not yet |
+| Claude Code (Windows without WSL) | Partly (since 0.8.0; not yet tried on a real machine) |
 
 ### On Windows
 
@@ -88,13 +88,22 @@ The usual way is to repeat steps 1 and 2 until the shape is settled, then go to 
 
 If you are not sure, ask "What should I do next?". Claude checks the project checklist and tells you.
 
-## What it can do (v0.5.0)
+## What it can do (v0.9.0)
 
 | Skill | Ask | What it does |
 | --- | --- | --- |
 | monozukuri-setup | "Set up the mock environment", "Make rendering work on my Mac" | Installs what rendering, sections and comparison need (shapely, manifold3d, trimesh, networkx, cascadio, cadquery, playwright + Chromium, three.js, a Japanese font) in one go, and checks it with a test render. On a Mac, it installs into a virtual environment outside the project (`~/.monozukuri/venv`) |
 | monozukuri-new-project | "Start a new making project", "Make coupons", "Update the tools", "Switch this project to English" | Creates the project: a params file (shape dimensions + fabrication values with confidence), a mock generator (STL and STEP from one shape definition; the STEP has real arcs, cylinders and cones, and opens in Fusion with one component per part), a coupon generator, scripts for rendering, sections, comparison and the dimension sheet, a stage checklist, handoff docs and Git settings. Then it draws the first mock. It narrows the fabrication values and steps to the process (laser / 3D print / both), and flags faces that may need support in 3D printing. It sets and switches the project language (Japanese / English) |
 | monozukuri-review-page | "Make a review page for this version", "Read the feedback", "Open the review page in the browser" | Renders mocks or models people made (STL / OBJ / STEP), compares them with the previous version, adds the version to the project's review page and publishes it (in Claude Code, it opens in your browser). Claude reads the feedback and answers written on the page, and adds a reply or "Decided" once they are applied |
+
+### Changes in 0.9.0
+
+- **You no longer need to match your Python version.** If your Python cannot install cadquery (needed for STEP export; today that means outside 3.11-3.13, such as 3.15), setup uses [uv](https://docs.astral.sh/uv/) to get Python 3.12 for monozukuri in `~/.monozukuri/python`. Your own Python is left as it is. Rebuild an old virtual environment with `setup.py --rebuild-venv`
+- **Antigravity and Gemini CLI** can use the skills (see "Codex, Gemini CLI and Antigravity" above; skill loading was checked with the Antigravity CLI)
+- New shape functions: `prism`, `tab` (for tab-and-slot joints), `rotate_x`, `rotate_y`
+- 3D-printing notes check overhangs and bridges separately (bridge length guideline `bridge_max`, 5 mm by default)
+- The laser example is now a tab-and-slot acrylic tray
+- Windows without WSL has worked since 0.8.0 (not yet tried on a real machine)
 
 ### Changes in 0.5.0
 
